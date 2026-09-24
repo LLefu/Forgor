@@ -53,7 +53,7 @@ export function FolderView({ id }: { id: string }) {
           })}
         </div>
       )}
-      <PageHeader title={basename(folder.path)} subtitle={`${data.open.length} open todos · ${data.notes.length} notes`}>
+      <PageHeader title={basename(folder.path)} subtitle={`${data.open.length} open ${data.open.length === 1 ? "todo" : "todos"} · ${data.notes.length} ${data.notes.length === 1 ? "note" : "notes"}`}>
         <Button
           variant="outline"
           size="sm"

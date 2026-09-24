@@ -83,7 +83,7 @@ export function SettingsView({ platform }: { platform: Platform }) {
               onClick={async () => {
                 setHotkeyError(null);
                 try {
-                  await applyHotkey(hotkey, settings.hotkey);
+                  await applyHotkey(hotkey);
                   await update("hotkey", hotkey);
                 } catch (e) {
                   setHotkeyError(String(e));

@@ -13,16 +13,6 @@ export const EVT = {
   popupShown: "wn://popup-shown",
 } as const;
 
-export async function showPopup() {
-  const { WebviewWindow } = await import("@tauri-apps/api/webviewWindow");
-  const popup = await WebviewWindow.getByLabel("popup");
-  if (!popup) return;
-  await popup.center();
-  await popup.show();
-  await popup.setFocus();
-  await popup.emit(EVT.popupShown);
-}
-
 export async function showMain() {
   const { WebviewWindow } = await import("@tauri-apps/api/webviewWindow");
   const main = await WebviewWindow.getByLabel("main");
@@ -32,15 +22,15 @@ export async function showMain() {
   await main.setFocus();
 }
 
-/** Register the global shortcut (replacing a previous one). Throws if the combo is invalid or taken. */
-export async function applyHotkey(combo: string, previous?: string) {
+/**
+ * Register the global shortcut (replacing any previous one). The shortcut
+ * lives on the Rust side so it survives webview reloads. Throws if the combo
+ * is invalid or taken by another app.
+ */
+export async function applyHotkey(combo: string) {
   if (!isTauri()) return;
-  const gs = await import("@tauri-apps/plugin-global-shortcut");
-  if (previous && (await gs.isRegistered(previous))) await gs.unregister(previous);
-  if (await gs.isRegistered(combo)) await gs.unregister(combo);
-  await gs.register(combo, (e) => {
-    if (e.state === "Pressed") void showPopup();
-  });
+  const { invoke } = await import("@tauri-apps/api/core");
+  await invoke("set_hotkey", { combo });
 }
 
 /** Main window: react to requests coming from the popup. */

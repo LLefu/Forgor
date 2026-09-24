@@ -113,6 +113,7 @@ function Menu({ onPick }: { onPick: (m: Mode) => void }) {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const byKey = items.find((i) => i.key === e.key);
+      if (byKey || ["ArrowDown", "ArrowUp", "Enter"].includes(e.key)) e.preventDefault(); // don't leak into the next input
       if (byKey) return void byKey.action();
       if (e.key === "ArrowDown") setIndex((i) => (i + 1) % items.length);
       if (e.key === "ArrowUp") setIndex((i) => (i - 1 + items.length) % items.length);

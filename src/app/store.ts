@@ -18,6 +18,10 @@ interface UIState {
   selectedTodoId: string | null;
   openTodo: (id: string | null) => void;
 
+  /** Explorer item ("f:<id>" / "n:<id>") to put into rename mode once it appears in the tree. */
+  pendingRename: string | null;
+  requestRename: (treeId: string | null) => void;
+
   quickAdd: { open: boolean; defaults: TodoInput };
   openQuickAdd: (defaults?: TodoInput) => void;
   closeQuickAdd: () => void;
@@ -43,6 +47,9 @@ export const useUI = create<UIState>((set, get) => ({
 
   selectedTodoId: null,
   openTodo: (id) => set({ selectedTodoId: id }),
+
+  pendingRename: null,
+  requestRename: (treeId) => set({ pendingRename: treeId }),
 
   quickAdd: { open: false, defaults: {} },
   openQuickAdd: (defaults = {}) => set({ quickAdd: { open: true, defaults } }),

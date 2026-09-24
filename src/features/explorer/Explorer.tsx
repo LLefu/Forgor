@@ -62,6 +62,28 @@ export function Explorer({ treeRef }: { treeRef?: React.MutableRefObject<TreeApi
     if (activeId) localTree.current?.openParents(activeId);
   }, [activeId]);
 
+  // Put a freshly created item into rename mode as soon as the tree has it.
+  const pendingRename = useUI((s) => s.pendingRename);
+  const requestRename = useUI((s) => s.requestRename);
+  useEffect(() => {
+    if (!pendingRename) return;
+    // The tree builds its nodes a moment after new data arrives, so retry briefly.
+    let tries = 0;
+    let timer: ReturnType<typeof setTimeout>;
+    const attempt = () => {
+      const tree = localTree.current;
+      if (tree?.get(pendingRename)) {
+        tree.openParents(pendingRename);
+        requestRename(null);
+        setTimeout(() => tree.get(pendingRename)?.edit(), 0);
+      } else if (++tries < 40) {
+        timer = setTimeout(attempt, 25);
+      }
+    };
+    attempt();
+    return () => clearTimeout(timer);
+  }, [pendingRename, data, requestRename]);
+
   return (
     <div ref={box} className="min-h-0 flex-1" data-testid="explorer">
       {data.length === 0 ? (
@@ -134,7 +156,7 @@ function Row({ node, style, dragHandle }: NodeRendererProps<TreeItem>) {
     const parent = isFolder ? item.path : dirname(item.path);
     const f = await notes.createFolder(parent);
     if (isFolder) node.open();
-    setTimeout(() => node.tree.get(`f:${f.id}`)?.edit(), 50);
+    useUI.getState().requestRename(`f:${f.id}`);
   };
   const remove = async () => {
     const what = isFolder ? `the folder "${item.name}" and everything in it` : `"${item.name}"`;

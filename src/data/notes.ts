@@ -10,6 +10,7 @@ import {
   isIgnoredPath,
   joinPath,
   relativePath,
+  resolvePath,
   sanitizeName,
   stripMd,
   uniqueName,
@@ -220,7 +221,12 @@ export interface OpenedNote {
 export async function readNote(id: string): Promise<OpenedNote | null> {
   const meta = await getNoteMeta(id);
   if (!meta) return null;
-  const text = await ctx().vault.readText(meta.path);
+  let text: string;
+  try {
+    text = await ctx().vault.readText(meta.path);
+  } catch {
+    return null; // moved/deleted on disk and the index hasn't caught up yet
+  }
   const { data, body } = parseNote(text);
   return { meta, data, body };
 }
@@ -289,8 +295,40 @@ export async function moveNote(id: string, folderPath: string): Promise<NoteMeta
   const target = await uniqueName(folderPath, meta.title, ".md", (p) => vault.exists(p));
   await vault.rename(meta.path, target);
   await updateNotePath(id, target);
+  await relocateAttachments(id, dirname(meta.path), folderPath);
   emitChange("notes", "folders");
   return getNoteMeta(id);
+}
+
+const LINK_RE = /(!?\[[^\]]*\]\()([^)\s]+)(\))/g;
+
+/**
+ * After a note moves to another folder, move the attachments it references
+ * (files in the old folder's _attachments) along and rewrite the links.
+ */
+async function relocateAttachments(noteId: string, fromDir: string, toDir: string) {
+  const { vault } = ctx();
+  const opened = await readNote(noteId);
+  if (!opened) return;
+  const replacements = new Map<string, string>();
+  for (const m of opened.body.matchAll(LINK_RE)) {
+    const url = m[2];
+    if (/^[a-z]+:/i.test(url) || replacements.has(url)) continue;
+    const oldPath = resolvePath(fromDir, url);
+    if (!oldPath.split("/").includes(ATTACHMENTS_DIR) || !(await vault.exists(oldPath))) continue;
+    const name = basename(oldPath);
+    const dot = name.lastIndexOf(".");
+    const newPath = await uniqueName(joinPath(toDir, ATTACHMENTS_DIR), dot > 0 ? name.slice(0, dot) : name, dot > 0 ? name.slice(dot) : "", (p) =>
+      vault.exists(p),
+    );
+    await vault.rename(oldPath, newPath);
+    replacements.set(url, encodeURI(relativePath(toDir, newPath)));
+  }
+  if (!replacements.size) return;
+  const body = opened.body.replace(LINK_RE, (all, pre: string, url: string, post: string) =>
+    replacements.has(url) ? pre + replacements.get(url) + post : all,
+  );
+  await writeNoteBody(noteId, body);
 }
 
 async function updateNotePath(id: string, path: string) {

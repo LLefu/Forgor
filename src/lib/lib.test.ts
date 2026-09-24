@@ -4,6 +4,7 @@ import { nextOccurrence, presetToRRule, customRRule, describeRRule, occurrences 
 import { parseNote, stringifyNote } from "./frontmatter";
 import { assignTaskIds, parseTasks, setTaskChecked, setTaskText } from "./inlineTodos";
 import { extractWikiLinks, resolveWikiTarget } from "./wikilinks";
+import { cleanMarkdown } from "./markdown";
 import { isIgnoredPath, relativePath, resolvePath, sanitizeName, uniqueName } from "./paths";
 import type { Todo } from "@/data/types";
 
@@ -178,6 +179,13 @@ describe("wikilinks", () => {
     expect(resolveWikiTarget("Clients/Acme", notes)).toBe("2");
     expect(resolveWikiTarget("Acme", notes)).toBe("2");
     expect(resolveWikiTarget("Nope", notes)).toBeNull();
+  });
+});
+
+describe("cleanMarkdown", () => {
+  it("drops empty-paragraph <br /> lines outside code blocks", () => {
+    const md = ["Intro", "", "<br />", "", "Next", "```", "<br />", "```"].join("\n");
+    expect(cleanMarkdown(md)).toBe(["Intro", "", "Next", "```", "<br />", "```"].join("\n"));
   });
 });
 

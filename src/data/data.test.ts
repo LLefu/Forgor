@@ -111,6 +111,18 @@ describe("note & folder CRUD", () => {
     expect(rel).toBe("_attachments/screen%20shot.png");
   });
 
+  it("moving a note takes its attachments along", async () => {
+    await notes.createFolder("", "A");
+    await notes.createFolder("", "B");
+    const n = await notes.createNote("A", "Pics");
+    const { rel } = await notes.saveAttachment(n.id, "shot.png", new Uint8Array([9]));
+    await saveNote(n.id, `![shot](${rel}) and [site](https://example.com)`);
+    await notes.moveNote(n.id, "B");
+    expect(await vault.exists("B/_attachments/shot.png")).toBe(true);
+    expect(await vault.exists("A/_attachments/shot.png")).toBe(false);
+    expect((await notes.readNote(n.id))!.body).toBe("![shot](_attachments/shot.png) and [site](https://example.com)");
+  });
+
   it("computes backlinks from wiki links", async () => {
     const target = await notes.createNote("", "Roadmap");
     const src = await notes.createNote("", "Weekly");

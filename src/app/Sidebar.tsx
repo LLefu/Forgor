@@ -61,10 +61,7 @@ export function Sidebar() {
   };
   const newFolder = async () => {
     const f = await notes.createFolder(await currentFolderPath());
-    setTimeout(() => {
-      treeRef.current?.openParents(`f:${f.id}`);
-      treeRef.current?.get(`f:${f.id}`)?.edit();
-    }, 80);
+    useUI.getState().requestRename(`f:${f.id}`);
   };
 
   const nextTheme = { system: "light", light: "dark", dark: "system" } as const;

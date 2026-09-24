@@ -101,6 +101,7 @@ function LoadedNote({ id, initialBody }: { id: string; initialBody: string }) {
     setView({ kind: "note", id: created.id });
   };
 
+  if (meta === null) return <p className="p-8 text-sm text-muted-foreground">This note was moved to the trash or deleted.</p>;
   if (!meta) return null;
   return (
     <div className="flex h-full flex-col">
@@ -130,8 +131,15 @@ function LoadedNote({ id, initialBody }: { id: string; initialBody: string }) {
 
 function TitleInput({ id, title, onEnter }: { id: string; title: string; onEnter: () => void }) {
   const [value, setValue] = useState(title);
+  const cancelled = useRef(false);
   useEffect(() => setValue(title), [title]);
+  // Renames happen only on blur, so Enter (which blurs) can't trigger a second rename.
   const commit = async () => {
+    if (cancelled.current) {
+      cancelled.current = false;
+      setValue(title);
+      return;
+    }
     if (value.trim() && value.trim() !== title) {
       const m = await notes.renameNote(id, value.trim());
       if (m) setValue(m.title);
@@ -145,8 +153,13 @@ function TitleInput({ id, title, onEnter }: { id: string; title: string; onEnter
       onKeyDown={(e) => {
         if (e.key === "Enter") {
           e.preventDefault();
-          void commit();
+          // Move focus to the editor right away; the blur triggers the (single) rename.
           onEnter();
+          e.currentTarget.blur();
+        }
+        if (e.key === "Escape") {
+          cancelled.current = true;
+          e.currentTarget.blur();
         }
       }}
       className="mt-8 w-full bg-transparent text-[28px] font-bold tracking-tight outline-none placeholder:text-muted-foreground/60"

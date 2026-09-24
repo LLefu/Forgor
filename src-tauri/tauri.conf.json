@@ -1,6 +1,6 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "work-notes",
+  "productName": "Work Notes",
   "version": "0.1.0",
   "identifier": "com.tommy.worknotes",
   "build": {
@@ -12,18 +12,43 @@
   "app": {
     "windows": [
       {
-        "title": "work-notes",
-        "width": 800,
-        "height": 600
+        "label": "main",
+        "title": "Work Notes",
+        "url": "index.html",
+        "width": 1320,
+        "height": 860,
+        "minWidth": 900,
+        "minHeight": 560,
+        "center": true
+      },
+      {
+        "label": "popup",
+        "title": "Work Notes: Quick menu",
+        "url": "popup.html",
+        "width": 560,
+        "height": 420,
+        "visible": false,
+        "decorations": false,
+        "alwaysOnTop": true,
+        "skipTaskbar": true,
+        "resizable": false,
+        "center": true,
+        "shadow": true
       }
     ],
     "security": {
-      "csp": null
+      "csp": null,
+      "assetProtocol": {
+        "enable": true,
+        "scope": ["**"]
+      }
     }
   },
   "bundle": {
     "active": true,
     "targets": "all",
+    "shortDescription": "Work notes and todos",
+    "category": "Productivity",
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",
