@@ -125,7 +125,7 @@ function Menu({ onPick }: { onPick: (m: Mode) => void }) {
 
   return (
     <div className="p-2">
-      <p className="px-3 pb-2 pt-1 text-xs font-medium text-muted-foreground">Work Notes</p>
+      <p className="px-3 pb-2 pt-1 text-xs font-medium text-muted-foreground">Forgor</p>
       {items.map((it, i) => (
         <button
           key={it.key}

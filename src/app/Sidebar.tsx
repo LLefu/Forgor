@@ -17,6 +17,8 @@ import {
   Monitor,
 } from "lucide-react";
 import { useUI, type View } from "./store";
+import { useUpdates } from "./updates";
+import { Download } from "lucide-react";
 import { useTodos } from "./queries";
 import { Explorer, type TreeItem } from "@/features/explorer/Explorer";
 import { bucketTodos, isOpen, todayStr } from "@/lib/dates";
@@ -70,7 +72,7 @@ export function Sidebar() {
   return (
     <aside className="flex h-full w-[260px] shrink-0 flex-col border-r bg-sidebar">
       <div className="flex h-11 items-center justify-between px-3" data-tauri-drag-region>
-        <span className="text-sm font-semibold tracking-tight">Work Notes</span>
+        <span className="text-sm font-semibold tracking-tight">Forgor</span>
         <Tooltip content={`Add todo (${shortcutLabel("Mod+Shift+A")})`}>
           <Button size="icon" variant="ghost" onClick={() => openQuickAdd()} aria-label="Add todo">
             <Plus />
@@ -112,6 +114,7 @@ export function Sidebar() {
       </div>
 
       <div className="space-y-px border-t px-2 py-2">
+        <UpdateNotice />
         <NavItem icon={Trash2} label="Trash" target={{ kind: "trash" }} />
         <div className="flex items-center">
           <div className="flex-1">
@@ -125,6 +128,24 @@ export function Sidebar() {
         </div>
       </div>
     </aside>
+  );
+}
+
+/** Shown only when a newer version exists; clicking opens Settings where you install it. */
+function UpdateNotice() {
+  const status = useUpdates((s) => s.status);
+  const setView = useUI((s) => s.setView);
+  if (status.kind !== "available" && status.kind !== "installing" && status.kind !== "ready") return null;
+  const label = status.kind === "ready" ? "Restart to update" : status.kind === "installing" ? "Updating…" : `Update to ${status.update.version}`;
+  return (
+    <button
+      onClick={() => setView({ kind: "settings" })}
+      className="mb-1 flex h-7 w-full items-center gap-2 rounded bg-accent px-2 text-[13px] font-medium text-accent-foreground hover:bg-accent/80"
+      data-testid="update-notice"
+    >
+      <Download className="size-4" />
+      {label}
+    </button>
   );
 }
 

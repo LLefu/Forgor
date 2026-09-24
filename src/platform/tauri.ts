@@ -84,7 +84,7 @@ class TauriVault implements VaultFs {
 }
 
 export async function createTauriPlatform(): Promise<Platform> {
-  const db = await Database.load("sqlite:worknotes.db");
+  const db = await Database.load("sqlite:forgor.db");
   const separator = sep();
   return {
     kind: "tauri",
@@ -98,7 +98,7 @@ export async function createTauriPlatform(): Promise<Platform> {
       await fs.mkdir(absPath, { recursive: true });
       return new TauriVault(absPath.replace(/[\\/]+$/, ""), separator);
     },
-    defaultVaultPath: async () => join(await documentDir(), "Work Notes"),
+    defaultVaultPath: async () => join(await documentDir(), "Forgor"),
   };
 }
 

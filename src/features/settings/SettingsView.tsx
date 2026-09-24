@@ -1,5 +1,7 @@
 import { useState } from "react";
-import { FolderOpen } from "lucide-react";
+import { FolderOpen, RefreshCw, CheckCircle2, Loader2, Download, RotateCw } from "lucide-react";
+import { format } from "date-fns";
+import { useUpdates } from "@/app/updates";
 import { useUI } from "@/app/store";
 import { PageHeader } from "@/features/todos/TodosPage";
 import { Select } from "@/components/ui/select";
@@ -21,6 +23,8 @@ export function SettingsView({ platform }: { platform: Platform }) {
     <div className="mx-auto max-w-2xl pb-16">
       <PageHeader title="Settings" />
       <div className="space-y-6 px-8">
+        {platform.kind === "tauri" && <UpdatesRow />}
+
         <Row label="Notes folder" hint="Your notes are plain .md files in this folder. You can open them in any editor.">
           <div className="flex items-center gap-2">
             <code className="min-w-0 flex-1 truncate rounded bg-muted px-2 py-1.5 text-xs">{ctx().vault.rootLabel}</code>
@@ -97,6 +101,67 @@ export function SettingsView({ platform }: { platform: Platform }) {
         </Row>
       </div>
     </div>
+  );
+}
+
+function UpdatesRow() {
+  const { version, status, check, install, restart } = useUpdates();
+  return (
+    <Row label="Updates" hint={`You're on Forgor ${version || "…"}. Updates are only installed when you click Install.`}>
+      <div className="space-y-2" data-testid="updates">
+        {(status.kind === "idle" || status.kind === "up-to-date" || status.kind === "error") && (
+          <div className="flex items-center gap-3">
+            <Button variant="outline" size="sm" onClick={() => check()}>
+              <RefreshCw /> Check for updates
+            </Button>
+            {status.kind === "up-to-date" && (
+              <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                <CheckCircle2 className="size-3.5 text-success" /> Up to date (checked {format(status.checkedAt, "HH:mm")})
+              </span>
+            )}
+          </div>
+        )}
+        {status.kind === "error" && <p className="text-xs text-destructive">{status.message}</p>}
+        {status.kind === "checking" && (
+          <p className="flex items-center gap-2 text-sm text-muted-foreground">
+            <Loader2 className="size-4 animate-spin" /> Checking…
+          </p>
+        )}
+        {(status.kind === "available" || status.kind === "installing" || status.kind === "ready") && (
+          <div className="rounded border p-3">
+            <div className="flex items-center justify-between gap-3">
+              <div className="text-sm font-medium">Forgor {status.update.version} is available</div>
+              {status.kind === "available" && (
+                <Button size="sm" onClick={install}>
+                  <Download /> Install update
+                </Button>
+              )}
+              {status.kind === "ready" && (
+                <Button size="sm" onClick={restart}>
+                  <RotateCw /> Restart to finish
+                </Button>
+              )}
+            </div>
+            {status.kind === "installing" && (
+              <div className="mt-3">
+                <div className="h-1.5 overflow-hidden rounded-sm bg-muted">
+                  <div
+                    className={status.progress === null ? "h-full w-1/3 animate-pulse bg-primary" : "h-full bg-primary transition-[width]"}
+                    style={status.progress === null ? undefined : { width: `${Math.round(status.progress * 100)}%` }}
+                  />
+                </div>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Downloading{status.progress !== null && ` ${Math.round(status.progress * 100)}%`}… The app may close and reopen by itself.
+                </p>
+              </div>
+            )}
+            {status.update.notes && (
+              <pre className="mt-2 max-h-40 overflow-y-auto whitespace-pre-wrap font-sans text-xs text-muted-foreground">{status.update.notes}</pre>
+            )}
+          </div>
+        )}
+      </div>
+    </Row>
   );
 }
 

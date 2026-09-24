@@ -25,7 +25,7 @@ export function VaultSetup({ platform, onChosen }: { platform: Platform; onChose
     <div className="flex h-full items-center justify-center bg-sidebar">
       <div className="w-[460px] rounded border bg-background p-8 shadow-sm">
         <NotebookPen className="size-8 text-primary" />
-        <h1 className="mt-4 text-xl font-semibold">Welcome to Work Notes</h1>
+        <h1 className="mt-4 text-xl font-semibold">Welcome to Forgor</h1>
         <p className="mt-2 text-sm text-muted-foreground">
           Choose where your notes live. Each note is a plain markdown file and each folder a project, so you can also open them in VS Code or any other editor.
         </p>

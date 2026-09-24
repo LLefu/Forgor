@@ -17,6 +17,7 @@ import { applyHotkey, listenForPopupRequests } from "./hotkey";
 import { emitChange } from "@/data/context";
 import { syncVault } from "@/data/notes";
 import { openExternal } from "@/platform/os";
+import { startUpdateChecks } from "./updates";
 
 export function Shell({ platform }: { platform: Platform }) {
   const setView = useUI((s) => s.setView);
@@ -49,6 +50,9 @@ export function Shell({ platform }: { platform: Platform }) {
     window.addEventListener("open-external", onOpen);
     return () => window.removeEventListener("open-external", onOpen);
   }, []);
+
+  // Desktop: look for updates in the background (installing is always manual)
+  useEffect(() => startUpdateChecks(), []);
 
   // Desktop: global shortcut + requests from the popup window
   useEffect(() => {

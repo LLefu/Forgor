@@ -83,7 +83,7 @@ async function doBootPopup(): Promise<Settings> {
     platform.vault = vault;
     setCtx({ sql: platform.sql, vault });
   } else {
-    throw new Error("Open Work Notes once to choose a notes folder first.");
+    throw new Error("Open Forgor once to choose a notes folder first.");
   }
   return settings;
 }

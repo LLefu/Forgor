@@ -1,18 +1,48 @@
 name: Release
 
-# Builds the Windows installer (.msi / .exe) and the macOS app (.dmg, universal:
-# Apple Silicon + Intel) and attaches them to a draft GitHub release.
-# Trigger: push a tag like v0.1.0, or run it manually from the Actions tab.
+# Builds the Windows installer (.exe / .msi) and the macOS app (.dmg, universal:
+# Apple Silicon + Intel), signs the update bundles and publishes a GitHub
+# release with latest.json. Installed apps then see it under Settings → Updates.
+#
+# Trigger: `npm run release 0.2.0` (bumps versions, commits, tags, pushes).
+# Needs repo secret TAURI_SIGNING_PRIVATE_KEY (contents of ~/.tauri/forgor.key).
+#
+# Flow: create a draft release → both platforms upload into it → publish.
+# The release only becomes "latest" (visible to the updater) once complete.
 on:
   push:
     tags: ["v*"]
-  workflow_dispatch:
 
 permissions:
   contents: write
 
 jobs:
+  create-release:
+    runs-on: ubuntu-latest
+    outputs:
+      id: ${{ steps.release.outputs.result }}
+    steps:
+      - id: release
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const tag = context.ref.replace("refs/tags/", "");
+            const { data } = await github.rest.repos.createRelease({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              tag_name: tag,
+              name: `Forgor ${tag}`,
+              body: [
+                "**Already installed?** Open Forgor → Settings → Updates → Install update.",
+                "",
+                "**New install:** Windows: download the `-setup.exe` and run it. macOS: download the `.dmg`; the app isn't signed, so the first time right-click the app → Open → Open.",
+              ].join("\n"),
+              draft: true,
+            });
+            return data.id;
+
   build:
+    needs: create-release
     strategy:
       fail-fast: false
       matrix:
@@ -43,14 +73,27 @@ jobs:
       - uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ""
         with:
           tauriScript: npm run tauri
           args: ${{ matrix.args }}
-          tagName: ${{ github.ref_type == 'tag' && github.ref_name || format('build-{0}', github.run_number) }}
-          releaseName: Work Notes ${{ github.ref_type == 'tag' && github.ref_name || format('build {0}', github.run_number) }}
-          releaseBody: |
-            Windows: download the .msi (or -setup.exe) and run it.
-            macOS: download the .dmg. The app isn't signed, so the first time
-            right-click the app → Open → Open.
-          releaseDraft: true
-          prerelease: false
+          releaseId: ${{ needs.create-release.outputs.id }}
+          includeUpdaterJson: true
+
+  publish:
+    needs: [create-release, build]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/github-script@v7
+        env:
+          RELEASE_ID: ${{ needs.create-release.outputs.id }}
+        with:
+          script: |
+            await github.rest.repos.updateRelease({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              release_id: Number(process.env.RELEASE_ID),
+              draft: false,
+              make_latest: "true",
+            });

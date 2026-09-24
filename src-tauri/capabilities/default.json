@@ -2,7 +2,10 @@
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
   "description": "Permissions for the main window and the quick popup",
-  "windows": ["main", "popup"],
+  "windows": [
+    "main",
+    "popup"
+  ],
   "permissions": [
     "core:default",
     "core:window:allow-show",
@@ -32,7 +35,13 @@
     "fs:allow-unwatch",
     {
       "identifier": "fs:scope",
-      "allow": [{ "path": "**" }]
-    }
+      "allow": [
+        {
+          "path": "**"
+        }
+      ]
+    },
+    "updater:default",
+    "process:allow-restart"
   ]
 }
