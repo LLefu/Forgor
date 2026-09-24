@@ -14,11 +14,14 @@
     "tauri": "node node_modules/@tauri-apps/cli/tauri.js"
   },
   "dependencies": {
+    "@codemirror/language": "^6.12.4",
+    "@codemirror/view": "^6.43.13",
     "@fullcalendar/core": "^6.1.21",
     "@fullcalendar/daygrid": "^6.1.21",
     "@fullcalendar/interaction": "^6.1.21",
-    "@fullcalendar/react": "^7.1.0",
+    "@fullcalendar/react": "^6.1.21",
     "@fullcalendar/timegrid": "^6.1.21",
+    "@lezer/highlight": "^1.2.4",
     "@milkdown/crepe": "^7.22.2",
     "@milkdown/kit": "^7.22.2",
     "@tailwindcss/vite": "^4.3.3",

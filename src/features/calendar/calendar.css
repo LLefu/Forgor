@@ -1,0 +1,84 @@
+/* FullCalendar themed with app tokens */
+.fc {
+  --fc-border-color: var(--border);
+  --fc-page-bg-color: var(--background);
+  --fc-neutral-bg-color: var(--muted);
+  --fc-today-bg-color: color-mix(in srgb, var(--primary) 7%, transparent);
+  --fc-now-indicator-color: var(--destructive);
+  --fc-event-border-color: var(--border);
+  --fc-button-bg-color: transparent;
+  --fc-button-border-color: var(--input);
+  --fc-button-text-color: var(--foreground);
+  --fc-button-hover-bg-color: var(--muted);
+  --fc-button-hover-border-color: var(--input);
+  --fc-button-active-bg-color: var(--accent);
+  --fc-button-active-border-color: var(--input);
+  font-size: 13px;
+}
+.fc .fc-toolbar-title {
+  font-size: 20px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+.fc .fc-button {
+  border-radius: 4px !important;
+  padding: 3px 10px;
+  font-size: 13px;
+  font-weight: 500;
+  box-shadow: none !important;
+  text-transform: none;
+}
+.fc .fc-button-primary:not(:disabled).fc-button-active {
+  color: var(--accent-foreground);
+}
+.fc .fc-col-header-cell-cushion,
+.fc .fc-daygrid-day-number {
+  color: var(--muted-foreground);
+  font-weight: 500;
+  text-decoration: none;
+}
+.fc .fc-day-today .fc-daygrid-day-number {
+  color: var(--primary);
+  font-weight: 700;
+}
+.fc .fc-event {
+  border-radius: 2px;
+  border-width: 0 0 0 3px;
+  background: var(--muted) !important;
+  padding: 1px 4px;
+  cursor: pointer;
+}
+.fc .fc-daygrid-event-dot {
+  display: none;
+}
+.fc .fc-event .fc-event-title,
+.fc .fc-event .fc-event-time {
+  color: var(--foreground);
+  font-weight: 500;
+}
+.fc .fc-event.ev-done {
+  opacity: 0.5;
+}
+.fc .fc-event.ev-done .fc-event-title {
+  text-decoration: line-through;
+}
+.fc .fc-event.ev-overdue .fc-event-title {
+  color: var(--destructive);
+}
+.fc .fc-event.ev-notes .fc-event-title::after {
+  content: " 📄";
+  font-size: 10px;
+}
+.fc .fc-timegrid-event {
+  border-width: 0 0 0 3px;
+}
+.fc .fc-popover {
+  background: var(--popover);
+  border-radius: 4px;
+}
+.fc .fc-popover-header {
+  background: var(--muted);
+}
+.fc .fc-scrollgrid {
+  border-radius: 4px;
+}

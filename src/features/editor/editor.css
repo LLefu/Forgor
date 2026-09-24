@@ -1,0 +1,109 @@
+/* Milkdown Crepe themed with the app's tokens (works for light and dark). */
+.note-editor .milkdown {
+  --crepe-color-background: var(--background);
+  --crepe-color-on-background: var(--foreground);
+  --crepe-color-surface: var(--muted);
+  --crepe-color-surface-low: var(--sidebar);
+  --crepe-color-on-surface: var(--foreground);
+  --crepe-color-on-surface-variant: var(--muted-foreground);
+  --crepe-color-outline: var(--border);
+  --crepe-color-primary: var(--primary);
+  --crepe-color-secondary: var(--accent);
+  --crepe-color-on-secondary: var(--accent-foreground);
+  --crepe-color-inverse: var(--foreground);
+  --crepe-color-on-inverse: var(--background);
+  --crepe-color-inline-code: var(--destructive);
+  --crepe-color-error: var(--destructive);
+  --crepe-color-hover: var(--muted);
+  --crepe-color-selected: color-mix(in srgb, var(--primary) 18%, transparent);
+  --crepe-color-inline-area: var(--muted);
+
+  --crepe-base-font-size: 15px;
+  --crepe-font-title: var(--font-sans);
+  --crepe-font-default: var(--font-sans);
+  --crepe-font-code: var(--font-mono);
+  --crepe-shadow-1: 0 1px 3px rgb(0 0 0 / 0.12);
+  --crepe-shadow-2: 0 4px 12px rgb(0 0 0 / 0.16);
+
+  background: transparent;
+}
+
+.note-editor .milkdown .ProseMirror {
+  padding: 8px 0 48px 0;
+  line-height: 1.65;
+}
+
+.note-editor .milkdown .ProseMirror h1,
+.note-editor .milkdown .ProseMirror h2,
+.note-editor .milkdown .ProseMirror h3,
+.note-editor .milkdown .ProseMirror h4 {
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  line-height: 1.3;
+}
+.note-editor .milkdown .ProseMirror h1 {
+  font-size: 1.6em;
+  margin-top: 1.2em;
+}
+.note-editor .milkdown .ProseMirror h2 {
+  font-size: 1.3em;
+  margin-top: 1.1em;
+}
+.note-editor .milkdown .ProseMirror h3 {
+  font-size: 1.12em;
+  margin-top: 1em;
+}
+.note-editor .milkdown .ProseMirror h4 {
+  font-size: 1em;
+}
+
+/* Keep radii small everywhere */
+.note-editor .milkdown * {
+  --crepe-radius: 4px;
+}
+.note-editor .milkdown pre,
+.note-editor .milkdown .milkdown-code-block,
+.note-editor .milkdown table,
+.note-editor .milkdown img {
+  border-radius: 4px !important;
+}
+
+/* Inline todo markers: hidden text, small badge instead */
+.note-editor .inline-todo-marker {
+  font-size: 0;
+  letter-spacing: 0;
+}
+.note-editor .inline-todo-badge {
+  display: inline-flex;
+  align-items: center;
+  margin-left: 6px;
+  padding: 0 5px;
+  height: 16px;
+  border-radius: 2px;
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  vertical-align: 2px;
+  color: var(--accent-foreground);
+  background: var(--accent);
+  cursor: pointer;
+  user-select: none;
+  opacity: 0.75;
+}
+.note-editor .inline-todo-badge:hover {
+  opacity: 1;
+}
+
+/* Wiki links */
+.note-editor .wikilink {
+  color: var(--primary);
+  text-decoration: underline;
+  text-decoration-color: color-mix(in srgb, var(--primary) 40%, transparent);
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+.note-editor .wikilink-missing {
+  color: var(--muted-foreground);
+  text-decoration-style: dashed;
+}
