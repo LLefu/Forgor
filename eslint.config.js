@@ -14,6 +14,13 @@ export default tseslint.config(
       "react-hooks/rules-of-hooks": "error",
       "react-hooks/exhaustive-deps": "warn",
       "@typescript-eslint/no-unused-vars": ["error", { argsIgnorePattern: "^_", varsIgnorePattern: "^_" }],
+      // Native dialogs don't work in the macOS webview; use confirmDialog() from components/ConfirmDialog.
+      "no-restricted-globals": [
+        "error",
+        { name: "confirm", message: "Use confirmDialog() (native confirm is unsupported on macOS)." },
+        { name: "alert", message: "Native alert is unsupported on macOS." },
+        { name: "prompt", message: "Native prompt is unsupported on macOS." },
+      ],
     },
   },
 );

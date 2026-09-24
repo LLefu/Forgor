@@ -17,6 +17,8 @@ Tauri 2 desktop app (Windows + macOS), React 19 + TypeScript + Vite, Tailwind v4
 - Milkdown serializes empty paragraphs as `<br />`; `lib/markdown.ts#cleanMarkdown` strips them before saving.
 - Browser mode (`npm run dev`) seeds demo data; `?empty` starts blank. `window.__wn` exposes `{ vault, sql }` there for tests.
 - Drag & drop: react-arborist is given `dndRootElement` (the explorer box). Its default root is the window, where react-dnd preventDefault()s every drop and silently broke Milkdown block dragging. Tauri windows set `dragDropEnabled: false` (Windows otherwise swallows HTML5 drags).
+- Never use window.confirm/alert/prompt (unsupported in the macOS webview; lint forbids them). Use `confirmDialog()` from `components/ConfirmDialog.tsx`.
+- Explorer: the tree is sized to its rows; the space below and the "Notes" header are native drop zones (`features/explorer/move.ts`) that move items to the top level.
 - Checklists were merged into subtasks (schema v2 migrates old rows).
 - FullCalendar is pinned to 6.1.x (the v7 React wrapper doesn't match the v6 plugins).
 
@@ -26,5 +28,6 @@ Launch with `WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS=--remote-debugging-port=9222`
 ## Updates / releases
 - Updater: `tauri-plugin-updater` against `https://github.com/LLefu/Forgor/releases/latest/download/latest.json`; pubkey in `tauri.conf.json`. The private key lives at `~/.tauri/forgor.key` (never in the repo) and in the GitHub secret `TAURI_SIGNING_PRIVATE_KEY`.
 - UI state is in `src/app/updates.ts` (background check 5s after start, then every 6h; installing always needs a user click). Tauri calls are in `src/platform/updates.ts`.
+- CHANGELOG.md is the single source for the in-app version history, GitHub release notes and latest.json notes. Add entries under `## Unreleased`; `npm run release` renames it and refuses to run when it is empty.
 - Release: `npm run release X.Y.Z` → tag → `.github/workflows/release.yml` (draft → build both OSes → publish).
 - Local signed build: set `TAURI_SIGNING_PRIVATE_KEY="$(cat ~/.tauri/forgor.key)"` (the `_PATH` variant is not picked up). To test updates locally, pass `--config` with a localhost endpoint + `dangerousInsecureTransportProtocol: true`. Never ship that build.

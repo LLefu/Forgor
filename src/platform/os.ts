@@ -4,7 +4,8 @@ import { ctx } from "@/data/context";
 /** Reveal a vault item in Windows Explorer / macOS Finder (desktop only). */
 export async function revealInOs(vaultPath: string) {
   if (!isTauri()) {
-    alert(`In the desktop app this opens:\n${vaultPath}`);
+    // Browser build only (no file system); alert() is avoided because macOS webviews don't support it.
+    console.info(`In the desktop app this opens: ${vaultPath}`);
     return;
   }
   const { revealItemInDir } = await import("@tauri-apps/plugin-opener");

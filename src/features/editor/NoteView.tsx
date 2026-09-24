@@ -16,6 +16,7 @@ import { resolveWikiTarget } from "@/lib/wikilinks";
 import { dirname } from "@/lib/paths";
 import { revealInOs } from "@/platform/os";
 import { format } from "date-fns";
+import { confirmDialog } from "@/components/ConfirmDialog";
 
 const SAVE_DELAY = 600;
 
@@ -234,7 +235,13 @@ function NoteToolbar({ meta, onHistory }: { meta: { id: string; path: string; fo
             <DropdownMenuItem
               destructive
               onSelect={async () => {
-                if (!confirm("Move this note to the trash?")) return;
+                const ok = await confirmDialog({
+                  title: "Move to trash?",
+                  message: "You can restore it from Trash.",
+                  confirmLabel: "Move to trash",
+                  destructive: true,
+                });
+                if (!ok) return;
                 await notes.trashNote(meta.id);
                 setView({ kind: "today" });
               }}

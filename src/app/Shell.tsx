@@ -18,6 +18,7 @@ import { emitChange } from "@/data/context";
 import { syncVault } from "@/data/notes";
 import { openExternal } from "@/platform/os";
 import { startUpdateChecks } from "./updates";
+import { ConfirmDialogHost } from "@/components/ConfirmDialog";
 
 export function Shell({ platform }: { platform: Platform }) {
   const setView = useUI((s) => s.setView);
@@ -102,6 +103,7 @@ export function Shell({ platform }: { platform: Platform }) {
         <TodoDetail />
       </div>
       <QuickAddDialog />
+      <ConfirmDialogHost />
     </TooltipProvider>
   );
 }

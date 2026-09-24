@@ -7,6 +7,7 @@ import { TodoRow } from "@/features/todos/TodoRow";
 import { Button } from "@/components/ui/button";
 import { Tooltip } from "@/components/ui/tooltip";
 import { useUI } from "@/app/store";
+import { confirmDialog } from "@/components/ConfirmDialog";
 
 const ICONS = { note: FileText, folder: Folder, todo: ListTodo };
 
@@ -20,7 +21,13 @@ export function TrashView() {
             variant="outline"
             size="sm"
             onClick={async () => {
-              if (confirm(`Permanently delete ${items.length} item(s)? This cannot be undone.`)) await emptyTrash();
+              const ok = await confirmDialog({
+                title: "Empty trash?",
+                message: `Permanently delete ${items.length} item${items.length === 1 ? "" : "s"}. This cannot be undone.`,
+                confirmLabel: "Delete permanently",
+                destructive: true,
+              });
+              if (ok) await emptyTrash();
             }}
           >
             <Trash2 /> Empty trash
@@ -50,7 +57,13 @@ export function TrashView() {
                   size="icon"
                   variant="ghost"
                   onClick={async () => {
-                    if (confirm(`Permanently delete "${it.title}"?`)) await purgeTrashItem(it.id);
+                    const ok = await confirmDialog({
+                      title: "Delete permanently?",
+                      message: `"${it.title}" will be deleted for good. This cannot be undone.`,
+                      confirmLabel: "Delete permanently",
+                      destructive: true,
+                    });
+                    if (ok) await purgeTrashItem(it.id);
                   }}
                   aria-label="Delete permanently"
                 >

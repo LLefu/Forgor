@@ -8,6 +8,8 @@ import { basename, dirname, joinPath } from "@/lib/paths";
 import { cn } from "@/lib/utils";
 import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuSeparator, ContextMenuTrigger } from "@/components/ui/menu";
 import { revealInOs } from "@/platform/os";
+import { confirmDialog } from "@/components/ConfirmDialog";
+import { moveTreeItems, useRootDropZone } from "./move";
 
 export interface TreeItem {
   id: string; // "f:<folderId>" | "n:<noteId>"
@@ -50,6 +52,13 @@ export function Explorer({ treeRef }: { treeRef?: React.MutableRefObject<TreeApi
   // react-dnd (used by the tree) listens for drops on its root. The default root is the
   // whole window, where it swallowed the editor's block drags; scope it to the explorer.
   const [dndRoot, setDndRoot] = useState<HTMLDivElement | null>(null);
+  // The tree is only as tall as its rows; the space below is a "move to top level" drop zone.
+  const [visibleRows, setVisibleRows] = useState(0);
+  const recount = () => setTimeout(() => setVisibleRows(localTree.current?.visibleNodes.length ?? 0), 0);
+  useEffect(() => {
+    recount();
+  }, [data]);
+  const rootDrop = useRootDropZone(() => localTree.current);
 
   useEffect(() => {
     if (!box.current) return;
@@ -88,14 +97,8 @@ export function Explorer({ treeRef }: { treeRef?: React.MutableRefObject<TreeApi
   }, [pendingRename, data, requestRename]);
 
   return (
-    <div
-      ref={(el) => {
-        box.current = el;
-        setDndRoot(el);
-      }}
-      className="min-h-0 flex-1"
-      data-testid="explorer"
-    >
+    <div ref={box} className="flex min-h-0 flex-1 flex-col" data-testid="explorer">
+      <div ref={setDndRoot} className="shrink-0">
       {data.length === 0 || !dndRoot ? (
         <p className="px-4 py-2 text-xs text-muted-foreground">No notes yet. Use the + buttons above.</p>
       ) : (
@@ -107,7 +110,8 @@ export function Explorer({ treeRef }: { treeRef?: React.MutableRefObject<TreeApi
           data={data}
           dndRootElement={dndRoot}
           width={size.w}
-          height={size.h}
+          height={Math.min(size.h, Math.max(1, visibleRows) * 26 + 2)}
+          onToggle={recount}
           rowHeight={26}
           indent={12}
           openByDefault={false}
@@ -125,19 +129,24 @@ export function Explorer({ treeRef }: { treeRef?: React.MutableRefObject<TreeApi
           }}
           onMove={async ({ dragIds, parentNode }) => {
             const targetPath = parentNode && !parentNode.isRoot ? parentNode.data.path : "";
-            for (const id of dragIds) {
-              const item = findItem(data, id);
-              if (!item) continue;
-              if (item.kind === "note") await notes.moveNote(item.refId, targetPath);
-              else if (targetPath !== item.path && !targetPath.startsWith(item.path + "/")) {
-                await notes.relocateFolder(item.refId, joinPath(targetPath, item.name));
-              }
-            }
+            const items = dragIds.map((id) => findItem(data, id)).filter((i): i is TreeItem => !!i);
+            await moveTreeItems(items, targetPath);
           }}
         >
           {Row}
         </Tree>
       )}
+      </div>
+      <div
+        {...rootDrop.props}
+        className={cn(
+          "min-h-8 flex-1 rounded-sm text-center text-[11px] text-transparent",
+          rootDrop.over && "bg-accent/60 pt-2 text-accent-foreground ring-1 ring-inset ring-ring",
+        )}
+        data-testid="explorer-root-drop"
+      >
+        Move to top level
+      </div>
     </div>
   );
 }
@@ -172,7 +181,13 @@ function Row({ node, style, dragHandle }: NodeRendererProps<TreeItem>) {
   };
   const remove = async () => {
     const what = isFolder ? `the folder "${item.name}" and everything in it` : `"${item.name}"`;
-    if (!confirm(`Move ${what} to the trash?`)) return;
+    const ok = await confirmDialog({
+      title: "Move to trash?",
+      message: `This moves ${what} to the trash. You can restore it from Trash.`,
+      confirmLabel: "Move to trash",
+      destructive: true,
+    });
+    if (!ok) return;
     if (isFolder) await notes.trashFolder(item.refId);
     else await notes.trashNote(item.refId);
   };

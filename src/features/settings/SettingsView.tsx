@@ -1,10 +1,12 @@
 import { useState } from "react";
-import { FolderOpen, RefreshCw, CheckCircle2, Loader2, Download, RotateCw, Check } from "lucide-react";
+import { FolderOpen, RefreshCw, CheckCircle2, Loader2, Download, RotateCw, Check, History } from "lucide-react";
+import { VersionHistoryDialog } from "./VersionHistoryDialog";
 import { ACCENTS } from "@/lib/accents";
 import { Tooltip } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { useUpdates } from "@/app/updates";
+import { confirmDialog } from "@/components/ConfirmDialog";
 import { useUI } from "@/app/store";
 import { PageHeader } from "@/features/todos/TodosPage";
 import { Select } from "@/components/ui/select";
@@ -26,7 +28,7 @@ export function SettingsView({ platform }: { platform: Platform }) {
     <div className="mx-auto max-w-2xl pb-16">
       <PageHeader title="Settings" />
       <div className="space-y-6 px-8">
-        {platform.kind === "tauri" && <UpdatesRow />}
+        <UpdatesRow desktop={platform.kind === "tauri"} />
 
         <Row label="Notes folder" hint="Your notes are plain .md files in this folder. You can open them in any editor.">
           <div className="flex items-center gap-2">
@@ -37,7 +39,14 @@ export function SettingsView({ platform }: { platform: Platform }) {
                 size="sm"
                 onClick={async () => {
                   const picked = await platform.pickVaultFolder();
-                  if (picked && confirm(`Switch notes folder to:\n${picked}\n\nTodos stay; links to notes in the old folder will be hidden.`)) {
+                  const ok =
+                    !!picked &&
+                    (await confirmDialog({
+                      title: "Switch notes folder?",
+                      message: `New folder:\n${picked}\n\nYour todos stay. Links to notes in the old folder are hidden until you switch back.`,
+                      confirmLabel: "Switch folder",
+                    }));
+                  if (picked && ok) {
                     await chooseVault(platform, picked);
                     await update("vaultPath", picked);
                   }
@@ -132,10 +141,15 @@ export function SettingsView({ platform }: { platform: Platform }) {
   );
 }
 
-function UpdatesRow() {
-  const { version, status, check, install, restart } = useUpdates();
+function UpdatesRow({ desktop }: { desktop: boolean }) {
+  const { version, status: rawStatus, check, install, restart } = useUpdates();
+  const status = desktop ? rawStatus : ({ kind: "browser" } as const);
+  const [historyOpen, setHistoryOpen] = useState(false);
   return (
-    <Row label="Updates" hint={`You're on Forgor ${version || "…"}. Updates are only installed when you click Install.`}>
+    <Row
+      label="Updates"
+      hint={desktop ? `You're on Forgor ${version || "…"}. Updates are only installed when you click Install.` : "Updates are available in the desktop app."}
+    >
       <div className="space-y-2" data-testid="updates">
         {(status.kind === "idle" || status.kind === "up-to-date" || status.kind === "error") && (
           <div className="flex items-center gap-3">
@@ -188,6 +202,12 @@ function UpdatesRow() {
             )}
           </div>
         )}
+        <div>
+          <Button variant="ghost" size="sm" className="-ml-2 text-muted-foreground hover:text-foreground" onClick={() => setHistoryOpen(true)} data-testid="open-version-history">
+            <History /> Version history
+          </Button>
+        </div>
+        <VersionHistoryDialog open={historyOpen} onOpenChange={setHistoryOpen} />
       </div>
     </Row>
   );

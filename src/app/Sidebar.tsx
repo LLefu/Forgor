@@ -21,6 +21,7 @@ import { useUpdates } from "./updates";
 import { Download, ArrowLeft, ArrowRight } from "lucide-react";
 import { useTodos } from "./queries";
 import { Explorer, type TreeItem } from "@/features/explorer/Explorer";
+import { useRootDropZone } from "@/features/explorer/move";
 import { bucketTodos, isOpen, todayStr } from "@/lib/dates";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -41,6 +42,7 @@ export function Sidebar() {
   const canForward = useUI((s) => s.forward.length > 0);
   const { data: todos = [] } = useTodos();
   const treeRef = useRef<TreeApi<TreeItem> | null>(null);
+  const rootDrop = useRootDropZone(() => treeRef.current);
 
   const counts = useMemo(() => {
     const b = bucketTodos(todos, todayStr(), settings.upcomingDays);
@@ -106,8 +108,17 @@ export function Sidebar() {
         <NavItem icon={Archive} label="Archive" target={{ kind: "archive" }} />
       </nav>
 
-      <div className="mt-4 flex items-center justify-between pl-4 pr-2">
-        <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Notes</span>
+      <div
+        {...rootDrop.props}
+        className={cn(
+          "mx-2 mt-4 flex items-center justify-between rounded-sm pl-2 pr-0",
+          rootDrop.over && "bg-accent ring-1 ring-inset ring-ring",
+        )}
+        data-testid="notes-header"
+      >
+        <span className={cn("text-[11px] font-semibold uppercase tracking-wider", rootDrop.over ? "text-accent-foreground" : "text-muted-foreground")}>
+          {rootDrop.over ? "Move to top level" : "Notes"}
+        </span>
         <div className="flex">
           <Tooltip content="New note">
             <Button size="icon-sm" variant="ghost" onClick={newNote} aria-label="New note">

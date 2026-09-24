@@ -3,6 +3,7 @@
 // tags v<version> and pushes. The Release workflow on GitHub does the rest.
 import { execFileSync } from "node:child_process";
 import { readFileSync, writeFileSync } from "node:fs";
+import { changelogSection } from "./changelog-section.mjs";
 
 const version = process.argv[2];
 if (!/^\d+\.\d+\.\d+$/.test(version ?? "")) {
@@ -30,6 +31,17 @@ if (isNewer <= 0) {
   process.exit(1);
 }
 
+// Changelog: the "Unreleased" section becomes this version. Refuse to release without notes.
+const changelogPath = "CHANGELOG.md";
+const changelog = readFileSync(changelogPath, "utf8");
+const unreleased = changelogSection(changelog, "Unreleased");
+if (!/^\s*[-*]\s+\S/m.test(unreleased)) {
+  console.error(`Add what changed under "## Unreleased" in CHANGELOG.md first (it appears in the app's version history and the release notes).`);
+  process.exit(1);
+}
+const today = new Date().toISOString().slice(0, 10);
+writeFileSync(changelogPath, changelog.replace(/^##\s+Unreleased\s*$/m, `## Unreleased\n\n## ${version} (${today})`));
+
 pkg.version = version;
 writeFileSync("package.json", JSON.stringify(pkg, null, 2) + "\n");
 
@@ -53,7 +65,7 @@ writeFileSync(
   readFileSync(cargoLockPath, "utf8").replace(/(\[\[package\]\]\nname = "forgor"\nversion = )".*"/, `$1"${version}"`),
 );
 
-git("add", "package.json", lockPath, confPath, cargoPath, cargoLockPath);
+git("add", "package.json", lockPath, confPath, cargoPath, cargoLockPath, changelogPath);
 git("commit", "-m", `Release v${version}`);
 git("tag", `v${version}`);
 console.log(`Committed and tagged v${version}. Pushing…`);

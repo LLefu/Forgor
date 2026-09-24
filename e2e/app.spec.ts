@@ -71,8 +71,12 @@ test("trash and restore a note", async ({ page }) => {
   await page.goto("/");
   await page.getByTestId("tree-folder-Internal").getByTestId("tree-toggle").click();
   await page.getByTestId("tree-note-1-on-1 notes").click({ button: "right" });
-  page.once("dialog", (d) => d.accept());
+  // Native confirm() must never be used (unsupported in the macOS webview).
+  page.on("dialog", () => {
+    throw new Error("native dialog opened");
+  });
   await page.getByRole("menuitem", { name: "Move to trash" }).click();
+  await page.getByTestId("confirm-dialog").getByRole("button", { name: "Move to trash" }).click();
   await expect(page.getByTestId("tree-note-1-on-1 notes")).toHaveCount(0);
 
   await page.getByTestId("nav-trash").click();
