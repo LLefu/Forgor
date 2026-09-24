@@ -5,6 +5,8 @@ All notable changes to Forgor. Add new entries under **Unreleased**;
 
 ## Unreleased
 
+## 0.1.1 (2026-09-24)
+
 ### New
 - Version history with a changelog per version (Settings → Updates → Version history).
 - Back and forward buttons at the top left; the mouse side buttons and Alt+←/→ work too.
