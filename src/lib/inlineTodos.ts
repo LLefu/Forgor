@@ -18,6 +18,11 @@ const TASK_RE = /^(\s*(?:[-*+]|\d+[.)])\s+\[)( |x|X)(\]\s+)(.*?)\s*$/;
 const MARKER_RE = /\s*\^t-([a-z0-9]+)$/;
 const FENCE_RE = /^\s*(```|~~~)/;
 
+/** Visible text of a task line. The editor writes an empty item as "<br />". */
+function taskText(raw: string): string {
+  return raw.replace(/<br\s*\/?>/gi, "").trim();
+}
+
 function eachTaskLine(lines: string[], fn: (i: number, m: RegExpExecArray) => void) {
   let inFence = false;
   for (let i = 0; i < lines.length; i++) {
@@ -37,7 +42,7 @@ export function parseTasks(md: string): InlineTask[] {
   eachTaskLine(lines, (i, m) => {
     const rest = m[4];
     const mk = MARKER_RE.exec(rest);
-    const text = (mk ? rest.slice(0, mk.index) : rest).trim();
+    const text = taskText(mk ? rest.slice(0, mk.index) : rest);
     if (!text) return;
     out.push({ lineIndex: i, checked: m[2] !== " ", text, todoId: mk ? mk[1] : null });
   });
@@ -50,7 +55,7 @@ export function assignTaskIds(md: string, makeId: (text: string, checked: boolea
   const created: { id: string; text: string; checked: boolean }[] = [];
   eachTaskLine(lines, (i, m) => {
     const rest = m[4];
-    if (MARKER_RE.test(rest) || !rest.trim()) return;
+    if (MARKER_RE.test(rest) || !taskText(rest)) return;
     const checked = m[2] !== " ";
     const id = makeId(rest.trim(), checked);
     created.push({ id, text: rest.trim(), checked });

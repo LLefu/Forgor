@@ -19,6 +19,16 @@ import { format } from "date-fns";
 
 const SAVE_DELAY = 600;
 
+/**
+ * Compare note bodies ignoring leading blank lines and trailing whitespace: the
+ * file format normalises those, so a strict comparison mistook our own save for
+ * an external edit and reloaded the editor mid-typing (cursor jumped to the top).
+ */
+function sameContent(a: string, b: string) {
+  const norm = (s: string) => s.replace(/^(\s*\n)+/, "").trimEnd();
+  return norm(a) === norm(b);
+}
+
 export function NoteView({ id }: { id: string }) {
   const [loaded, setLoaded] = useState<{ id: string; body: string } | null>(null);
   const [missing, setMissing] = useState(false);
@@ -60,7 +70,7 @@ function LoadedNote({ id, initialBody }: { id: string; initialBody: string }) {
     if (saving.current) await saving.current;
     const md = pending.current;
     pending.current = null;
-    if (md === null || md === lastSaved.current) return;
+    if (md === null || sameContent(md, lastSaved.current)) return;
     saving.current = saveNote(id, md)
       .then((final) => {
         lastSaved.current = final;
@@ -82,7 +92,7 @@ function LoadedNote({ id, initialBody }: { id: string; initialBody: string }) {
       if (!topics.includes("notes") || pending.current !== null || saving.current) return;
       const n = await notes.readNote(id);
       if (!n || pending.current !== null || saving.current) return;
-      if (n.body !== lastSaved.current) {
+      if (!sameContent(n.body, lastSaved.current)) {
         lastSaved.current = n.body;
         editor.current?.setMarkdown(n.body);
       }

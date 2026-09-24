@@ -18,7 +18,7 @@ import {
 } from "lucide-react";
 import { useUI, type View } from "./store";
 import { useUpdates } from "./updates";
-import { Download } from "lucide-react";
+import { Download, ArrowLeft, ArrowRight } from "lucide-react";
 import { useTodos } from "./queries";
 import { Explorer, type TreeItem } from "@/features/explorer/Explorer";
 import { bucketTodos, isOpen, todayStr } from "@/lib/dates";
@@ -35,6 +35,10 @@ export function Sidebar() {
   const openQuickAdd = useUI((s) => s.openQuickAdd);
   const settings = useUI((s) => s.settings);
   const updateSetting = useUI((s) => s.updateSetting);
+  const goBack = useUI((s) => s.goBack);
+  const goForward = useUI((s) => s.goForward);
+  const canBack = useUI((s) => s.back.length > 0);
+  const canForward = useUI((s) => s.forward.length > 0);
   const { data: todos = [] } = useTodos();
   const treeRef = useRef<TreeApi<TreeItem> | null>(null);
 
@@ -60,6 +64,7 @@ export function Sidebar() {
   const newNote = async () => {
     const meta = await notes.createNote(await currentFolderPath());
     setView({ kind: "note", id: meta.id });
+    useUI.getState().requestRename(`n:${meta.id}`);
   };
   const newFolder = async () => {
     const f = await notes.createFolder(await currentFolderPath());
@@ -71,8 +76,20 @@ export function Sidebar() {
 
   return (
     <aside className="flex h-full w-[260px] shrink-0 flex-col border-r bg-sidebar">
-      <div className="flex h-11 items-center justify-between px-3" data-tauri-drag-region>
-        <span className="text-sm font-semibold tracking-tight">Forgor</span>
+      <div className="flex h-11 items-center justify-between px-2" data-tauri-drag-region>
+        <div className="flex items-center gap-1">
+          <Tooltip content={`Back (Alt+←)`}>
+            <Button size="icon" variant="ghost" onClick={goBack} disabled={!canBack} aria-label="Back" data-testid="nav-back">
+              <ArrowLeft />
+            </Button>
+          </Tooltip>
+          <Tooltip content={`Forward (Alt+→)`}>
+            <Button size="icon" variant="ghost" onClick={goForward} disabled={!canForward} aria-label="Forward" data-testid="nav-forward">
+              <ArrowRight />
+            </Button>
+          </Tooltip>
+          <span className="ml-1 text-sm font-semibold tracking-tight">Forgor</span>
+        </div>
         <Tooltip content={`Add todo (${shortcutLabel("Mod+Shift+A")})`}>
           <Button size="icon" variant="ghost" onClick={() => openQuickAdd()} aria-label="Add todo">
             <Plus />

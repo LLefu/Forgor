@@ -9,18 +9,23 @@ const SNAPSHOT_INTERVAL_MS = 10 * 60 * 1000;
 const MAX_VERSIONS_PER_NOTE = 200;
 
 /**
- * Save a note from the editor:
- *  1. `- [ ]` lines without a marker become new todos (marker appended),
- *  2. existing inline todos pick up checkbox/text changes,
- *  3. a version snapshot of the previous content is taken (throttled),
- *  4. the file is written.
- * Returns the final body. It differs from the input when markers were added.
+ * Save a note:
+ *  1. task lines with a `^t-<id>` marker are synced to todos (created if new,
+ *     otherwise checkbox/title changes are applied),
+ *  2. a version snapshot of the previous content is taken (throttled),
+ *  3. the file is written.
+ *
+ * Markers are added by the editor (assignMarkersInView), which is the only
+ * place that knows the live document; assigning them here as well raced with
+ * the editor and created duplicate todos. Callers without an editor (demo
+ * seed, imports) pass `assignIds: true`.
+ * Returns the final body.
  */
-export async function saveNote(noteId: string, body: string): Promise<string> {
+export async function saveNote(noteId: string, body: string, opts: { assignIds?: boolean } = {}): Promise<string> {
   const meta = await getNoteMeta(noteId);
   if (!meta) return body;
 
-  const { md: finalBody, created } = assignTaskIds(body, () => newId());
+  const { md: finalBody, created } = opts.assignIds ? assignTaskIds(body, () => newId()) : { md: body, created: [] };
   for (const c of created) {
     await createTodo({ id: c.id, title: c.text, status: c.checked ? "done" : "todo", sourceNoteId: noteId, folderId: meta.folderId });
   }

@@ -6,7 +6,7 @@
   --crepe-color-surface-low: var(--sidebar);
   --crepe-color-on-surface: var(--foreground);
   --crepe-color-on-surface-variant: var(--muted-foreground);
-  --crepe-color-outline: var(--border);
+  --crepe-color-outline: var(--muted-foreground);
   --crepe-color-primary: var(--primary);
   --crepe-color-secondary: var(--accent);
   --crepe-color-on-secondary: var(--accent-foreground);
@@ -106,4 +106,61 @@
 .note-editor .wikilink-missing {
   color: var(--muted-foreground);
   text-decoration-style: dashed;
+}
+
+/* ---- Contrast: slash menu, block handle, bullets and checkboxes ---- */
+.note-editor .milkdown .milkdown-slash-menu .menu-groups .menu-group li svg {
+  color: color-mix(in srgb, var(--foreground) 80%, transparent);
+  fill: color-mix(in srgb, var(--foreground) 80%, transparent);
+}
+.note-editor .milkdown .milkdown-slash-menu .menu-groups .menu-group li.hover svg,
+.note-editor .milkdown .milkdown-slash-menu .menu-groups .menu-group li.active svg {
+  color: var(--primary);
+  fill: var(--primary);
+}
+.note-editor .milkdown .milkdown-slash-menu .menu-groups .menu-group h6 {
+  color: var(--muted-foreground);
+}
+.note-editor .milkdown .milkdown-block-handle .operation-item svg {
+  fill: color-mix(in srgb, var(--foreground) 60%, transparent);
+}
+.note-editor .milkdown .milkdown-block-handle .operation-item:hover svg {
+  fill: var(--foreground);
+}
+.note-editor .milkdown .milkdown-list-item-block li .label-wrapper {
+  color: color-mix(in srgb, var(--foreground) 70%, transparent);
+}
+.note-editor .milkdown .milkdown-list-item-block li .label-wrapper svg {
+  fill: color-mix(in srgb, var(--foreground) 70%, transparent);
+}
+/* Checked items: checkbox in the highlight color */
+.note-editor .milkdown .milkdown-list-item-block li[data-checked="true"] .label-wrapper svg {
+  fill: var(--primary);
+}
+/* Keep code-block borders subtle even though the outline color got darker */
+.note-editor .milkdown .milkdown-code-block .tools .language-button,
+.note-editor .milkdown .milkdown-code-block .cm-editor {
+  border-color: var(--border) !important;
+}
+
+/* ---- Block handle: also show it when hovering the gutter left of the text ----
+   Milkdown only tracks the pointer over the editor element, so extend that
+   element into the gutter (padding) and pull it back (negative margin): the
+   text doesn't move, but the handle's area now counts as "inside". */
+.note-editor .milkdown .ProseMirror {
+  padding-left: 72px;
+  margin-left: -72px;
+}
+
+/* Small radii (2-4px) for Crepe's popups, like the rest of the app */
+.note-editor .milkdown .milkdown-slash-menu,
+.note-editor .milkdown .milkdown-toolbar,
+.note-editor .milkdown .milkdown-link-preview,
+.note-editor .milkdown .milkdown-link-edit {
+  border-radius: 4px !important;
+}
+.note-editor .milkdown .milkdown-slash-menu .tab-group ul li,
+.note-editor .milkdown .milkdown-slash-menu .menu-groups .menu-group li,
+.note-editor .milkdown .milkdown-block-handle .operation-item {
+  border-radius: 2px !important;
 }

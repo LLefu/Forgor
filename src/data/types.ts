@@ -49,14 +49,6 @@ export interface Todo {
   subtaskDone: number;
 }
 
-export interface ChecklistItem {
-  id: string;
-  todoId: string;
-  text: string;
-  done: boolean;
-  sortOrder: number;
-}
-
 export interface Folder {
   id: string;
   /** Vault-relative path, e.g. "Clients/Acme". */

@@ -69,7 +69,7 @@ test("folder → note → inline todo → Today, Calendar and Search", async ({ 
 
 test("trash and restore a note", async ({ page }) => {
   await page.goto("/");
-  await page.getByTestId("tree-folder-Internal").click();
+  await page.getByTestId("tree-folder-Internal").getByTestId("tree-toggle").click();
   await page.getByTestId("tree-note-1-on-1 notes").click({ button: "right" });
   page.once("dialog", (d) => d.accept());
   await page.getByRole("menuitem", { name: "Move to trash" }).click();

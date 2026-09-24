@@ -37,11 +37,32 @@ export function Shell({ platform }: { platform: Platform }) {
         e.preventDefault();
         openQuickAdd();
       } else if (matches(e, "Alt+ArrowLeft")) {
+        e.preventDefault();
         goBack();
+      } else if (matches(e, "Alt+ArrowRight")) {
+        e.preventDefault();
+        useUI.getState().goForward();
       }
     };
+    // Mouse side buttons (button 3 = back, 4 = forward), like in a browser.
+    const onMouse = (e: MouseEvent) => {
+      if (e.button !== 3 && e.button !== 4) return;
+      e.preventDefault();
+      if (e.type === "mouseup") {
+        if (e.button === 3) goBack();
+        else useUI.getState().goForward();
+      }
+    };
+    window.addEventListener("mousedown", onMouse);
+    window.addEventListener("mouseup", onMouse);
+    window.addEventListener("auxclick", onMouse);
     window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      window.removeEventListener("mousedown", onMouse);
+      window.removeEventListener("mouseup", onMouse);
+      window.removeEventListener("auxclick", onMouse);
+    };
   }, [setView, openQuickAdd, goBack]);
 
   // External links clicked in the editor

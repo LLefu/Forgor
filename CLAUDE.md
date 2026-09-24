@@ -12,9 +12,12 @@ Tauri 2 desktop app (Windows + macOS), React 19 + TypeScript + Vite, Tailwind v4
 - Full-text search uses **FTS4**, not FTS5 (sql.js has no FTS5).
 - `src/platform` holds the only code that may touch Tauri APIs. Import `isTauri` from `platform/env.ts` and load Tauri modules dynamically so the browser build works.
 - The global shortcut is registered in Rust (`set_hotkey` command in `src-tauri/src/lib.rs`), not JS, so it survives webview reloads.
-- Inline todos: `- [ ] text ^t-<id>` in markdown. The editor appends markers (hidden via decoration) after a typing pause; `saveNote` in `data/noteSave.ts` syncs note → todos, and `todos.ts` pushes checkbox/title changes back into the file.
+- Inline todos: `- [ ] text ^t-<id>` in markdown. **Only the editor assigns markers** (`assignMarkersInView`, after a typing pause, then it calls onChange itself because Milkdown does not report non-history transactions). `saveNote` only syncs lines that already have a marker; assigning there too raced the editor and duplicated todos. Pass `{ assignIds: true }` only when there is no editor (demo seed).
+- NoteView compares saved vs. on-disk bodies with `sameContent` (ignores leading blank lines); a strict compare reloaded the editor mid-typing.
 - Milkdown serializes empty paragraphs as `<br />`; `lib/markdown.ts#cleanMarkdown` strips them before saving.
 - Browser mode (`npm run dev`) seeds demo data; `?empty` starts blank. `window.__wn` exposes `{ vault, sql }` there for tests.
+- Drag & drop: react-arborist is given `dndRootElement` (the explorer box). Its default root is the window, where react-dnd preventDefault()s every drop and silently broke Milkdown block dragging. Tauri windows set `dragDropEnabled: false` (Windows otherwise swallows HTML5 drags).
+- Checklists were merged into subtasks (schema v2 migrates old rows).
 - FullCalendar is pinned to 6.1.x (the v7 React wrapper doesn't match the v6 plugins).
 
 ## Debugging the real desktop window

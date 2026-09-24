@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { MemoryVault, SqlJsDriver } from "@/platform/memory";
 import { setCtx } from "./context";
-import { migrate } from "./schema";
+import { migrate, MIGRATIONS } from "./schema";
 import * as notes from "./notes";
 import * as todos from "./todos";
 import { saveNote } from "./noteSave";
@@ -23,6 +23,21 @@ beforeEach(async () => {
 });
 
 describe("migrations & settings", () => {
+  it("v2 turns checklist items into subtasks", async () => {
+    const fresh = await SqlJsDriver.create();
+    for (const stmt of MIGRATIONS[0]) await fresh.execute(stmt);
+    await fresh.execute(`CREATE TABLE meta (key TEXT PRIMARY KEY, value TEXT NOT NULL)`);
+    await fresh.execute(`INSERT INTO meta VALUES ('schema_version', '1')`);
+    await fresh.execute(`INSERT INTO todos (id, title, created_at, updated_at, folder_id) VALUES ('p', 'Parent', 't', 't', 'f1')`);
+    await fresh.execute(`INSERT INTO checklist_items (id, todo_id, text, done, sort_order) VALUES ('c1', 'p', 'First', 1, 1), ('c2', 'p', 'Second', 0, 2)`);
+    await migrate(fresh);
+    setCtx({ sql: fresh, vault });
+    const subs = await todos.listSubtasks("p");
+    expect(subs.map((t) => [t.title, t.status, t.folderId])).toEqual([["First", "done", "f1"], ["Second", "todo", "f1"]]);
+    const hits = await search("second");
+    expect(hits.todos.map((h) => h.todo.id)).toEqual(["c2"]);
+  });
+
   it("is idempotent and stores settings", async () => {
     await migrate(sql);
     await saveSetting(sql, "archiveAfterDays", 3);
@@ -135,14 +150,16 @@ describe("todos", () => {
   it("completing a recurring todo spawns the next occurrence", async () => {
     const today = todayStr();
     const t = await todos.createTodo({ title: "Standup", dueDate: today, dueTime: "09:30", rrule: presetToRRule("daily", today) });
-    await todos.addChecklistItem(t.id, "notes");
+    const sub = await todos.createTodo({ title: "notes", parentId: t.id });
+    await todos.setDone(sub.id, true);
     await todos.setDone(t.id, true);
     const all = await todos.listTodos();
-    const next = all.find((x) => x.id !== t.id)!;
+    const next = all.find((x) => x.id !== t.id && !x.parentId && x.status === "todo")!;
     expect(next.dueDate).toBe(addDaysStr(today, 1));
     expect(next.dueTime).toBe("09:30");
     expect(next.status).toBe("todo");
-    expect((await todos.listChecklist(next.id)).map((c) => c.text)).toEqual(["notes"]);
+    // subtasks are copied, reset to not-done
+    expect((await todos.listSubtasks(next.id)).map((c) => [c.title, c.status])).toEqual([["notes", "todo"]]);
     expect((await todos.getTodo(t.id))!.rrule).toBeNull();
     expect((await todos.getTodo(t.id))!.completedAt).not.toBeNull();
   });
@@ -186,7 +203,7 @@ describe("todos", () => {
 describe("inline todos", () => {
   it("creates todos from task lines and syncs both ways", async () => {
     const n = await notes.createNote("", "Meeting");
-    const body = await saveNote(n.id, "# Actions\n- [ ] Send report\n- [x] Book room");
+    const body = await saveNote(n.id, "# Actions\n- [ ] Send report\n- [x] Book room", { assignIds: true });
     const created = await todos.todosForNote(n.id);
     expect(created.map((t) => [t.title, t.status, t.sourceNoteId]).sort()).toEqual([
       ["Book room", "done", n.id],
@@ -206,6 +223,26 @@ describe("inline todos", () => {
     await saveNote(n.id, current.replace(`- [x] Send final report`, `- [ ] Send the report`));
     const t = (await todos.getTodo(report.id))!;
     expect([t.title, t.status]).toEqual(["Send the report", "todo"]);
+  });
+});
+
+describe("inline todos: editor save sequence", () => {
+  it("does not duplicate a todo when the editor adds its marker after the first save", async () => {
+    const n = await notes.createNote("", "Race");
+    // 1. autosave fires before the editor has added a marker
+    await saveNote(n.id, "- [ ] Call Jan");
+    // 2. editor adds its own marker, next autosave
+    await saveNote(n.id, "- [ ] Call Jan ^t-editor1");
+    // 3. user keeps typing
+    await saveNote(n.id, "- [ ] Call Jan ^t-editor1\n- [ ] ");
+    const all = await todos.todosForNote(n.id);
+    expect(all.map((t) => [t.id, t.title])).toEqual([["editor1", "Call Jan"]]);
+  });
+
+  it("ignores empty task lines the editor saves as <br />", async () => {
+    const n = await notes.createNote("", "Empty");
+    await saveNote(n.id, "- [ ] <br />\n* [ ] <br /> ^t-empty1");
+    expect(await todos.todosForNote(n.id)).toEqual([]);
   });
 });
 

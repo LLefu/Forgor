@@ -6,7 +6,7 @@ import type { SqlDriver } from "@/platform/types";
  *
  * Full-text search uses FTS4 (available in both the desktop SQLite and sql.js).
  */
-const MIGRATIONS: string[][] = [
+export const MIGRATIONS: string[][] = [
   [
     `CREATE TABLE settings (key TEXT PRIMARY KEY, value TEXT NOT NULL)`,
     `CREATE TABLE folders (id TEXT PRIMARY KEY, path TEXT NOT NULL UNIQUE)`,
@@ -70,6 +70,17 @@ const MIGRATIONS: string[][] = [
       payload TEXT,
       deleted_at TEXT NOT NULL
     )`,
+  ],
+  // v2: checklists merged into subtasks (existing items become subtasks of their todo)
+  [
+    `INSERT INTO todos (id, title, description, status, priority, parent_id, folder_id, sort_order, created_at, updated_at, completed_at)
+     SELECT c.id, c.text, '', CASE WHEN c.done THEN 'done' ELSE 'todo' END, 4, c.todo_id, t.folder_id,
+            (SELECT COALESCE(MAX(sort_order), 0) FROM todos) + c.sort_order, t.created_at, t.updated_at,
+            CASE WHEN c.done THEN t.updated_at END
+     FROM checklist_items c JOIN todos t ON t.id = c.todo_id`,
+    `INSERT INTO todos_fts (docid, title, description)
+     SELECT rid, title, description FROM todos WHERE id IN (SELECT id FROM checklist_items)`,
+    `DROP TABLE checklist_items`,
   ],
 ];
 

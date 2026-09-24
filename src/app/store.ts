@@ -12,8 +12,10 @@ export type View =
 interface UIState {
   view: View;
   back: View[];
+  forward: View[];
   setView: (v: View) => void;
   goBack: () => void;
+  goForward: () => void;
 
   selectedTodoId: string | null;
   openTodo: (id: string | null) => void;
@@ -34,15 +36,21 @@ interface UIState {
 export const useUI = create<UIState>((set, get) => ({
   view: { kind: "today" },
   back: [],
+  forward: [],
+  // Browser-style history: navigating somewhere new clears the forward stack.
   setView: (v) => {
     const cur = get().view;
     if (JSON.stringify(cur) === JSON.stringify(v)) return;
-    set({ view: v, back: [...get().back.slice(-30), cur] });
+    set({ view: v, back: [...get().back.slice(-50), cur], forward: [] });
   },
   goBack: () => {
     const back = [...get().back];
     const prev = back.pop();
-    if (prev) set({ view: prev, back });
+    if (prev) set({ view: prev, back, forward: [get().view, ...get().forward] });
+  },
+  goForward: () => {
+    const [next, ...forward] = get().forward;
+    if (next) set({ view: next, forward, back: [...get().back, get().view] });
   },
 
   selectedTodoId: null,

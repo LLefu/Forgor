@@ -114,7 +114,10 @@ export const NoteEditor = forwardRef<NoteEditorHandle, Props>(function NoteEdito
         // After a pause, give new "- [ ]" items a todo marker (creates the todo on save).
         clearTimeout(markerTimer);
         markerTimer = setTimeout(() => {
-          crepe.editor.action((c) => assignMarkersInView(c.get(editorViewCtx)));
+          const added = crepe.editor.action((c) => assignMarkersInView(c.get(editorViewCtx)));
+          // The marker transaction is kept out of undo history, and Milkdown's listener
+          // doesn't report such transactions, so hand the new markdown over ourselves.
+          if (added) live.current.onChange(cleanMarkdown(crepe.getMarkdown()));
         }, 900);
       });
     });

@@ -27,7 +27,6 @@ export const useArchived = () => useQuery({ queryKey: ["archived"], queryFn: tod
 export const useTodo = (id: string | null) =>
   useQuery({ queryKey: ["todo", id], queryFn: () => (id ? todos.getTodo(id) : null), enabled: !!id });
 export const useSubtasks = (id: string) => useQuery({ queryKey: ["subtasks", id], queryFn: () => todos.listSubtasks(id) });
-export const useChecklist = (id: string) => useQuery({ queryKey: ["checklist", id], queryFn: () => todos.listChecklist(id) });
 export const useNotesForTodo = (id: string) => useQuery({ queryKey: ["notesForTodo", id], queryFn: () => todos.notesForTodo(id) });
 export const useTodosForNote = (id: string) => useQuery({ queryKey: ["todosForNote", id], queryFn: () => todos.todosForNote(id) });
 

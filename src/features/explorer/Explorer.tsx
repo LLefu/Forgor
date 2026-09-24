@@ -47,6 +47,9 @@ export function Explorer({ treeRef }: { treeRef?: React.MutableRefObject<TreeApi
   const box = useRef<HTMLDivElement>(null);
   const localTree = useRef<TreeApi<TreeItem> | null>(null);
   const [size, setSize] = useState({ w: 240, h: 300 });
+  // react-dnd (used by the tree) listens for drops on its root. The default root is the
+  // whole window, where it swallowed the editor's block drags; scope it to the explorer.
+  const [dndRoot, setDndRoot] = useState<HTMLDivElement | null>(null);
 
   useEffect(() => {
     if (!box.current) return;
@@ -85,8 +88,15 @@ export function Explorer({ treeRef }: { treeRef?: React.MutableRefObject<TreeApi
   }, [pendingRename, data, requestRename]);
 
   return (
-    <div ref={box} className="min-h-0 flex-1" data-testid="explorer">
-      {data.length === 0 ? (
+    <div
+      ref={(el) => {
+        box.current = el;
+        setDndRoot(el);
+      }}
+      className="min-h-0 flex-1"
+      data-testid="explorer"
+    >
+      {data.length === 0 || !dndRoot ? (
         <p className="px-4 py-2 text-xs text-muted-foreground">No notes yet. Use the + buttons above.</p>
       ) : (
         <Tree<TreeItem>
@@ -95,6 +105,7 @@ export function Explorer({ treeRef }: { treeRef?: React.MutableRefObject<TreeApi
             if (treeRef) treeRef.current = t ?? null;
           }}
           data={data}
+          dndRootElement={dndRoot}
           width={size.w}
           height={size.h}
           rowHeight={26}
@@ -151,6 +162,7 @@ function Row({ node, style, dragHandle }: NodeRendererProps<TreeItem>) {
     const meta = await notes.createNote(folderPath);
     if (isFolder) node.open();
     setView({ kind: "note", id: meta.id });
+    useUI.getState().requestRename(`n:${meta.id}`);
   };
   const newFolderHere = async () => {
     const parent = isFolder ? item.path : dirname(item.path);
@@ -177,32 +189,40 @@ function Row({ node, style, dragHandle }: NodeRendererProps<TreeItem>) {
             node.willReceiveDrop && "ring-1 ring-inset ring-ring",
           )}
           onClick={(e) => {
-            if (isFolder) {
+            // Clicking a folder name opens its overview; only the arrow/icon expands or collapses it.
+            if (isFolder && !node.isEditing) {
               e.stopPropagation();
-              node.toggle();
               setView({ kind: "folder", id: item.refId });
             }
           }}
           data-testid={`tree-${item.kind}-${item.name}`}
         >
-          <span
-            className={cn("flex w-4 shrink-0 justify-center text-muted-foreground", !isFolder && "invisible")}
-            onClick={(e) => {
-              e.stopPropagation();
-              node.toggle();
-            }}
-          >
-            <ChevronRight className={cn("size-3.5 transition-transform", node.isOpen && "rotate-90")} />
-          </span>
           {isFolder ? (
-            node.isOpen ? <FolderOpen className="size-4 shrink-0 text-muted-foreground" /> : <Folder className="size-4 shrink-0 text-muted-foreground" />
+            <button
+              type="button"
+              tabIndex={-1}
+              aria-label={node.isOpen ? "Collapse folder" : "Expand folder"}
+              className="flex shrink-0 items-center gap-1 rounded-sm text-muted-foreground hover:text-foreground"
+              onClick={(e) => {
+                e.stopPropagation();
+                node.toggle();
+              }}
+              data-testid="tree-toggle"
+            >
+              <ChevronRight className={cn("size-3.5 w-4 transition-transform", node.isOpen && "rotate-90")} />
+              {node.isOpen ? <FolderOpen className="size-4" /> : <Folder className="size-4" />}
+            </button>
           ) : (
-            <FileText className="size-4 shrink-0 text-muted-foreground" />
+            <>
+              <span className="w-4 shrink-0" />
+              <FileText className="size-4 shrink-0 text-muted-foreground" />
+            </>
           )}
           {node.isEditing ? <RenameInput node={node} /> : <span className="truncate">{item.name}</span>}
         </div>
       </ContextMenuTrigger>
-      <ContextMenuContent>
+      {/* Don't hand focus back to the row on close: that would blur (and submit) the rename box. */}
+      <ContextMenuContent onCloseAutoFocus={(e) => e.preventDefault()}>
         <ContextMenuItem onSelect={newNoteHere}>
           <FilePlus /> New note
         </ContextMenuItem>
@@ -215,7 +235,7 @@ function Row({ node, style, dragHandle }: NodeRendererProps<TreeItem>) {
           </ContextMenuItem>
         )}
         <ContextMenuSeparator />
-        <ContextMenuItem onSelect={() => setTimeout(() => node.edit(), 0)}>
+        <ContextMenuItem onSelect={() => useUI.getState().requestRename(node.id)}>
           <Pencil /> Rename
         </ContextMenuItem>
         <ContextMenuItem onSelect={() => revealInOs(item.path)}>

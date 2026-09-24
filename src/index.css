@@ -23,7 +23,7 @@
   --warning: #d97706;
   --popover: #ffffff;
   --p1: #dc2626;
-  --p2: #ea580c;
+  --p2: #ca8a04;
   --p3: #2563eb;
   --p4: #a1a1aa;
 }
@@ -46,8 +46,8 @@
   --success: #22c55e;
   --warning: #f59e0b;
   --popover: #1c1c21;
-  --p1: #f87171;
-  --p2: #fb923c;
+  --p1: #ef4444;
+  --p2: #facc15;
   --p3: #60a5fa;
   --p4: #71717a;
 }
@@ -144,4 +144,14 @@
     background-clip: padding-box;
     border-radius: 999px;
   }
+}
+
+/* Native date/time picker icon: follow the text color (readable in light and dark). */
+input[type="date"]::-webkit-calendar-picker-indicator,
+input[type="time"]::-webkit-calendar-picker-indicator {
+  opacity: 0.65;
+}
+input[type="date"]:hover::-webkit-calendar-picker-indicator,
+input[type="time"]:hover::-webkit-calendar-picker-indicator {
+  opacity: 1;
 }

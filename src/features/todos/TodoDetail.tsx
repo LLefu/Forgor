@@ -13,13 +13,12 @@ import {
   Unlink,
   Plus,
   ArrowLeft,
-  ListChecks,
   ListTree,
   ArchiveRestore,
   PlayCircle,
 } from "lucide-react";
 import { useUI } from "@/app/store";
-import { useChecklist, useFolders, useNotesForTodo, useSubtasks, useTodo } from "@/app/queries";
+import { useFolders, useNotesForTodo, useSubtasks, useTodo } from "@/app/queries";
 import * as todos from "@/data/todos";
 import type { Priority, Todo, TodoStatus } from "@/data/types";
 import { PRIORITY_LABELS, STATUS_LABELS } from "@/data/types";
@@ -206,12 +205,11 @@ function DetailBody({ todo }: { todo: Todo }) {
           onChange={(e) => setDescription(e.target.value)}
           onBlur={() => description !== todo.description && update({ description })}
           placeholder="Add a description…"
-          className="field-sizing-content mt-4 min-h-20 resize-none border-transparent px-0 hover:border-transparent focus-visible:ring-0"
+          className="field-sizing-content mt-4 min-h-20 resize-none border-transparent bg-muted/40 px-3 py-2 hover:bg-muted/70 focus-visible:bg-transparent"
           aria-label="Description"
         />
 
         {!todo.parentId && <Subtasks todo={todo} />}
-        <Checklist todoId={todo.id} />
         <LinkedNotes todo={todo} onOpen={(id) => setView({ kind: "note", id })} />
 
         <p className="mt-8 text-[11px] text-muted-foreground">
@@ -316,29 +314,6 @@ function Subtasks({ todo }: { todo: Todo }) {
         </div>
       ))}
       <AddLine placeholder="Add subtask" onAdd={(t) => todos.createTodo({ title: t, parentId: todo.id, folderId: todo.folderId })} testId="add-subtask" />
-    </div>
-  );
-}
-
-function Checklist({ todoId }: { todoId: string }) {
-  const { data: items = [] } = useChecklist(todoId);
-  return (
-    <div>
-      <SubHeader icon={ListChecks} title="Checklist" extra={items.length ? `${items.filter((i) => i.done).length}/${items.length}` : null} />
-      {items.map((i) => (
-        <div key={i.id} className="group flex items-center gap-2 rounded px-1 py-0.5 hover:bg-muted/70">
-          <Checkbox checked={i.done} onChange={(v) => todos.updateChecklistItem(i.id, { done: v })} />
-          <input
-            defaultValue={i.text}
-            onBlur={(e) => e.target.value !== i.text && todos.updateChecklistItem(i.id, { text: e.target.value })}
-            className={cn("h-6 flex-1 bg-transparent text-[13px] outline-none", i.done && "text-muted-foreground line-through")}
-          />
-          <button onClick={() => todos.deleteChecklistItem(i.id)} className="p-0.5 text-muted-foreground opacity-0 group-hover:opacity-100" aria-label="Remove item">
-            <X className="size-3.5" />
-          </button>
-        </div>
-      ))}
-      <AddLine placeholder="Add checklist item" onAdd={(t) => todos.addChecklistItem(todoId, t)} testId="add-checklist" />
     </div>
   );
 }

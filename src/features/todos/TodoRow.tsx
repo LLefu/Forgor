@@ -41,7 +41,7 @@ export function TodoRow({ todo, showDate = true, showFolder = true }: { todo: To
       onClick={() => openTodo(todo.id)}
       onKeyDown={(e) => e.key === "Enter" && openTodo(todo.id)}
       className={cn(
-        "group flex cursor-pointer items-start gap-2.5 rounded px-2 py-1.5 outline-none",
+        "group flex cursor-pointer items-center gap-2.5 rounded px-2 py-1.5 outline-none",
         selected ? "bg-accent" : "hover:bg-muted/70 focus-visible:bg-muted/70",
       )}
       data-testid="todo-row"
@@ -52,7 +52,6 @@ export function TodoRow({ todo, showDate = true, showFolder = true }: { todo: To
         checked={done}
         color={PRIORITY_COLOR[todo.priority]}
         onChange={(v) => setDone(todo.id, v)}
-        className="mt-0.5"
         label={`Complete ${todo.title}`}
       />
       <div className="min-w-0 flex-1">

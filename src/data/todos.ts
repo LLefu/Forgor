@@ -1,5 +1,5 @@
 import { ctx, emitChange } from "./context";
-import type { ChecklistItem, NoteMeta, Priority, Todo, TodoStatus } from "./types";
+import type { NoteMeta, Priority, Todo, TodoStatus } from "./types";
 import { newId, nowIso } from "@/lib/utils";
 import { addDaysStr, shouldArchive, todayStr } from "@/lib/dates";
 import { nextOccurrence } from "@/lib/recurrence";
@@ -257,7 +257,10 @@ async function spawnNextOccurrence(t: Todo) {
   });
   // The completed instance no longer repeats; the clone carries the rule.
   await ctx().sql.execute(`UPDATE todos SET rrule = NULL WHERE id = ?`, [t.id]);
-  for (const item of await listChecklist(t.id)) await addChecklistItem(clone.id, item.text);
+  // Subtasks come along, reset to not-done, so the next occurrence starts fresh.
+  for (const sub of await listSubtasks(t.id)) {
+    await createTodo({ title: sub.title, description: sub.description, priority: sub.priority, parentId: clone.id, folderId: t.folderId, estimateMin: sub.estimateMin });
+  }
   for (const n of await notesForTodo(t.id)) await linkNote(clone.id, n.id, { silent: true });
 }
 
@@ -321,7 +324,6 @@ export async function purgeTodos(ids: string[]): Promise<void> {
     const rows = await sql.select<{ rid: number }>(`SELECT rid FROM todos WHERE id = ?`, [id]);
     if (rows[0]) await sql.execute(`DELETE FROM todos_fts WHERE docid = ?`, [rows[0].rid]);
     await sql.execute(`DELETE FROM todos WHERE id = ?`, [id]);
-    await sql.execute(`DELETE FROM checklist_items WHERE todo_id = ?`, [id]);
     await sql.execute(`DELETE FROM todo_note_links WHERE todo_id = ?`, [id]);
   }
 }
@@ -343,40 +345,6 @@ export async function archiveCompleted(days: number, now = new Date()): Promise<
 
 export async function unarchive(id: string): Promise<void> {
   await ctx().sql.execute(`UPDATE todos SET archived_at = NULL WHERE id = ?`, [id]);
-  emitChange("todos");
-}
-
-// ---------------------------------------------------------------- checklist
-
-export async function listChecklist(todoId: string): Promise<ChecklistItem[]> {
-  const rows = await ctx().sql.select<{ id: string; todo_id: string; text: string; done: number; sort_order: number }>(
-    `SELECT * FROM checklist_items WHERE todo_id = ? ORDER BY sort_order`,
-    [todoId],
-  );
-  return rows.map((r) => ({ id: r.id, todoId: r.todo_id, text: r.text, done: !!r.done, sortOrder: r.sort_order }));
-}
-
-export async function addChecklistItem(todoId: string, text: string): Promise<void> {
-  const { sql } = ctx();
-  const [{ m }] = await sql.select<{ m: number | null }>(`SELECT MAX(sort_order) AS m FROM checklist_items WHERE todo_id = ?`, [todoId]);
-  await sql.execute(`INSERT INTO checklist_items (id, todo_id, text, done, sort_order) VALUES (?, ?, ?, 0, ?)`, [
-    newId(),
-    todoId,
-    text,
-    (m ?? 0) + 1,
-  ]);
-  emitChange("todos");
-}
-
-export async function updateChecklistItem(id: string, patch: { text?: string; done?: boolean }): Promise<void> {
-  const { sql } = ctx();
-  if (patch.text !== undefined) await sql.execute(`UPDATE checklist_items SET text = ? WHERE id = ?`, [patch.text, id]);
-  if (patch.done !== undefined) await sql.execute(`UPDATE checklist_items SET done = ? WHERE id = ?`, [patch.done ? 1 : 0, id]);
-  emitChange("todos");
-}
-
-export async function deleteChecklistItem(id: string): Promise<void> {
-  await ctx().sql.execute(`DELETE FROM checklist_items WHERE id = ?`, [id]);
   emitChange("todos");
 }
 
