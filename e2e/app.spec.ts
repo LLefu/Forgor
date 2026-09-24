@@ -28,7 +28,10 @@ test("folder → note → inline todo → Today, Calendar and Search", async ({ 
   await title.press("Enter");
   await page.keyboard.type("Kickoff went well.");
   await page.keyboard.press("Enter");
-  await page.keyboard.type("- [ ] Draft the proposal");
+  // Type the list prefix at human speed: the editor converts "- [ ] " into a checkbox
+  // and a zero-delay keystroke can land before that conversion finishes.
+  await page.keyboard.type("- [ ] ", { delay: 60 });
+  await page.keyboard.type("Draft the proposal");
 
   // The inline todo is created and linked to the note
   const linked = page.getByTestId("note-linked-todos");
