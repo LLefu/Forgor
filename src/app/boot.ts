@@ -1,7 +1,7 @@
 import wasmUrl from "sql.js/dist/sql-wasm.wasm?url";
 import type { Platform, VaultFs } from "@/platform/types";
 import { createMemoryPlatform, MemoryVault } from "@/platform/memory";
-import { isTauri } from "@/platform/tauri";
+import { isTauri } from "@/platform/env";
 import { migrate } from "@/data/schema";
 import { loadSettings, saveSetting } from "@/data/settings";
 import { setCtx } from "@/data/context";

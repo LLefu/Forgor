@@ -32,6 +32,8 @@ export default defineConfig(() => ({
     watch: { ignored: ["**/src-tauri/**"] },
   },
   build: {
+    // Desktop app loads from disk; bundle size is not a concern.
+    chunkSizeWarningLimit: 4000,
     rollupOptions: {
       input: {
         main: path.resolve(import.meta.dirname, "index.html"),

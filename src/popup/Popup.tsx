@@ -7,7 +7,7 @@ import { queryClient } from "@/app/queries";
 import { useUI } from "@/app/store";
 import { useApplyTheme } from "@/app/theme";
 import { EVT, hidePopup, notifyMain, showMain } from "@/app/hotkey";
-import { isTauri } from "@/platform/tauri";
+import { isTauri } from "@/platform/env";
 import { createNote } from "@/data/notes";
 import { search } from "@/data/search";
 import { QuickAddForm } from "@/features/todos/QuickAdd";

@@ -11,7 +11,8 @@
     "test": "node node_modules/vitest/vitest.mjs run",
     "test:watch": "node node_modules/vitest/vitest.mjs",
     "e2e": "node node_modules/@playwright/test/cli.js test",
-    "tauri": "node node_modules/@tauri-apps/cli/tauri.js"
+    "tauri": "node node_modules/@tauri-apps/cli/tauri.js",
+    "lint": "node node_modules/eslint/bin/eslint.js ."
   },
   "dependencies": {
     "@codemirror/language": "^6.12.4",
@@ -49,6 +50,7 @@
     "zustand": "^5.0.15"
   },
   "devDependencies": {
+    "@eslint/js": "^10.0.1",
     "@playwright/test": "^1.63.0",
     "@tauri-apps/cli": "^2",
     "@types/diff": "^7.0.2",
@@ -58,7 +60,10 @@
     "@types/sql.js": "^1.4.11",
     "@vitejs/plugin-react": "^6.0.2",
     "eslint": "^10.11.0",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "globals": "^17.12.0",
     "typescript": "~6.0.3",
+    "typescript-eslint": "^8.70.1",
     "vite": "^8.0.16",
     "vitest": "^5.0.1"
   }

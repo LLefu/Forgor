@@ -1,4 +1,4 @@
-import { isTauri } from "@/platform/tauri";
+import { isTauri } from "@/platform/env";
 
 /**
  * Desktop-only glue between the main window, the global shortcut and the

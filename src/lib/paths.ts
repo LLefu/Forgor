@@ -26,6 +26,8 @@ export function isIgnoredPath(path: string): boolean {
 export const ATTACHMENTS_DIR = "_attachments";
 export const TRASH_DIR = ".trash";
 
+// Characters not allowed in Windows/macOS file names, including control characters.
+// eslint-disable-next-line no-control-regex
 const INVALID_CHARS = /[<>:"/\\|?*\u0000-\u001f]/g;
 
 /** Make a title safe to use as a file/folder name on Windows and macOS. */

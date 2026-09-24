@@ -1,4 +1,4 @@
-import { isTauri } from "./tauri";
+import { isTauri } from "./env";
 import { ctx } from "@/data/context";
 
 /** Reveal a vault item in Windows Explorer / macOS Finder (desktop only). */
