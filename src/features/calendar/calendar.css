@@ -41,6 +41,43 @@
   color: var(--primary);
   font-weight: 700;
 }
+/* Hover a day (month) or a time slot (week): clicking it adds a todo there. */
+.fc .fc-daygrid-day {
+  cursor: pointer;
+  transition: background-color 80ms;
+}
+.fc .fc-daygrid-day:hover {
+  background-color: color-mix(in srgb, var(--primary) 6%, transparent);
+}
+.fc .fc-daygrid-day.fc-day-today:hover {
+  background-color: color-mix(in srgb, var(--primary) 12%, transparent);
+}
+.fc .fc-daygrid-day:hover .fc-daygrid-day-number {
+  color: var(--primary);
+}
+.fc .fc-timegrid-slot-lane,
+.fc .fc-timegrid-col {
+  cursor: pointer;
+}
+.fc .fc-timegrid-slot-lane:hover {
+  background-color: color-mix(in srgb, var(--primary) 6%, transparent);
+}
+/* ISO week numbers (left edge of each week in month view, top-left corner in week view) */
+.fc .fc-daygrid-week-number {
+  background: transparent;
+  color: var(--muted-foreground);
+  font-size: 11px;
+  font-weight: 600;
+  padding: 4px 6px;
+  text-decoration: none;
+}
+.fc .fc-timegrid-axis-cushion {
+  color: var(--muted-foreground);
+  font-size: 11px;
+  font-weight: 600;
+  text-decoration: none;
+}
+
 .fc .fc-event {
   border-radius: 2px;
   border-width: 0 0 0 3px;

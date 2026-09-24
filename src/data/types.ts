@@ -94,4 +94,6 @@ export interface Settings {
   hotkey: string;
   vaultPath: string | null;
   upcomingDays: number;
+  /** Highlight color id, see lib/accents.ts. */
+  accent: string;
 }

@@ -172,7 +172,7 @@ function Row({ node, style, dragHandle }: NodeRendererProps<TreeItem>) {
           ref={dragHandle}
           style={style}
           className={cn(
-            "group flex h-full cursor-default items-center gap-1 rounded-sm pr-2 text-[13px]",
+            "group flex h-full cursor-pointer items-center gap-1 rounded-sm pr-2 text-[13px]",
             node.isSelected ? "bg-accent text-accent-foreground" : "hover:bg-muted",
             node.willReceiveDrop && "ring-1 ring-inset ring-ring",
           )}

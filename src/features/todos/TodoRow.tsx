@@ -41,7 +41,7 @@ export function TodoRow({ todo, showDate = true, showFolder = true }: { todo: To
       onClick={() => openTodo(todo.id)}
       onKeyDown={(e) => e.key === "Enter" && openTodo(todo.id)}
       className={cn(
-        "group flex cursor-default items-start gap-2.5 rounded px-2 py-1.5 outline-none",
+        "group flex cursor-pointer items-start gap-2.5 rounded px-2 py-1.5 outline-none",
         selected ? "bg-accent" : "hover:bg-muted/70 focus-visible:bg-muted/70",
       )}
       data-testid="todo-row"

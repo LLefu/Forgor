@@ -1,3 +1,4 @@
+import { DEFAULT_ACCENT } from "@/lib/accents";
 import type { SqlDriver } from "@/platform/types";
 import type { Settings } from "./types";
 
@@ -7,6 +8,7 @@ export const DEFAULT_SETTINGS: Settings = {
   hotkey: navigatorIsMac() ? "CommandOrControl+Shift+Space" : "Control+Alt+Space",
   vaultPath: null,
   upcomingDays: 14,
+  accent: DEFAULT_ACCENT,
 };
 
 function navigatorIsMac() {

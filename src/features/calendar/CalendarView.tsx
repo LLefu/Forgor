@@ -87,7 +87,11 @@ export function CalendarView() {
         eventDrop={onDrop}
         eventResize={onDrop}
         dateClick={(info: DateClickArg) => openQuickAdd({ dueDate: toDateStr(info.date) })}
+        weekNumbers
+        weekNumberCalculation="ISO"
+        weekText="W"
       />
     </div>
   );
 }
+

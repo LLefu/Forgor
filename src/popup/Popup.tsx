@@ -166,7 +166,7 @@ function SearchPane({ onBack }: { onBack: () => void }) {
             key={note.id}
             value={`n:${note.id}`}
             onSelect={() => done(EVT.openNote, note.id)}
-            className="cursor-default rounded-sm px-2 py-1.5 data-[selected=true]:bg-muted"
+            className="cursor-pointer rounded-sm px-2 py-1.5 data-[selected=true]:bg-muted"
           >
             <div className="flex items-center gap-2 text-[13px]">
               <FileText className="size-4 text-muted-foreground" /> {note.title}
@@ -184,7 +184,7 @@ function SearchPane({ onBack }: { onBack: () => void }) {
             key={todo.id}
             value={`t:${todo.id}`}
             onSelect={() => done(EVT.openTodo, todo.id)}
-            className="flex cursor-default items-center gap-2 rounded-sm px-2 py-1.5 text-[13px] data-[selected=true]:bg-muted"
+            className="flex cursor-pointer items-center gap-2 rounded-sm px-2 py-1.5 text-[13px] data-[selected=true]:bg-muted"
           >
             {todo.status === "done" ? <CheckCircle2 className="size-4 text-muted-foreground" /> : <Circle className="size-4 text-muted-foreground" />}
             <span className="truncate">{todo.title}</span>

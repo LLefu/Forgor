@@ -4,7 +4,7 @@ import { cn } from "@/lib/utils";
 
 const contentCls = "z-50 min-w-[180px] rounded border bg-popover p-1 text-sm shadow-lg";
 const itemCls =
-  "flex cursor-default select-none items-center gap-2 rounded-sm px-2 py-1.5 outline-none data-[highlighted]:bg-muted data-[disabled]:opacity-50 [&_svg]:size-4 [&_svg]:text-muted-foreground";
+  "flex cursor-pointer select-none items-center gap-2 rounded-sm px-2 py-1.5 outline-none data-[highlighted]:bg-muted data-[disabled]:opacity-50 [&_svg]:size-4 [&_svg]:text-muted-foreground";
 
 export const DropdownMenu = DM.Root;
 export const DropdownMenuTrigger = DM.Trigger;

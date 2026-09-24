@@ -7,7 +7,7 @@ import { dirname } from "@/lib/paths";
 
 const listCls = "max-h-72 overflow-y-auto p-1";
 const itemCls =
-  "flex cursor-default items-center gap-2 rounded-sm px-2 py-1.5 text-[13px] data-[selected=true]:bg-muted [&_svg]:size-4 [&_svg]:shrink-0 [&_svg]:text-muted-foreground";
+  "flex cursor-pointer items-center gap-2 rounded-sm px-2 py-1.5 text-[13px] data-[selected=true]:bg-muted [&_svg]:size-4 [&_svg]:shrink-0 [&_svg]:text-muted-foreground";
 const inputCls = "h-9 w-full border-b bg-transparent px-3 text-sm outline-none placeholder:text-muted-foreground";
 
 /** Search-as-you-type note picker. */

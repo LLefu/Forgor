@@ -4,6 +4,7 @@
 
 /* Design tokens. Light is default, `.dark` on <html> switches. */
 :root {
+  color-scheme: light;
   --background: #ffffff;
   --foreground: #18181b;
   --sidebar: #f7f7f8;
@@ -11,9 +12,10 @@
   --muted-foreground: #71717a;
   --border: #e4e4e7;
   --input: #e4e4e7;
-  --ring: #6366f1;
-  --accent: #eef0ff;
-  --accent-foreground: #3730a3;
+  --ring: var(--primary);
+  /* Highlight backgrounds are derived from --primary, so the accent setting recolors them too. */
+  --accent: color-mix(in srgb, var(--primary) 10%, var(--background));
+  --accent-foreground: color-mix(in srgb, var(--primary) 72%, var(--foreground));
   --primary: #4f46e5;
   --primary-foreground: #ffffff;
   --destructive: #dc2626;
@@ -27,6 +29,7 @@
 }
 
 .dark {
+  color-scheme: dark;
   --background: #131316;
   --foreground: #ececef;
   --sidebar: #19191d;
@@ -34,9 +37,9 @@
   --muted-foreground: #9a9aa3;
   --border: #2c2c33;
   --input: #34343c;
-  --ring: #818cf8;
-  --accent: #26264a;
-  --accent-foreground: #c7d2fe;
+  --ring: var(--primary);
+  --accent: color-mix(in srgb, var(--primary) 20%, var(--background));
+  --accent-foreground: color-mix(in srgb, var(--primary) 45%, var(--foreground));
   --primary: #6366f1;
   --primary-foreground: #ffffff;
   --destructive: #ef4444;
@@ -103,6 +106,30 @@
   textarea,
   [contenteditable="true"] {
     user-select: text;
+  }
+  /* Everything clickable gets the hand cursor (Tailwind v4 resets buttons to default). */
+  button:not(:disabled),
+  [role="button"]:not([aria-disabled="true"]),
+  [role="checkbox"],
+  [role="menuitem"]:not([data-disabled]),
+  [role="option"],
+  [role="tab"],
+  [role="treeitem"],
+  a[href],
+  select:not(:disabled),
+  summary,
+  label:has(> input[type="checkbox"]),
+  input[type="checkbox"],
+  input[type="radio"],
+  input[type="date"],
+  input[type="time"],
+  input[type="color"],
+  ::-webkit-calendar-picker-indicator {
+    cursor: pointer;
+  }
+  button:disabled,
+  select:disabled {
+    cursor: not-allowed;
   }
   ::selection {
     background: color-mix(in srgb, var(--primary) 30%, transparent);
