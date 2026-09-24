@@ -40,7 +40,7 @@ if (!/^\s*[-*]\s+\S/m.test(unreleased)) {
   process.exit(1);
 }
 const today = new Date().toISOString().slice(0, 10);
-writeFileSync(changelogPath, changelog.replace(/^##\s+Unreleased\s*$/m, `## Unreleased\n\n## ${version} (${today})`));
+writeFileSync(changelogPath, changelog.replace(/^##[ \t]+Unreleased[ \t]*$/m, `## Unreleased\n\n## ${version} (${today})`));
 
 pkg.version = version;
 writeFileSync("package.json", JSON.stringify(pkg, null, 2) + "\n");
