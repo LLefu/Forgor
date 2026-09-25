@@ -5,6 +5,8 @@ All notable changes to Forgor. Add new entries under **Unreleased**;
 
 ## Unreleased
 
+## 0.1.2 (2026-09-25)
+
 ### Fixed
 - Move to trash still did nothing on macOS: the app wasn't allowed to write to the hidden `.trash` folder there.
 - Clicking a date or time field highlights the whole field instead of just the day, month or year part.
