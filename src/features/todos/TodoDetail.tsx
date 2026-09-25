@@ -235,12 +235,25 @@ function Prop({ icon: Icon, label, children }: { icon: React.ComponentType<{ cla
 /** Native date input with quick picks and a clear button. */
 export function DateField({ value, onChange, testId }: { value: string | null; onChange: (v: string | null) => void; testId?: string }) {
   const today = todayStr();
+  // Keep what's typed locally and only save complete dates (or on blur). Saving every
+  // keystroke stored in-between years like "0002" and the round-trip broke typing.
+  const [draft, setDraft] = useState(value ?? "");
+  useEffect(() => setDraft(value ?? ""), [value]);
+  const commit = (v: string) => {
+    const next = v || null;
+    if (next !== value) onChange(next);
+  };
   return (
     <div className="group flex items-center gap-1">
       <input
         type="date"
-        value={value ?? ""}
-        onChange={(e) => onChange(e.target.value || null)}
+        value={draft}
+        onChange={(e) => {
+          const v = e.target.value;
+          setDraft(v);
+          if (!v || Number(v.slice(0, 4)) >= 1900) commit(v); // picker choice or a full year typed
+        }}
+        onBlur={(e) => commit(e.target.value)}
         className={cn("h-7 rounded border border-transparent bg-transparent px-1 text-[13px] hover:border-input", !value && "text-muted-foreground")}
         data-testid={testId}
       />

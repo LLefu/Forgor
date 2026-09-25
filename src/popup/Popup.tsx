@@ -11,6 +11,7 @@ import { isTauri } from "@/platform/env";
 import { createNote } from "@/data/notes";
 import { search } from "@/data/search";
 import { QuickAddForm } from "@/features/todos/QuickAdd";
+import { ToastHost } from "@/components/Toasts";
 import { Snippet } from "@/features/search/SearchView";
 import { dirname } from "@/lib/paths";
 import { cn } from "@/lib/utils";
@@ -37,6 +38,7 @@ export function Popup() {
   return (
     <QueryClientProvider client={queryClient}>
       <PopupBody />
+      <ToastHost />
     </QueryClientProvider>
   );
 }

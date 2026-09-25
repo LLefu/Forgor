@@ -5,6 +5,15 @@ All notable changes to Forgor. Add new entries under **Unreleased**;
 
 ## Unreleased
 
+### Fixed
+- Move to trash still did nothing on macOS: the app wasn't allowed to write to the hidden `.trash` folder there.
+- Clicking a date or time field highlights the whole field instead of just the day, month or year part.
+- Typing a date with the keyboard in a todo could save a wrong year while you were still typing.
+
+### Improved
+- If an action fails, a short error message now appears instead of nothing happening.
+- Hidden folders in your notes folder (like `.git` or `.obsidian`) are skipped, which makes syncing faster.
+
 ## 0.1.1 (2026-09-24)
 
 ### New

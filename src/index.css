@@ -155,3 +155,14 @@ input[type="date"]:hover::-webkit-calendar-picker-indicator,
 input[type="time"]:hover::-webkit-calendar-picker-indicator {
   opacity: 1;
 }
+
+/* Date/time fields behave as one control (see lib/pickers.ts): the whole field
+   is highlighted while its picker is open or it has keyboard focus. */
+input[type="date"].picker-open,
+input[type="time"].picker-open,
+input[type="date"]:focus-visible,
+input[type="time"]:focus-visible {
+  background-color: color-mix(in srgb, var(--primary) 12%, transparent);
+  border-color: var(--ring);
+  outline: none;
+}

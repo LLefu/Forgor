@@ -76,6 +76,9 @@
       "windows": {
         "installMode": "passive"
       }
+    },
+    "fs": {
+      "requireLiteralLeadingDot": false
     }
   }
 }
