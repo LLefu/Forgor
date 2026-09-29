@@ -1,37 +1,17 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { createContext, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { Tree, type NodeApi, type NodeRendererProps, type TreeApi } from "react-arborist";
-import { ChevronRight, FileText, Folder, FolderOpen, FilePlus, FolderPlus, Pencil, Trash2, ExternalLink, ListTodo, Palette } from "lucide-react";
+import { ChevronRight, FileText, Folder, FolderOpen, PanelRight, FilePlus, FolderPlus, ListTodo } from "lucide-react";
 import { useFolders, useNotes } from "@/app/queries";
 import { useUI } from "@/app/store";
 import * as notes from "@/data/notes";
 import { basename, dirname, joinPath } from "@/lib/paths";
 import { cn } from "@/lib/utils";
-import {
-  ContextMenu,
-  ContextMenuContent,
-  ContextMenuItem,
-  ContextMenuItemRaw,
-  ContextMenuSeparator,
-  ContextMenuSub,
-  ContextMenuSubContent,
-  ContextMenuSubTrigger,
-  ContextMenuTrigger,
-} from "@/components/ui/menu";
-import { ColorSwatches } from "@/features/folder/folderColors";
+import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuTrigger } from "@/components/ui/menu";
 import { effectiveFolderColor } from "@/lib/folderColors";
-import { setFolderColor } from "@/data/notes";
-import { revealInOs } from "@/platform/os";
-import { confirmDialog } from "@/components/ConfirmDialog";
 import { moveTreeItems, useRootDropZone } from "./move";
+import { ItemMenuItems, trashItems, type TreeItem } from "./ItemMenu";
 
-export interface TreeItem {
-  id: string; // "f:<folderId>" | "n:<noteId>"
-  kind: "folder" | "note";
-  refId: string;
-  name: string;
-  path: string;
-  children?: TreeItem[];
-}
+export type { TreeItem };
 
 function buildTree(folders: { id: string; path: string }[], noteList: { id: string; path: string; title: string }[]): TreeItem[] {
   const root: TreeItem[] = [];
@@ -80,12 +60,68 @@ export function Explorer({ treeRef }: { treeRef?: React.MutableRefObject<TreeApi
     return () => ro.disconnect();
   }, []);
 
-  const activeId = view.kind === "note" ? `n:${view.id}` : view.kind === "folder" ? `f:${view.id}` : undefined;
+  // Selected row: the open note, else the folder shown in the side panel.
+  // A folder whose panel is open is also marked separately (PanelContext).
+  const selectedFolderId = useUI((s) => s.selectedFolderId);
+  const noteId = view?.kind === "note" ? view.id : null;
+  const activeId = noteId ? `n:${noteId}` : selectedFolderId ? `f:${selectedFolderId}` : undefined;
+
+  /** Selected rows (Ctrl/⌘+click and Shift+click select several), top to bottom; else the active row. */
+  const selectedItems = (): TreeItem[] => {
+    const nodes = [...(localTree.current?.selectedNodes ?? [])].sort((a, b) => (a.rowIndex ?? 0) - (b.rowIndex ?? 0));
+    if (nodes.length) return nodes.map((n) => n.data);
+    const item = activeId ? findItem(data, activeId) : null;
+    return item ? [item] : [];
+  };
+
+  // Delete / Backspace: trash the selection (after confirming). Enter: open it
+  // (every selected note in a tab, and the topmost selected folder in the panel). F2: rename.
+  const onKeyDown = (e: React.KeyboardEvent) => {
+    if ((e.target as HTMLElement).closest("input, textarea, [contenteditable=true]")) return;
+    if (e.key === "Delete" || e.key === "Backspace") {
+      const items = selectedItems();
+      if (!items.length) return;
+      e.preventDefault();
+      e.stopPropagation();
+      void trashItems(items);
+    } else if (e.key === "Enter") {
+      const items = selectedItems();
+      if (!items.length) return;
+      e.preventDefault();
+      e.stopPropagation();
+      const folder = items.find((i) => i.kind === "folder");
+      for (const n of items.filter((i) => i.kind === "note")) setView({ kind: "note", id: n.refId });
+      if (folder) useUI.getState().openFolder(folder.refId);
+    } else if (e.key === "F2") {
+      const [item] = selectedItems();
+      if (!item) return;
+      e.preventDefault();
+      useUI.getState().requestRename(item.id);
+    }
+  };
+  const closePanel = useUI((s) => s.closePanel);
+  const openQuickAdd = useUI((s) => s.openQuickAdd);
 
   // Reveal the active item (expand its parents) when it changes.
   useEffect(() => {
     if (activeId) localTree.current?.openParents(activeId);
   }, [activeId]);
+
+  // "Reveal in explorer": expand the parents, scroll the row into view and flash it.
+  const reveal = useUI((s) => s.reveal);
+  const [flash, setFlash] = useState<string | null>(null);
+  useEffect(() => {
+    if (!reveal) return;
+    const tree = localTree.current;
+    if (!tree) return;
+    // openParents searches the whole tree; get()/scrollTo only see rows that are visible.
+    tree.openParents(reveal.treeId);
+    recount();
+    setTimeout(() => tree.scrollTo(reveal.treeId, "center"), 30);
+    setFlash(reveal.treeId);
+    const t = setTimeout(() => setFlash(null), 1200);
+    return () => clearTimeout(t);
+  }, [reveal]);
 
   // Put a freshly created item into rename mode as soon as the tree has it.
   const pendingRename = useUI((s) => s.pendingRename);
@@ -97,6 +133,7 @@ export function Explorer({ treeRef }: { treeRef?: React.MutableRefObject<TreeApi
     let timer: ReturnType<typeof setTimeout>;
     const attempt = () => {
       const tree = localTree.current;
+      tree?.openParents(pendingRename); // collapsed rows aren't found by get()
       if (tree?.get(pendingRename)) {
         tree.openParents(pendingRename);
         requestRename(null);
@@ -110,7 +147,9 @@ export function Explorer({ treeRef }: { treeRef?: React.MutableRefObject<TreeApi
   }, [pendingRename, data, requestRename]);
 
   return (
-    <div ref={box} className="flex min-h-0 flex-1 flex-col" data-testid="explorer">
+    <FlashContext.Provider value={flash}>
+    <PanelContext.Provider value={selectedFolderId}>
+    <div ref={box} className="flex min-h-0 flex-1 flex-col" data-testid="explorer" onKeyDownCapture={onKeyDown}>
       <div ref={setDndRoot} className="shrink-0">
       {data.length === 0 || !dndRoot ? (
         <p className="px-4 py-2 text-xs text-muted-foreground">No notes yet. Use the + buttons above.</p>
@@ -129,7 +168,6 @@ export function Explorer({ treeRef }: { treeRef?: React.MutableRefObject<TreeApi
           indent={12}
           openByDefault={false}
           selection={activeId}
-          disableMultiSelection
           disableDrop={({ parentNode }) => !!parentNode && !parentNode.isRoot && parentNode.data.kind !== "folder"}
           onActivate={(node) => {
             if (node.data.kind === "note") setView({ kind: "note", id: node.data.refId });
@@ -150,19 +188,53 @@ export function Explorer({ treeRef }: { treeRef?: React.MutableRefObject<TreeApi
         </Tree>
       )}
       </div>
-      <div
-        {...rootDrop.props}
-        className={cn(
-          "min-h-8 flex-1 rounded-sm text-center text-[11px] text-transparent",
-          rootDrop.over && "bg-accent/60 pt-2 text-accent-foreground ring-1 ring-inset ring-ring",
-        )}
-        data-testid="explorer-root-drop"
-      >
-        Move to top level
-      </div>
+      {/* Empty space: click closes the detail panel, right-click creates at the top level, drop moves to the top level. */}
+      <ContextMenu>
+        <ContextMenuTrigger asChild>
+          <div
+            {...rootDrop.props}
+            onClick={closePanel}
+            className={cn(
+              "min-h-8 flex-1 rounded-sm text-center text-[11px] text-transparent",
+              rootDrop.over && "bg-accent/60 pt-2 text-accent-foreground ring-1 ring-inset ring-ring",
+            )}
+            data-testid="explorer-root-drop"
+          >
+            Move to top level
+          </div>
+        </ContextMenuTrigger>
+        <ContextMenuContent onCloseAutoFocus={(e) => e.preventDefault()}>
+          <ContextMenuItem
+            onSelect={async () => {
+              const n = await notes.createNote("");
+              setView({ kind: "note", id: n.id });
+              useUI.getState().requestRename(`n:${n.id}`);
+            }}
+          >
+            <FilePlus /> New note
+          </ContextMenuItem>
+          <ContextMenuItem
+            onSelect={async () => {
+              const f = await notes.createFolder("");
+              useUI.getState().requestRename(`f:${f.id}`);
+            }}
+          >
+            <FolderPlus /> New folder
+          </ContextMenuItem>
+          <ContextMenuItem onSelect={() => openQuickAdd()}>
+            <ListTodo /> New todo
+          </ContextMenuItem>
+        </ContextMenuContent>
+      </ContextMenu>
     </div>
+    </PanelContext.Provider>
+    </FlashContext.Provider>
   );
 }
+
+const FlashContext = createContext<string | null>(null);
+/** Folder whose detail panel is open. */
+const PanelContext = createContext<string | null>(null);
 
 function findItem(items: TreeItem[], id: string): TreeItem | null {
   for (const i of items) {
@@ -174,39 +246,15 @@ function findItem(items: TreeItem[], id: string): TreeItem | null {
 }
 
 function Row({ node, style, dragHandle }: NodeRendererProps<TreeItem>) {
-  const setView = useUI((s) => s.setView);
-  const openQuickAdd = useUI((s) => s.openQuickAdd);
+  const openFolder = useUI((s) => s.openFolder);
   const item = node.data;
   const isFolder = item.kind === "folder";
   const { data: folders = [] } = useFolders();
   const folderColor = isFolder ? effectiveFolderColor(item.refId, folders) : null;
-  const ownColor = isFolder ? (folders.find((f) => f.id === item.refId)?.color ?? null) : null;
-
-  const newNoteHere = async () => {
-    const folderPath = isFolder ? item.path : dirname(item.path);
-    const meta = await notes.createNote(folderPath);
-    if (isFolder) node.open();
-    setView({ kind: "note", id: meta.id });
-    useUI.getState().requestRename(`n:${meta.id}`);
-  };
-  const newFolderHere = async () => {
-    const parent = isFolder ? item.path : dirname(item.path);
-    const f = await notes.createFolder(parent);
-    if (isFolder) node.open();
-    useUI.getState().requestRename(`f:${f.id}`);
-  };
-  const remove = async () => {
-    const what = isFolder ? `the folder "${item.name}" and everything in it` : `"${item.name}"`;
-    const ok = await confirmDialog({
-      title: "Move to trash?",
-      message: `This moves ${what} to the trash. You can restore it from Trash.`,
-      confirmLabel: "Move to trash",
-      destructive: true,
-    });
-    if (!ok) return;
-    if (isFolder) await notes.trashFolder(item.refId);
-    else await notes.trashNote(item.refId);
-  };
+  const flashing = useContext(FlashContext) === item.id;
+  const panelFolderId = useContext(PanelContext);
+  const inPanel = isFolder && panelFolderId === item.refId;
+  const setView = useUI((s) => s.setView);
 
   return (
     <ContextMenu>
@@ -216,17 +264,30 @@ function Row({ node, style, dragHandle }: NodeRendererProps<TreeItem>) {
           style={style}
           className={cn(
             "group flex h-full cursor-pointer items-center gap-1 rounded-sm pr-2 text-[13px]",
-            node.isSelected ? "bg-accent text-accent-foreground" : "hover:bg-muted",
+            node.isSelected ? "bg-accent text-accent-foreground" : inPanel ? "bg-muted/70 hover:bg-muted" : "hover:bg-muted",
             node.willReceiveDrop && "ring-1 ring-inset ring-ring",
+            flashing && "animate-[reveal-flash_1.2s_ease-out]",
           )}
           onClick={(e) => {
-            // Clicking a folder name opens its overview; only the arrow/icon expands or collapses it.
+            // Ctrl/⌘/Shift+click: let the tree extend the selection (it doesn't open anything).
+            if (e.ctrlKey || e.metaKey || e.shiftKey) return;
+            // Clicking a folder name shows it in the side panel; only the arrow/icon expands or collapses it.
             if (isFolder && !node.isEditing) {
               e.stopPropagation();
-              setView({ kind: "folder", id: item.refId });
+              node.select();
+              openFolder(item.refId);
             }
           }}
+          // Middle click: open the note in a tab (browsers would start auto-scrolling on mousedown).
+          onMouseDown={(e) => e.button === 1 && e.preventDefault()}
+          onAuxClick={(e) => {
+            if (e.button !== 1) return;
+            e.preventDefault();
+            if (isFolder) openFolder(item.refId);
+            else setView({ kind: "note", id: item.refId });
+          }}
           data-testid={`tree-${item.kind}-${item.name}`}
+          data-panel-open={inPanel || undefined}
         >
           {isFolder ? (
             <button
@@ -254,50 +315,14 @@ function Row({ node, style, dragHandle }: NodeRendererProps<TreeItem>) {
             </>
           )}
           {node.isEditing ? <RenameInput node={node} /> : <span className="truncate">{item.name}</span>}
+          {inPanel && !node.isEditing && (
+            <PanelRight className="ml-auto size-3.5 shrink-0 text-muted-foreground" aria-label="Shown in the side panel" data-testid="panel-marker" />
+          )}
         </div>
       </ContextMenuTrigger>
       {/* Don't hand focus back to the row on close: that would blur (and submit) the rename box. */}
       <ContextMenuContent onCloseAutoFocus={(e) => e.preventDefault()}>
-        <ContextMenuItem onSelect={newNoteHere}>
-          <FilePlus /> New note
-        </ContextMenuItem>
-        <ContextMenuItem onSelect={newFolderHere}>
-          <FolderPlus /> New folder
-        </ContextMenuItem>
-        {isFolder && (
-          <ContextMenuItem onSelect={() => openQuickAdd({ folderId: item.refId })}>
-            <ListTodo /> New todo in folder
-          </ContextMenuItem>
-        )}
-        <ContextMenuSeparator />
-        {isFolder && (
-          <ContextMenuSub>
-            <ContextMenuSubTrigger>
-              <Palette /> Color
-            </ContextMenuSubTrigger>
-            <ContextMenuSubContent className="w-56 p-1.5">
-              <ColorSwatches
-                value={ownColor}
-                onPick={(c) => void setFolderColor(item.refId, c)}
-                wrap={(el, key) => (
-                  <ContextMenuItemRaw key={key} asChild className="outline-none data-[highlighted]:ring-2 data-[highlighted]:ring-ring">
-                    {el}
-                  </ContextMenuItemRaw>
-                )}
-              />
-            </ContextMenuSubContent>
-          </ContextMenuSub>
-        )}
-        <ContextMenuItem onSelect={() => useUI.getState().requestRename(node.id)}>
-          <Pencil /> Rename
-        </ContextMenuItem>
-        <ContextMenuItem onSelect={() => revealInOs(item.path)}>
-          <ExternalLink /> Show in file explorer
-        </ContextMenuItem>
-        <ContextMenuSeparator />
-        <ContextMenuItem destructive onSelect={remove}>
-          <Trash2 /> Move to trash
-        </ContextMenuItem>
+        <ItemMenuItems item={item} onOpenFolder={() => isFolder && node.open()} />
       </ContextMenuContent>
     </ContextMenu>
   );

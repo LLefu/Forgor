@@ -1,9 +1,15 @@
 import { useState } from "react";
-import { FolderOpen, RefreshCw, CheckCircle2, Loader2, Download, RotateCw, Check, History } from "lucide-react";
+import { FolderOpen, RefreshCw, CheckCircle2, Loader2, Download, RotateCw, History } from "lucide-react";
 import { VersionHistoryDialog } from "./VersionHistoryDialog";
 import { ACCENTS } from "@/lib/accents";
-import { Tooltip } from "@/components/ui/tooltip";
-import { cn } from "@/lib/utils";
+import { SwatchGrid, type Swatch } from "@/components/ColorPicker";
+
+const ACCENT_SWATCHES: Swatch[] = ACCENTS.map((a) => ({
+  id: a.id,
+  label: a.label,
+  css: `light-dark(${a.light}, ${a.dark})`,
+  checkCss: `light-dark(#fff, ${a.darkForeground ?? "#fff"})`,
+}));
 import { format } from "date-fns";
 import { useUpdates } from "@/app/updates";
 import { confirmDialog } from "@/components/ConfirmDialog";
@@ -71,27 +77,8 @@ export function SettingsView({ platform }: { platform: Platform }) {
         </Row>
 
         <Row label="Highlight color" hint="Used for buttons, selections, links and the today marker.">
-          <div className="flex flex-wrap gap-2" role="radiogroup" aria-label="Highlight color" data-testid="accent-picker">
-            {ACCENTS.map((a) => {
-              const selected = settings.accent === a.id;
-              return (
-                <Tooltip key={a.id} content={a.label}>
-                  <button
-                    role="radio"
-                    aria-checked={selected}
-                    aria-label={a.label}
-                    onClick={() => update("accent", a.id)}
-                    className={cn(
-                      "flex size-7 items-center justify-center rounded-full ring-offset-2 ring-offset-background transition-transform hover:scale-110",
-                      selected && "ring-2 ring-foreground/60",
-                    )}
-                    style={{ background: `light-dark(${a.light}, ${a.dark})` }}
-                  >
-                    {selected && <Check className="size-4" style={{ color: `light-dark(#fff, ${a.darkForeground ?? "#fff"})` }} strokeWidth={3} />}
-                  </button>
-                </Tooltip>
-              );
-            })}
+          <div data-testid="accent-picker">
+            <SwatchGrid presets={ACCENT_SWATCHES} value={settings.accent} onPick={(id) => update("accent", id)} size="md" label="Highlight color" />
           </div>
         </Row>
 

@@ -95,19 +95,6 @@
   opacity: 1;
 }
 
-/* Wiki links */
-.note-editor .wikilink {
-  color: var(--primary);
-  text-decoration: underline;
-  text-decoration-color: color-mix(in srgb, var(--primary) 40%, transparent);
-  text-underline-offset: 3px;
-  cursor: pointer;
-}
-.note-editor .wikilink-missing {
-  color: var(--muted-foreground);
-  text-decoration-style: dashed;
-}
-
 /* ---- Contrast: slash menu, block handle, bullets and checkboxes ---- */
 .note-editor .milkdown .milkdown-slash-menu .menu-groups .menu-group li svg {
   color: color-mix(in srgb, var(--foreground) 80%, transparent);
@@ -163,4 +150,181 @@
 .note-editor .milkdown .milkdown-slash-menu .menu-groups .menu-group li,
 .note-editor .milkdown .milkdown-block-handle .operation-item {
   border-radius: 2px !important;
+}
+
+/* ---- "@" links (notes, todos, folders) and attachment links: colored text + icon, no background ---- */
+.note-editor .mention,
+.note-editor .file-link {
+  color: var(--primary);
+  cursor: pointer;
+}
+.note-editor a:has(.mention),
+.note-editor a:has(.file-link) {
+  text-decoration: none;
+}
+.note-editor .mention:hover,
+.note-editor .file-link:hover {
+  text-decoration: underline;
+  text-decoration-color: color-mix(in srgb, var(--primary) 50%, transparent);
+  text-underline-offset: 3px;
+}
+.note-editor .mention-missing {
+  color: var(--muted-foreground);
+  text-decoration: line-through;
+}
+.note-editor .link-icon {
+  display: inline-flex;
+  vertical-align: -2px;
+  width: 14px;
+  height: 15px;
+  margin-right: 2px;
+  color: var(--primary);
+  pointer-events: none;
+  user-select: none;
+}
+.note-editor .link-icon svg {
+  width: 13px;
+  height: 13px;
+  margin: auto 0;
+}
+
+/* ---- Embedded note ("Show entire note") ---- */
+.note-editor .note-embed-title {
+  margin-bottom: 0 !important;
+  padding: 6px 10px 2px;
+  border: 1px solid var(--border);
+  border-bottom: none;
+  border-radius: 4px 4px 0 0;
+  background: color-mix(in srgb, var(--muted) 50%, transparent);
+  font-weight: 600;
+}
+.note-editor .note-embed {
+  position: relative;
+  margin: 0 0 12px;
+  padding: 2px 14px 8px;
+  border: 1px solid var(--border);
+  border-top: none;
+  border-radius: 0 0 4px 4px;
+  background: color-mix(in srgb, var(--muted) 50%, transparent);
+  max-height: 480px;
+  overflow-y: auto;
+  cursor: default;
+}
+/* Crepe gives the editor a negative left margin (room for block handles); the embed has none. */
+.note-editor .note-embed .milkdown .ProseMirror,
+.note-editor .note-embed .ProseMirror {
+  margin: 0 !important;
+  padding: 0 !important;
+  font-size: 0.95em;
+}
+.note-editor .note-embed .ProseMirror > :first-child {
+  margin-top: 6px;
+}
+.note-editor .note-embed-bar {
+  float: right;
+  display: inline-flex;
+  gap: 4px;
+  margin-top: -1px;
+  font-weight: 400;
+}
+.note-editor .note-embed-bar button {
+  height: 22px;
+  padding: 0 8px;
+  border: 1px solid var(--border);
+  border-radius: 2px;
+  background: var(--background);
+  color: var(--muted-foreground);
+  font-size: 11.5px;
+  line-height: 20px;
+  cursor: pointer;
+}
+.note-editor .note-embed-bar button:hover {
+  color: var(--foreground);
+  background: var(--muted);
+}
+.note-editor .note-embed-empty {
+  color: var(--muted-foreground);
+  font-style: italic;
+}
+
+/* ---- Find in note ---- */
+.note-editor .find-match {
+  background: color-mix(in srgb, var(--warning) 35%, transparent);
+  border-radius: 1px;
+}
+.note-editor .find-current {
+  background: color-mix(in srgb, var(--warning) 80%, transparent);
+  color: var(--foreground);
+  outline: 1px solid color-mix(in srgb, var(--warning) 90%, black);
+}
+
+/* Our own (stroke) icons in the slash menu must not be filled. */
+.note-editor .milkdown .milkdown-slash-menu .menu-groups .menu-group li svg[fill="none"],
+.note-editor .milkdown .milkdown-slash-menu .menu-groups .menu-group li svg[fill="none"] path {
+  fill: none;
+  stroke: currentColor;
+}
+
+/* ---- Video / audio players under their link (MediaPlayer.tsx) ---- */
+.note-editor .media-player {
+  margin: 4px 0 12px;
+  cursor: default;
+}
+.note-editor .media-player video {
+  max-height: 70vh;
+}
+body.resizing-media,
+body.resizing-media * {
+  cursor: nwse-resize !important;
+  user-select: none !important;
+}
+/* Crepe's reset (".milkdown *", ".milkdown button") is unlayered, so it beats Tailwind's
+   layered utilities. Inside our React widgets, fall back to the utilities again. */
+.note-editor .milkdown .media-player *,
+.note-editor .milkdown .media-player button {
+  margin: revert-layer;
+  padding: revert-layer;
+  border: revert-layer;
+  background: revert-layer;
+  box-shadow: revert-layer;
+  box-sizing: border-box;
+}
+
+/* ---- Images: left-aligned, resized from the bottom-right corner like videos (imageResize.ts) ---- */
+.note-editor .milkdown .milkdown-image-block > .image-wrapper {
+  margin: 0;
+  max-width: 100%;
+}
+.note-editor .milkdown .milkdown-image-block > .image-wrapper > .image-resize-handle {
+  left: auto;
+  right: 0;
+  bottom: 0;
+  top: auto;
+  transform: none;
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  border-radius: 0;
+  background: none;
+  cursor: nwse-resize;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+.note-editor .milkdown .milkdown-image-block > .image-wrapper > .image-resize-handle::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: #fff;
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M14 6v8H6' fill='none' stroke='black' stroke-width='1.6'/%3E%3C/svg%3E") center / 16px no-repeat;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M14 6v8H6' fill='none' stroke='black' stroke-width='1.6'/%3E%3C/svg%3E") center / 16px no-repeat;
+  filter: drop-shadow(0 0 1px rgb(0 0 0 / 0.8));
+}
+.note-editor .milkdown .milkdown-image-block > .image-wrapper:hover > .image-resize-handle {
+  opacity: 1;
+}
+.note-editor .milkdown .milkdown-image-block > .image-wrapper > .image-resize-handle:hover {
+  cursor: nwse-resize;
+}
+.note-editor .milkdown .milkdown-image-block > .caption-input {
+  text-align: left;
 }

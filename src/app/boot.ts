@@ -2,9 +2,9 @@ import wasmUrl from "sql.js/dist/sql-wasm.wasm?url";
 import type { Platform, VaultFs } from "@/platform/types";
 import { createMemoryPlatform, MemoryVault } from "@/platform/memory";
 import { isTauri } from "@/platform/env";
-import { migrate } from "@/data/schema";
+import { migrate, waitForSchema } from "@/data/schema";
 import { loadSettings, saveSetting } from "@/data/settings";
-import { setCtx } from "@/data/context";
+import { emitChange, setCtx } from "@/data/context";
 import { syncVault } from "@/data/notes";
 import { archiveCompleted } from "@/data/todos";
 import type { Settings } from "@/data/types";
@@ -71,7 +71,10 @@ export function bootPopup(): Promise<Settings> {
 
 async function doBootPopup(): Promise<Settings> {
   const platform = await getPlatform();
-  await migrate(platform.sql);
+  // The main window owns migrations: running them from both windows at once
+  // raced ("duplicate column name"). The browser build has its own database.
+  if (platform.kind === "memory") await migrate(platform.sql);
+  else await waitForSchema(platform.sql);
   const settings = await loadSettings(platform.sql);
   if (platform.kind === "memory") {
     const vault = new MemoryVault();
@@ -96,7 +99,10 @@ async function activateVault(platform: Platform, vault: VaultFs, settings: Setti
   setCtx({ sql: platform.sql, vault });
   await syncVault();
   stopWatching?.();
-  stopWatching = await vault.watch(() => void syncVault());
+  stopWatching = await vault.watch(() => {
+    void syncVault();
+    emitChange("files"); // attachments added or removed outside the app
+  });
   await archiveCompleted(settings.archiveAfterDays);
   if (archiveTimer) clearInterval(archiveTimer);
   archiveTimer = setInterval(async () => {

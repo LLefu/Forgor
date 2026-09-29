@@ -68,7 +68,7 @@ export async function restoreTrashItem(id: string): Promise<void> {
     await syncVault();
   }
   await sql.execute(`DELETE FROM trash WHERE id = ?`, [id]);
-  emitChange("trash", "notes", "folders", "todos");
+  emitChange("trash", "notes", "folders", "todos", "files");
 }
 
 /** Permanently delete one trash entry (files, links, versions). */

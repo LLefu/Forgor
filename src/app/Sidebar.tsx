@@ -15,7 +15,9 @@ import {
   Plus,
   Moon,
   Monitor,
+  LocateFixed,
 } from "lucide-react";
+import { useResizableWidth } from "@/components/ResizeHandle";
 import { useUI, type View } from "./store";
 import { useUpdates } from "./updates";
 import { Download, ArrowLeft, ArrowRight } from "lucide-react";
@@ -27,7 +29,6 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Tooltip } from "@/components/ui/tooltip";
 import * as notes from "@/data/notes";
-import { dirname } from "@/lib/paths";
 import { shortcutLabel } from "@/lib/keys";
 
 export function Sidebar() {
@@ -54,14 +55,13 @@ export function Sidebar() {
     };
   }, [todos, settings.upcomingDays]);
 
-  /** Folder that new notes/folders go into: the one currently open (or containing the open note). */
-  const currentFolderPath = async () => {
-    if (view.kind === "folder") return notes.folderPathForId(view.id);
-    if (view.kind === "note") {
-      const meta = await notes.getNoteMeta(view.id);
-      return meta ? dirname(meta.path) : "";
-    }
-    return "";
+  const { width, handle } = useResizableWidth("sidebarWidth", { min: 200, max: 520, edge: "right" });
+
+  /** New notes/folders/todos go into the folder whose panel is open, else the top level. */
+  const currentFolderPath = async () => notes.folderPathForId(useUI.getState().selectedFolderId);
+  const newTodo = () => {
+    const folderId = useUI.getState().selectedFolderId;
+    openQuickAdd(folderId ? { folderId } : {});
   };
 
   const newNote = async () => {
@@ -78,8 +78,9 @@ export function Sidebar() {
   const ThemeIcon = { system: Monitor, light: Sun, dark: Moon }[settings.theme];
 
   return (
-    <aside className="flex h-full w-[260px] shrink-0 flex-col border-r bg-sidebar">
-      <div className="flex h-11 items-center justify-between px-2" data-tauri-drag-region>
+    <aside className="relative flex h-full shrink-0 flex-col border-r bg-sidebar" style={{ width }}>
+      {handle}
+      <div className="flex h-11 items-center justify-between px-2">
         <div className="flex items-center gap-1">
           <Tooltip content={`Back (Alt+←)`}>
             <Button size="icon" variant="ghost" onClick={goBack} disabled={!canBack} aria-label="Back" data-testid="nav-back">
@@ -94,7 +95,7 @@ export function Sidebar() {
           <span className="ml-1 text-sm font-semibold tracking-tight">Forgor</span>
         </div>
         <Tooltip content={`Add todo (${shortcutLabel("Mod+Shift+A")})`}>
-          <Button size="icon" variant="ghost" onClick={() => openQuickAdd()} aria-label="Add todo">
+          <Button size="icon" variant="ghost" onClick={newTodo} aria-label="Add todo">
             <Plus />
           </Button>
         </Tooltip>
@@ -129,6 +130,23 @@ export function Sidebar() {
           <Tooltip content="New folder">
             <Button size="icon-sm" variant="ghost" onClick={newFolder} aria-label="New folder">
               <FolderPlus />
+            </Button>
+          </Tooltip>
+          <Tooltip content="New todo">
+            <Button size="icon-sm" variant="ghost" onClick={newTodo} aria-label="New todo">
+              <ListTodo />
+            </Button>
+          </Tooltip>
+          <Tooltip content="Reveal the open note in the explorer">
+            <Button
+              size="icon-sm"
+              variant="ghost"
+              disabled={view?.kind !== "note"}
+              onClick={() => view?.kind === "note" && useUI.getState().revealInExplorer(`n:${view.id}`)}
+              aria-label="Reveal open note"
+              data-testid="reveal-note"
+            >
+              <LocateFixed />
             </Button>
           </Tooltip>
           <Tooltip content="Collapse all">
@@ -195,7 +213,7 @@ function NavItem({
 }) {
   const view = useUI((s) => s.view);
   const setView = useUI((s) => s.setView);
-  const active = view.kind === target.kind;
+  const active = view?.kind === target.kind;
   return (
     <button
       onClick={() => setView(target)}

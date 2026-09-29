@@ -3,7 +3,6 @@ import { bucketTodos, friendlyDate, shouldArchive, formatEstimate } from "./date
 import { nextOccurrence, presetToRRule, customRRule, describeRRule, occurrences } from "./recurrence";
 import { parseNote, stringifyNote } from "./frontmatter";
 import { assignTaskIds, parseTasks, setTaskChecked, setTaskText } from "./inlineTodos";
-import { extractWikiLinks, resolveWikiTarget } from "./wikilinks";
 import { cleanMarkdown } from "./markdown";
 import { isIgnoredPath, relativePath, resolvePath, sanitizeName, uniqueName } from "./paths";
 import type { Todo } from "@/data/types";
@@ -163,22 +162,6 @@ describe("inline todos", () => {
     expect(setTaskChecked(md, "abc123", false)!.split("\n")[2]).toBe("* [ ] Done thing ^t-abc123");
     expect(setTaskChecked(md, "abc123", true)).toBeNull();
     expect(setTaskText(md, "abc123", "Renamed")!.split("\n")[2]).toBe("* [x] Renamed ^t-abc123");
-  });
-});
-
-describe("wikilinks", () => {
-  it("extracts targets", () => {
-    expect(extractWikiLinks("See [[Plan]] and [[Clients/Acme|Acme]] and [[Plan#Goals]]")).toEqual(["Plan", "Clients/Acme"]);
-  });
-  it("resolves by path then title", () => {
-    const notes = [
-      { id: "1", path: "Plan.md", title: "Plan" },
-      { id: "2", path: "Clients/Acme.md", title: "Acme" },
-    ];
-    expect(resolveWikiTarget("plan", notes)).toBe("1");
-    expect(resolveWikiTarget("Clients/Acme", notes)).toBe("2");
-    expect(resolveWikiTarget("Acme", notes)).toBe("2");
-    expect(resolveWikiTarget("Nope", notes)).toBeNull();
   });
 });
 

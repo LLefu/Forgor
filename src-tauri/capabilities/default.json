@@ -17,6 +17,14 @@
     "opener:default",
     "opener:allow-reveal-item-in-dir",
     "opener:allow-open-url",
+    {
+      "identifier": "opener:allow-open-path",
+      "allow": [
+        {
+          "path": "**"
+        }
+      ]
+    },
     "sql:default",
     "sql:allow-execute",
     "dialog:default",

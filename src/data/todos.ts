@@ -4,7 +4,7 @@ import { newId, nowIso } from "@/lib/utils";
 import { addDaysStr, shouldArchive, todayStr } from "@/lib/dates";
 import { nextOccurrence } from "@/lib/recurrence";
 import { setTaskChecked, setTaskText } from "@/lib/inlineTodos";
-import { readNote, writeNoteBody } from "./notes";
+import { readNote, renameMentionsEverywhere, writeNoteBody } from "./notes";
 import { differenceInCalendarDays, parseISO } from "date-fns";
 
 interface TodoRow {
@@ -212,6 +212,7 @@ export async function updateTodo(id: string, patch: TodoPatch, opts: { fromNote?
   if (rest.title !== undefined && rest.title !== before.title && before.sourceNoteId && !opts.fromNote) {
     await pushToNote(before.sourceNoteId, (md) => setTaskText(md, id, rest.title!));
   }
+  if (rest.title !== undefined && rest.title !== before.title) await renameMentionsEverywhere(["todo"], id, rest.title);
   emitChange("todos");
   return getTodo(id);
 }

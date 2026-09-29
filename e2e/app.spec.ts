@@ -19,7 +19,7 @@ test("folder → note → inline todo → Today, Calendar and Search", async ({ 
   await page.keyboard.type("Client Y");
   await page.keyboard.press("Enter");
   await page.getByTestId("tree-folder-Client Y").click();
-  await expect(page.getByTestId("folder-view")).toContainText("Client Y");
+  await expect(page.getByTestId("folder-panel").getByTestId("folder-name")).toHaveValue("Client Y");
 
   // Create a note in it
   await page.getByRole("button", { name: "New note" }).first().click();
@@ -125,7 +125,7 @@ test("date & time pickers, folder colors and All tasks", async ({ page }) => {
   await page.getByRole("radio", { name: "Teal" }).click();
   const teal = "rgb(20, 184, 166)";
   await expect(page.getByTestId("tree-folder-Acme migration").locator("svg").nth(1)).toHaveCSS("color", teal);
-  await expect(page.getByTestId("folder-view").getByTestId("folder-label").first().locator("svg")).toHaveCSS("color", teal);
+  await expect(page.getByTestId("folder-panel").locator("svg.lucide-folder").first()).toHaveCSS("color", teal);
 
   // Right-click → Color picks a color AND closes the menu (it used to stay open and block the page)
   await page.getByTestId("tree-folder-Internal").click({ button: "right" });

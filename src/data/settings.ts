@@ -11,6 +11,9 @@ export const DEFAULT_SETTINGS: Settings = {
   allTasksSort: "due",
   allTasksShowDone: false,
   accent: DEFAULT_ACCENT,
+  customColors: [],
+  sidebarWidth: 260,
+  panelWidth: 400,
 };
 
 function navigatorIsMac() {

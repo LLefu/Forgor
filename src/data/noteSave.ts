@@ -1,6 +1,7 @@
 import { ctx, emitChange } from "./context";
 import { getNoteMeta, writeNoteBody } from "./notes";
-import { createTodo, getTodo, setDone, updateTodo } from "./todos";
+import { createTodo, getTodo, linkNote, setDone, updateTodo } from "./todos";
+import { extractMentions } from "@/lib/mentions";
 import { assignTaskIds, parseTasks } from "@/lib/inlineTodos";
 import { newId, nowIso } from "@/lib/utils";
 
@@ -41,6 +42,11 @@ export async function saveNote(noteId: string, body: string, opts: { assignIds?:
     if (todo.deletedAt) continue;
     if (todo.title !== task.text) await updateTodo(todo.id, { title: task.text }, { fromNote: true });
     if ((todo.status === "done") !== task.checked) await setDone(todo.id, task.checked, { fromNote: true });
+  }
+
+  // "@" links to todos also link the todo to this note (shown under Linked todos / Linked notes).
+  for (const m of extractMentions(finalBody)) {
+    if (m.kind === "todo" && (await getTodo(m.id))) await linkNote(m.id, noteId, { silent: true });
   }
 
   await maybeSnapshot(noteId);

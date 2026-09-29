@@ -2,6 +2,7 @@ import * as React from "react";
 import { Dialog as D } from "radix-ui";
 import { X } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { PortalContainerContext } from "./popover";
 
 export const Dialog = D.Root;
 export const DialogTrigger = D.Trigger;
@@ -13,10 +14,12 @@ export function DialogContent({
   title,
   ...props
 }: React.ComponentProps<typeof D.Content> & { title: string }) {
+  const [el, setEl] = React.useState<HTMLDivElement | null>(null);
   return (
     <D.Portal>
       <D.Overlay className="fixed inset-0 z-50 bg-black/40" />
       <D.Content
+        ref={setEl}
         className={cn(
           "fixed left-1/2 top-[12%] z-50 w-[520px] max-w-[calc(100vw-32px)] -translate-x-1/2 rounded border bg-popover p-4 shadow-xl outline-none",
           className,
@@ -30,7 +33,7 @@ export function DialogContent({
             <X className="size-4" />
           </D.Close>
         </div>
-        {children}
+        <PortalContainerContext.Provider value={el}>{children}</PortalContainerContext.Provider>
       </D.Content>
     </D.Portal>
   );

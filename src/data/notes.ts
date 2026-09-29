@@ -1,7 +1,7 @@
 import { ctx, emitChange } from "./context";
 import type { Folder, NoteMeta } from "./types";
 import { parseNote, stringifyNote } from "@/lib/frontmatter";
-import { extractWikiLinks } from "@/lib/wikilinks";
+import { extractMentions, renameMentions, type MentionKind } from "@/lib/mentions";
 import {
   ATTACHMENTS_DIR,
   TRASH_DIR,
@@ -96,7 +96,13 @@ async function writeIndex(row: Omit<NoteRow, "rid">): Promise<void> {
   await sql.execute(`DELETE FROM notes_fts WHERE docid = ?`, [rid]);
   await sql.execute(`INSERT INTO notes_fts (docid, title, content) VALUES (?, ?, ?)`, [rid, row.title, row.content]);
   await sql.execute(`DELETE FROM note_links WHERE source_id = ?`, [row.id]);
-  for (const target of extractWikiLinks(row.content)) {
+  // "@" note links are stored by id ("id:<noteId>").
+  const targets = [
+    ...extractMentions(row.content)
+      .filter((m) => m.kind === "note" || m.kind === "embed")
+      .map((m) => `id:${m.id}`),
+  ];
+  for (const target of targets) {
     await sql.execute(`INSERT OR IGNORE INTO note_links (source_id, target) VALUES (?, ?)`, [row.id, target]);
   }
 }
@@ -289,8 +295,27 @@ export async function renameNote(id: string, newTitle: string): Promise<NoteMeta
       : await uniqueName(dir, name, ".md", (p) => vault.exists(p));
   await vault.rename(meta.path, target);
   await updateNotePath(id, target);
+  // Keep "@" links to this note in sync: they show the new title.
+  const title = stripMd(basename(target));
+  await rewriteNotes(`forgor://`, (md) => renameMentions(md, ["note", "embed"], id, title), id);
   emitChange("notes");
   return getNoteMeta(id);
+}
+
+/** Update the text of "@" links to a renamed todo or folder in every note. */
+export async function renameMentionsEverywhere(kinds: MentionKind[], id: string, title: string): Promise<void> {
+  await rewriteNotes(`/${id})`, (md) => renameMentions(md, kinds, id, title));
+}
+
+/** Apply `transform` to every note whose content contains `needle` (null = leave unchanged). */
+async function rewriteNotes(needle: string, transform: (md: string) => string | null, skipId?: string) {
+  const rows = await ctx().sql.select<{ id: string }>(`SELECT id FROM notes WHERE instr(content, ?) > 0`, [needle]);
+  for (const { id } of rows) {
+    if (id === skipId) continue;
+    const note = await readNote(id);
+    const next = note && transform(note.body);
+    if (next !== null && next !== undefined) await writeNoteBody(id, next);
+  }
 }
 
 export async function moveNote(id: string, folderPath: string): Promise<NoteMeta | null> {
@@ -378,6 +403,7 @@ export async function relocateFolder(id: string, newPath: string): Promise<Folde
     likePrefix(oldPath) + "/%",
   ]);
   for (const n of notes) await sql.execute(`UPDATE notes SET path = ? WHERE id = ?`, [target + n.path.slice(oldPath.length), n.id]);
+  if (basename(target) !== basename(oldPath)) await renameMentionsEverywhere(["folder"], id, basename(target));
   emitChange("folders", "notes");
   return { id, path: target };
 }
@@ -439,19 +465,49 @@ export async function saveAttachment(noteId: string, fileName: string, data: Uin
   const ext = dot > 0 ? fileName.slice(dot).toLowerCase() : "";
   const path = await uniqueName(joinPath(dir, ATTACHMENTS_DIR), base, ext, (p) => vault.exists(p));
   await vault.writeBinary(path, data);
+  emitChange("files");
   return { rel: encodeURI(relativePath(dir, path)), path };
+}
+
+/** Files in a folder's _attachments folder (vault paths), sorted by name. */
+export async function listAttachments(folderPath: string): Promise<string[]> {
+  const dir = joinPath(folderPath, ATTACHMENTS_DIR);
+  return (await ctx().vault.list())
+    .filter((e) => !e.isDir && dirname(e.path) === dir)
+    .map((e) => e.path)
+    .sort((a, b) => basename(a).localeCompare(basename(b), undefined, { numeric: true }));
+}
+
+/** Notes that link to an attachment (by its file name). */
+export async function notesUsingFile(path: string): Promise<NoteMeta[]> {
+  const name = basename(path);
+  const rows = await ctx().sql.select<NoteRow>(`SELECT * FROM notes WHERE instr(content, ?) > 0 OR instr(content, ?) > 0`, [name, encodeURI(name)]);
+  return rows.map(toMeta);
+}
+
+/** Move an attachment to the trash (restorable from Trash). */
+export async function trashFile(path: string): Promise<void> {
+  const { vault, sql } = ctx();
+  const trashPath = joinPath(TRASH_DIR, `${stamp()}-${newId()}`, basename(path));
+  await vault.rename(path, trashPath);
+  await sql.execute(`INSERT INTO trash (id, kind, title, original_path, trash_path, deleted_at) VALUES (?, 'file', ?, ?, ?, ?)`, [
+    newId(),
+    basename(path),
+    path,
+    trashPath,
+    nowIso(),
+  ]);
+  emitChange("files", "trash");
 }
 
 // ---------------------------------------------------------------- backlinks
 
 export async function backlinks(noteId: string): Promise<NoteMeta[]> {
-  const meta = await getNoteMeta(noteId);
-  if (!meta) return [];
   const rows = await ctx().sql.select<NoteRow>(
     `SELECT DISTINCT n.* FROM note_links l JOIN notes n ON n.id = l.source_id
-     WHERE n.id != ? AND (lower(l.target) = lower(?) OR lower(l.target) = lower(?))
+     WHERE n.id != ? AND l.target = ?
      ORDER BY n.title COLLATE NOCASE`,
-    [noteId, meta.title, stripMd(meta.path)],
+    [noteId, `id:${noteId}`],
   );
   return rows.map(toMeta);
 }

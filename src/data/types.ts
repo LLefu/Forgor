@@ -75,7 +75,7 @@ export interface NoteVersion {
 
 export interface TrashItem {
   id: string;
-  kind: "note" | "folder" | "todo";
+  kind: "note" | "folder" | "todo" | "file";
   title: string;
   originalPath: string | null;
   trashPath: string | null;
@@ -92,4 +92,9 @@ export interface Settings {
   allTasksShowDone: boolean;
   /** Highlight color id, see lib/accents.ts. */
   accent: string;
+  /** User-added colors ("#rrggbb"), offered in every color picker. */
+  customColors: string[];
+  /** Widths (px) of the left sidebar and the right-hand detail panel. */
+  sidebarWidth: number;
+  panelWidth: number;
 }

@@ -1,9 +1,11 @@
 import type { Folder } from "@/data/types";
 import { dirname } from "./paths";
+import { isHex } from "./colors";
 
 /**
  * Folder colors. Mid-tone shades that read well on light and dark backgrounds.
  * A folder without its own color inherits the nearest ancestor's color.
+ * A color is either a preset id ("teal") or a custom "#rrggbb" (Settings.customColors).
  */
 export const FOLDER_COLORS = [
   { id: "red", label: "Red", hex: "#ef4444" },
@@ -17,11 +19,14 @@ export const FOLDER_COLORS = [
   { id: "violet", label: "Violet", hex: "#a855f7" },
   { id: "pink", label: "Pink", hex: "#ec4899" },
   { id: "brown", label: "Brown", hex: "#a16207" },
-  { id: "gray", label: "Gray", hex: "#71717a" },
 ] as const;
 
+/** No longer offered (its slot became the "add color" button), but folders may still use it. */
+const RETIRED: Record<string, string> = { gray: "#71717a" };
+
 export function colorHex(id: string | null | undefined): string | null {
-  return FOLDER_COLORS.find((c) => c.id === id)?.hex ?? null;
+  if (isHex(id)) return id as string;
+  return FOLDER_COLORS.find((c) => c.id === id)?.hex ?? (id ? (RETIRED[id] ?? null) : null);
 }
 
 /** Effective color of a folder: its own, else the nearest ancestor's, else null. */

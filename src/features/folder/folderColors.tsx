@@ -6,6 +6,7 @@ import { FOLDER_COLORS, effectiveFolderColor } from "@/lib/folderColors";
 import { basename } from "@/lib/paths";
 import { cn } from "@/lib/utils";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { SwatchGrid, type Swatch } from "@/components/ColorPicker";
 
 /** Effective (own or inherited) color of a folder, as a CSS color, or null. */
 export function useFolderColor(folderId: string | null | undefined): string | null {
@@ -44,9 +45,11 @@ export function FolderLabel({
   );
 }
 
+const FOLDER_SWATCHES: Swatch[] = FOLDER_COLORS.map((c) => ({ id: c.id, label: c.label, css: c.hex }));
+
 /**
- * Swatch grid; `value` null = no own color (inherits). Inside a menu, pass `wrap`
- * to make each swatch a menu item so choosing one also closes the menu.
+ * Folder color swatches (presets + custom colors + "add"); `value` null = no own
+ * color (inherits). Inside a menu, pass `wrap` so choosing one also closes the menu.
  */
 export function ColorSwatches({
   value,
@@ -58,33 +61,18 @@ export function ColorSwatches({
   wrap?: (el: React.ReactElement, key: string) => React.ReactNode;
 }) {
   return (
-    <div className="grid grid-cols-6 gap-1.5 p-1" role="radiogroup" aria-label="Folder color">
-      {FOLDER_COLORS.map((c) => wrap(
-        <button
-          key={c.id}
-          type="button"
-          role="radio"
-          aria-checked={value === c.id}
-          aria-label={c.label}
-          title={c.label}
-          onClick={() => onPick(c.id)}
-          className={cn("flex size-6 items-center justify-center rounded-full transition-transform hover:scale-110", value === c.id && "ring-2 ring-foreground/50 ring-offset-2 ring-offset-popover")}
-          style={{ background: c.hex }}
-        >
-          {value === c.id && <Check className="size-3.5 text-white" strokeWidth={3} />}
-        </button>,
-        c.id,
-      ))}
+    <div className="w-[212px]">
+      <SwatchGrid presets={FOLDER_SWATCHES} value={value} onPick={onPick} wrap={wrap} label="Folder color" />
       {wrap(
-      <button
-        key="none"
-        type="button"
-        onClick={() => onPick(null)}
-        className="col-span-6 mt-1 rounded-sm px-1 py-1 text-left text-xs text-muted-foreground hover:bg-muted hover:text-foreground"
-      >
-        {value ? "Remove color (use parent folder's)" : "No own color (uses parent folder's)"}
-      </button>,
-      "none",
+        <button
+          key="none"
+          type="button"
+          onClick={() => onPick(null)}
+          className="mt-1 w-full rounded-sm px-1 py-1 text-left text-xs text-muted-foreground hover:bg-muted hover:text-foreground"
+        >
+          {value ? "Remove color (use parent folder's)" : "No own color (uses parent folder's)"}
+        </button>,
+        "none",
       )}
     </div>
   );
@@ -104,7 +92,7 @@ export function FolderColorButton({ folderId }: { folderId: string }) {
           Color
         </button>
       </PopoverTrigger>
-      <PopoverContent className="w-56 p-1.5" align="end">
+      <PopoverContent className="w-auto p-1.5" align="end">
         <ColorSwatches
           value={own}
           onPick={(c) => {
@@ -143,7 +131,7 @@ export function FolderSelect({
       <PopoverTrigger asChild>
         <button
           type="button"
-          className={cn("inline-flex h-7 min-w-0 max-w-full items-center gap-1 rounded border border-transparent px-1.5 text-[13px] hover:border-input data-[state=open]:border-ring", className)}
+          className={cn("inline-flex h-7 min-w-0 max-w-full items-center justify-between gap-1 rounded border border-transparent px-1.5 text-[13px] hover:border-input data-[state=open]:border-ring", className)}
           data-testid={testId}
           aria-label="Folder"
         >

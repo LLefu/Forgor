@@ -17,7 +17,7 @@ export function useApplyTheme() {
       root.classList.toggle("dark", dark);
       const accent = getAccent(accentId);
       root.style.setProperty("--primary", dark ? accent.dark : accent.light);
-      root.style.setProperty("--primary-foreground", dark ? (accent.darkForeground ?? "#ffffff") : "#ffffff");
+      root.style.setProperty("--primary-foreground", dark ? (accent.darkForeground ?? "#ffffff") : (accent.lightForeground ?? "#ffffff"));
     };
     apply();
     mq.addEventListener("change", apply);

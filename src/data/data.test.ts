@@ -149,11 +149,11 @@ describe("note & folder CRUD", () => {
     expect((await notes.readNote(n.id))!.body).toBe("![shot](_attachments/shot.png) and [site](https://example.com)");
   });
 
-  it("computes backlinks from wiki links", async () => {
+  it("does not treat [[text]] as a link", async () => {
     const target = await notes.createNote("", "Roadmap");
     const src = await notes.createNote("", "Weekly");
-    await saveNote(src.id, "See [[roadmap]] for details");
-    expect((await notes.backlinks(target.id)).map((n) => n.title)).toEqual(["Weekly"]);
+    await saveNote(src.id, "See [[Roadmap]] for details");
+    expect(await notes.backlinks(target.id)).toEqual([]);
   });
 });
 
@@ -328,5 +328,38 @@ describe("trash & versions", () => {
     await restoreVersion(versions[0]);
     expect((await notes.readNote(n.id))!.body).toBe("first");
     expect((await listVersions(n.id)).map((v) => v.content)).toContain("second");
+  });
+});
+
+describe("@ links", () => {
+  it("keep their text in sync when the note, todo or folder is renamed; count as backlinks and todo links", async () => {
+    const f = await notes.createFolder("", "Clients");
+    const plan = await notes.createNote("Clients", "Plan");
+    const t = await todos.createTodo({ title: "Call Jan" });
+    const log = await notes.createNote("", "Log");
+    await saveNote(log.id, `See [Plan](forgor://note/${plan.id}), [Call Jan](forgor://todo/${t.id}) and [Clients](forgor://folder/${f.id}).\n\n[Plan](forgor://embed/${plan.id})`);
+
+    expect((await notes.backlinks(plan.id)).map((n) => n.title)).toEqual(["Log"]);
+    expect((await todos.notesForTodo(t.id)).map((n) => n.title)).toEqual(["Log"]);
+
+    await notes.renameNote(plan.id, "Master plan");
+    await todos.updateTodo(t.id, { title: "Call Jan [urgent]" });
+    await notes.relocateFolder(f.id, "Customers");
+    const body = (await notes.readNote(log.id))!.body;
+    expect(body).toContain(`[Master plan](forgor://note/${plan.id})`);
+    expect(body).toContain(`[Master plan](forgor://embed/${plan.id})`);
+    expect(body).toContain(String.raw`[Call Jan \[urgent\]](forgor://todo/` + t.id + ")");
+    expect(body).toContain(`[Customers](forgor://folder/${f.id})`);
+    expect((await notes.backlinks(plan.id)).map((n) => n.title)).toEqual(["Log"]);
+  });
+
+});
+
+describe("migrations from two windows", () => {
+  it("tolerate a column that an interrupted run already added", async () => {
+    await sql.execute(`UPDATE meta SET value = '2' WHERE key = 'schema_version'`); // v3 column exists already
+    await migrate(sql);
+    const [{ value }] = await sql.select<{ value: string }>(`SELECT value FROM meta WHERE key = 'schema_version'`);
+    expect(Number(value)).toBe(MIGRATIONS.length);
   });
 });

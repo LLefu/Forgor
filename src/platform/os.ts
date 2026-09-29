@@ -23,3 +23,15 @@ export async function openExternal(url: string) {
   const { openUrl } = await import("@tauri-apps/plugin-opener");
   await openUrl(url);
 }
+
+/** Open a vault file (e.g. an attachment) with its default app, like double-clicking it. */
+export async function openVaultFile(vaultPath: string) {
+  if (!isTauri()) {
+    window.open(ctx().vault.fileUrl(vaultPath), "_blank", "noopener");
+    return;
+  }
+  const { openPath } = await import("@tauri-apps/plugin-opener");
+  const root = ctx().vault.rootLabel;
+  const sep = root.includes("\\") ? "\\" : "/";
+  await openPath(root + sep + vaultPath.split("/").join(sep));
+}

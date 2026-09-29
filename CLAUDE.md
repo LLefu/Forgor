@@ -24,6 +24,18 @@ Tauri 2 desktop app (Windows + macOS), React 19 + TypeScript + Vite, Tailwind v4
 - Never use window.confirm/alert/prompt (unsupported in the macOS webview; lint forbids them). Use `confirmDialog()` from `components/ConfirmDialog.tsx`.
 - Explorer: the tree is sized to its rows; the space below and the "Notes" header are native drop zones (`features/explorer/move.ts`) that move items to the top level.
 - Checklists were merged into subtasks (schema v2 migrates old rows).
+- Only the main window runs migrations; the popup calls `waitForSchema` (both migrating at once caused "duplicate column name").
+- Tabs live in the UI store (`app/store.ts`, persisted in localStorage): notes get a tab each, pages share one; `setView` reuses an existing tab. Folders are not a view: `openFolder()` shows `FolderPanel` on the right. The todo and folder panels are exclusive (`openTodo` clears the folder and vice versa). All tabs can be closed (`view` is null → `NothingOpen`). Use `noteLinkProps()` (`app/noteLink.ts`) for anything that opens a note, so middle-click works.
+- "@" links are markdown links with id URLs: `[Title](forgor://note|embed|todo|folder/<id>)` (`lib/mentions.ts`). Renames rewrite the link text in all notes (`renameMentionsEverywhere`, `renameNote`); backlinks store them as `id:<noteId>`. Milkdown strips unknown schemes from the DOM href, so the editor reads the mark attrs (`features/editor/linkPlugins.ts`), not `a.href`.
+- `scripts/patch-crepe.mjs` (postinstall) patches Milkdown's built files: slash-menu `keywords` (so `/h1` works) and image blocks without a title (caption null crashed the note). It fails loudly if a target is gone. After changing it, delete `node_modules/.vite` (Vite caches the pre-bundled copy).
+- `[[wiki links]]` were removed on purpose (not standard markdown); "@" links replace them.
+- Popovers inside a `DialogContent` portal into the dialog (`PortalContainerContext`): Radix Dialog blocks wheel events outside itself.
+- The main window has native decorations: no `data-tauri-drag-region` (it needs a permission and errors on click).
+- Video/audio: a `[name.mp4](_attachments/… "width=480")` link alone in its paragraph gets our React player (`MediaPlayer.tsx`, mounted by `mediaWidget.tsx`); the width lives in the link title. Attachments trash as kind `file`.
+- Images resize from the corner via `features/editor/imageResize.ts`, which intercepts Crepe's handle and writes the same `ratio` attr Crepe uses.
+- Crepe's reset CSS (`.milkdown *`, `.milkdown button`) is unlayered and beats Tailwind utilities inside the editor; React widgets need the `revert-layer` rule in `editor.css`.
+- Colors: presets or custom `#rrggbb` (`settings.customColors`); every picker uses `SwatchGrid` from `components/ColorPicker.tsx`.
+- react-arborist `tree.get()` only finds visible rows; call `openParents(id)` first (reveal, rename).
 - FullCalendar is pinned to 6.1.x (the v7 React wrapper doesn't match the v6 plugins).
 
 ## Debugging the real desktop window

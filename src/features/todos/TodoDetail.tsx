@@ -35,6 +35,9 @@ import { PRIORITY_COLOR } from "./TodoRow";
 import { formatEstimate, friendlyDate, todayStr } from "@/lib/dates";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
+import { confirmDialog } from "@/components/ConfirmDialog";
+import { useResizableWidth } from "@/components/ResizeHandle";
+import { noteLinkProps } from "@/app/noteLink";
 
 export function TodoDetail() {
   const id = useUI((s) => s.selectedTodoId);
@@ -42,20 +45,14 @@ export function TodoDetail() {
   const { data: todo, isFetched } = useTodo(id);
 
   useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape" && !(e.target as HTMLElement).closest("input, textarea, [role=dialog]")) openTodo(null);
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [openTodo]);
-
-  useEffect(() => {
     if (isFetched && id && !todo) openTodo(null); // deleted elsewhere
   }, [isFetched, id, todo, openTodo]);
 
+  const { width, handle } = useResizableWidth("panelWidth", { min: 300, max: 720, edge: "left" });
   if (!id || !todo) return null;
   return (
-    <aside className="flex h-full w-[400px] shrink-0 flex-col border-l bg-background" data-testid="todo-detail">
+    <aside className="relative flex h-full shrink-0 flex-col border-l bg-background" style={{ width }} data-testid="todo-detail">
+      {handle}
       <DetailBody key={todo.id} todo={todo} />
     </aside>
   );
@@ -63,7 +60,6 @@ export function TodoDetail() {
 
 function DetailBody({ todo }: { todo: Todo }) {
   const openTodo = useUI((s) => s.openTodo);
-  const setView = useUI((s) => s.setView);
   const [title, setTitle] = useState(todo.title);
   const [description, setDescription] = useState(todo.description);
   useEffect(() => setTitle(todo.title), [todo.title]);
@@ -97,6 +93,13 @@ function DetailBody({ todo }: { todo: Todo }) {
               size="icon"
               variant="ghost"
               onClick={async () => {
+                const ok = await confirmDialog({
+                  title: "Delete todo?",
+                  message: `"${todo.title}"${todo.subtaskCount ? " and its subtasks" : ""} will be moved to the trash. You can restore it from Trash.`,
+                  confirmLabel: "Delete",
+                  destructive: true,
+                });
+                if (!ok) return;
                 await todos.deleteTodo(todo.id);
                 openTodo(null);
               }}
@@ -197,7 +200,7 @@ function DetailBody({ todo }: { todo: Todo }) {
         />
 
         {!todo.parentId && <Subtasks todo={todo} />}
-        <LinkedNotes todo={todo} onOpen={(id) => setView({ kind: "note", id })} />
+        <LinkedNotes todo={todo} />
 
         <p className="mt-8 text-[11px] text-muted-foreground">
           Created {format(new Date(todo.createdAt), "d MMM yyyy HH:mm")}
@@ -270,7 +273,7 @@ function Subtasks({ todo }: { todo: Todo }) {
   );
 }
 
-function LinkedNotes({ todo, onOpen }: { todo: Todo; onOpen: (id: string) => void }) {
+function LinkedNotes({ todo }: { todo: Todo }) {
   const { data: linked = [] } = useNotesForTodo(todo.id);
   return (
     <div>
@@ -293,7 +296,7 @@ function LinkedNotes({ todo, onOpen }: { todo: Todo; onOpen: (id: string) => voi
       {linked.map((n) => (
         <div key={n.id} className="group flex items-center gap-2 rounded px-1 py-1 hover:bg-muted/70">
           <FileText className="size-3.5 text-muted-foreground" />
-          <button className="flex-1 truncate text-left text-[13px] hover:underline" onClick={() => onOpen(n.id)}>
+          <button className="flex-1 truncate text-left text-[13px] hover:underline" {...noteLinkProps(n.id)}>
             {n.title}
             {todo.sourceNoteId === n.id && <span className="ml-2 text-[11px] text-muted-foreground">(created from this note)</span>}
           </button>

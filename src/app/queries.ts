@@ -35,5 +35,7 @@ export const useNotes = () => useQuery({ queryKey: ["notes"], queryFn: notes.lis
 export const useNoteMeta = (id: string) => useQuery({ queryKey: ["noteMeta", id], queryFn: () => notes.getNoteMeta(id) });
 export const useBacklinks = (id: string) => useQuery({ queryKey: ["backlinks", id], queryFn: () => notes.backlinks(id) });
 
+export const useAttachments = (folderPath: string) => useQuery({ queryKey: ["attachments", folderPath], queryFn: () => notes.listAttachments(folderPath) });
+
 export const useTrash = () => useQuery({ queryKey: ["trash"], queryFn: history.listTrash });
 export const useVersions = (noteId: string) => useQuery({ queryKey: ["versions", noteId], queryFn: () => history.listVersions(noteId) });

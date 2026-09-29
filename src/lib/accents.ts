@@ -3,6 +3,8 @@
  * mode, plus the text color that reads well on top of it. The softer
  * highlight backgrounds (--accent) are derived from --primary in index.css.
  */
+import { isHex, readableOn } from "./colors";
+
 export interface Accent {
   id: string;
   label: string;
@@ -10,6 +12,8 @@ export interface Accent {
   dark: string;
   /** Text on a solid primary button in dark mode (bright shades need dark text). */
   darkForeground?: string;
+  /** Text on a solid primary button in light mode (default white). */
+  lightForeground?: string;
 }
 
 export const ACCENTS: Accent[] = [
@@ -31,6 +35,8 @@ export const ACCENTS: Accent[] = [
 
 export const DEFAULT_ACCENT = "indigo";
 
+/** A preset id, or a custom "#rrggbb" (used as-is in both modes, with readable text on top). */
 export function getAccent(id: string): Accent {
+  if (isHex(id)) return { id, label: id, light: id, dark: id, lightForeground: readableOn(id), darkForeground: readableOn(id) };
   return ACCENTS.find((a) => a.id === id) ?? ACCENTS[0];
 }

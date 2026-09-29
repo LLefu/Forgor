@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
-import { ChevronRight, History, MoreHorizontal, Trash2, ExternalLink, Link2, FileText, ListTodo } from "lucide-react";
+import { ChevronRight, History, MoreHorizontal, Trash2, ExternalLink, Link2, FileText, ListTodo, LocateFixed } from "lucide-react";
 import { useUI } from "@/app/store";
-import { useBacklinks, useFolders, useNoteMeta, useNotes, useTodosForNote } from "@/app/queries";
+import { useBacklinks, useFolders, useNoteMeta, useTodosForNote } from "@/app/queries";
 import { onDataChange } from "@/data/context";
 import * as notes from "@/data/notes";
 import { saveNote } from "@/data/noteSave";
@@ -13,11 +13,12 @@ import { FolderLabel } from "@/features/folder/folderColors";
 import { TodoPicker } from "@/components/Pickers";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/menu";
-import { resolveWikiTarget } from "@/lib/wikilinks";
-import { dirname } from "@/lib/paths";
-import { revealInOs } from "@/platform/os";
+import { basename, dirname, stripMd } from "@/lib/paths";
+import { openVaultFile, revealInOs } from "@/platform/os";
+import { FindBar } from "./FindBar";
 import { format } from "date-fns";
-import { confirmDialog } from "@/components/ConfirmDialog";
+import { trashItem } from "@/features/explorer/ItemMenu";
+import { noteLinkProps } from "@/app/noteLink";
 
 const SAVE_DELAY = 600;
 
@@ -56,7 +57,6 @@ export function NoteView({ id }: { id: string }) {
 
 function LoadedNote({ id, initialBody }: { id: string; initialBody: string }) {
   const { data: meta } = useNoteMeta(id);
-  const { data: allNotes = [] } = useNotes();
   const setView = useUI((s) => s.setView);
   const editor = useRef<NoteEditorHandle>(null);
   const [historyOpen, setHistoryOpen] = useState(false);
@@ -106,23 +106,30 @@ function LoadedNote({ id, initialBody }: { id: string; initialBody: string }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
-  const openWikiLink = async (target: string) => {
-    const hit = resolveWikiTarget(target, allNotes);
-    if (hit) return setView({ kind: "note", id: hit });
-    const created = await notes.createNote(meta ? dirname(meta.path) : "", target);
-    setView({ kind: "note", id: created.id });
-  };
-
   if (meta === null) return <p className="p-8 text-sm text-muted-foreground">This note was moved to the trash or deleted.</p>;
   if (!meta) return null;
   return (
     <div className="flex h-full flex-col">
       <NoteToolbar meta={meta} onHistory={() => setHistoryOpen(true)} />
+      <FindBar editor={editor} />
       <div className="min-h-0 flex-1 overflow-y-auto" id="note-scroll">
         <div className="mx-auto max-w-[760px] px-10 pb-24">
           <TitleInput id={id} title={meta.title} onEnter={() => editor.current?.focus()} />
           <p className="mb-2 text-[11px] text-muted-foreground">Edited {format(new Date(meta.updatedAt), "d MMM yyyy, HH:mm")}</p>
-          <NoteEditor ref={editor} noteId={id} notePath={meta.path} initial={initialBody} onChange={onChange} onOpenWikiLink={openWikiLink} />
+          <NoteEditor
+            ref={editor}
+            noteId={id}
+            notePath={meta.path}
+            initial={initialBody}
+            onChange={onChange}
+            onOpenMention={(kind, target) => {
+              if (kind === "todo") useUI.getState().openTodo(target);
+              else if (kind === "folder") useUI.getState().openFolder(target);
+              else setView({ kind: "note", id: target });
+            }}
+            onCreateNote={(title) => notes.createNote(dirname(meta.path), title)}
+            onOpenFile={(path) => void openVaultFile(path)}
+          />
           <NoteFooter noteId={id} folderId={meta.folderId} />
         </div>
       </div>
@@ -183,7 +190,6 @@ function TitleInput({ id, title, onEnter }: { id: string; title: string; onEnter
 }
 
 function NoteToolbar({ meta, onHistory }: { meta: { id: string; path: string; folderId: string | null }; onHistory: () => void }) {
-  const setView = useUI((s) => s.setView);
   const { data: folders = [] } = useFolders();
   const { data: linked = [] } = useTodosForNote(meta.id);
   const segments = dirname(meta.path) ? dirname(meta.path).split("/") : [];
@@ -198,7 +204,7 @@ function NoteToolbar({ meta, onHistory }: { meta: { id: string; path: string; fo
           return (
             <span key={path} className="flex items-center gap-1">
               {i > 0 && <ChevronRight className="size-3" />}
-              <button className="flex min-w-0 items-center gap-1 hover:text-foreground" onClick={() => folder && setView({ kind: "folder", id: folder.id })}>
+              <button className="flex min-w-0 items-center gap-1 hover:text-foreground" onClick={() => folder && useUI.getState().openFolder(folder.id)}>
                 {folder ? <FolderLabel folderId={folder.id} /> : seg}
               </button>
             </span>
@@ -229,6 +235,9 @@ function NoteToolbar({ meta, onHistory }: { meta: { id: string; path: string; fo
             <DropdownMenuItem onSelect={onHistory}>
               <History /> Version history
             </DropdownMenuItem>
+            <DropdownMenuItem onSelect={() => useUI.getState().revealInExplorer(`n:${meta.id}`)}>
+              <LocateFixed /> Reveal in explorer
+            </DropdownMenuItem>
             <DropdownMenuItem onSelect={() => revealInOs(meta.path)}>
               <ExternalLink /> Show in file explorer
             </DropdownMenuItem>
@@ -236,15 +245,7 @@ function NoteToolbar({ meta, onHistory }: { meta: { id: string; path: string; fo
             <DropdownMenuItem
               destructive
               onSelect={async () => {
-                const ok = await confirmDialog({
-                  title: "Move to trash?",
-                  message: "You can restore it from Trash.",
-                  confirmLabel: "Move to trash",
-                  destructive: true,
-                });
-                if (!ok) return;
-                await notes.trashNote(meta.id);
-                setView({ kind: "today" });
+                if (!(await trashItem({ kind: "note", refId: meta.id, name: stripMd(basename(meta.path)) }))) return;
               }}
             >
               <Trash2 /> Move to trash
@@ -259,7 +260,6 @@ function NoteToolbar({ meta, onHistory }: { meta: { id: string; path: string; fo
 function NoteFooter({ noteId, folderId }: { noteId: string; folderId: string | null }) {
   const { data: linked = [] } = useTodosForNote(noteId);
   const { data: backlinks = [] } = useBacklinks(noteId);
-  const setView = useUI((s) => s.setView);
 
   return (
     <div className="mt-6 space-y-6 border-t pt-5">
@@ -281,7 +281,7 @@ function NoteFooter({ noteId, folderId }: { noteId: string; folderId: string | n
           />
         </div>
         {linked.length === 0 ? (
-          <p className="text-xs text-muted-foreground">No linked todos. Type “- [ ] something” in the note to create one.</p>
+          <p className="text-xs text-muted-foreground">No linked todos. Type “- [ ] something” to create one, or @ to link an existing one.</p>
         ) : (
           linked.map((t) => <TodoRow key={t.id} todo={t} />)
         )}
@@ -293,7 +293,7 @@ function NoteFooter({ noteId, folderId }: { noteId: string; folderId: string | n
           {backlinks.map((n) => (
             <button
               key={n.id}
-              onClick={() => setView({ kind: "note", id: n.id })}
+              {...noteLinkProps(n.id)}
               className="flex w-full items-center gap-2 rounded px-2 py-1 text-left text-[13px] hover:bg-muted"
             >
               <FileText className="size-3.5 text-muted-foreground" /> {n.title}

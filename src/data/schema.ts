@@ -91,10 +91,31 @@ export async function migrate(sql: SqlDriver): Promise<void> {
   const rows = await sql.select<{ value: string }>(`SELECT value FROM meta WHERE key = 'schema_version'`);
   const current = rows.length ? Number(rows[0].value) : 0;
   for (let v = current; v < MIGRATIONS.length; v++) {
-    for (const stmt of MIGRATIONS[v]) await sql.execute(stmt);
+    for (const stmt of MIGRATIONS[v]) {
+      try {
+        await sql.execute(stmt);
+      } catch (e) {
+        // An earlier interrupted run may already have added the column.
+        if (/duplicate column name/i.test(String(e))) continue;
+        throw e;
+      }
+    }
     await sql.execute(
       `INSERT INTO meta (key, value) VALUES ('schema_version', ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value`,
       [String(v + 1)],
     );
+  }
+}
+
+/** For secondary windows: wait until the main window has migrated (never migrate from two windows at once). */
+export async function waitForSchema(sql: SqlDriver, timeoutMs = 20_000): Promise<void> {
+  const start = Date.now();
+  for (;;) {
+    const rows = await sql
+      .select<{ value: string }>(`SELECT value FROM meta WHERE key = 'schema_version'`)
+      .catch(() => [] as { value: string }[]);
+    if (rows.length && Number(rows[0].value) >= MIGRATIONS.length) return;
+    if (Date.now() - start > timeoutMs) throw new Error("Open the main Forgor window first.");
+    await new Promise((r) => setTimeout(r, 250));
   }
 }

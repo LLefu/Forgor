@@ -1,4 +1,4 @@
-import { FileText, Folder, ListTodo, RotateCcw, Trash2 } from "lucide-react";
+import { FileText, Folder, ListTodo, Paperclip, RotateCcw, Trash2 } from "lucide-react";
 import { format, formatDistanceToNow } from "date-fns";
 import { useArchived, useTrash } from "@/app/queries";
 import { emptyTrash, purgeTrashItem, restoreTrashItem } from "@/data/history";
@@ -9,7 +9,7 @@ import { Tooltip } from "@/components/ui/tooltip";
 import { useUI } from "@/app/store";
 import { confirmDialog } from "@/components/ConfirmDialog";
 
-const ICONS = { note: FileText, folder: Folder, todo: ListTodo };
+const ICONS = { note: FileText, folder: Folder, todo: ListTodo, file: Paperclip };
 
 export function TrashView() {
   const { data: items = [] } = useTrash();

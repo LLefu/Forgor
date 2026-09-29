@@ -6,7 +6,12 @@ import { AllTasks } from "@/features/todos/AllTasks";
 import { TodoDetail } from "@/features/todos/TodoDetail";
 import { QuickAddDialog } from "@/features/todos/QuickAdd";
 import { NoteView } from "@/features/editor/NoteView";
-import { FolderView } from "@/features/folder/FolderView";
+import { FolderPanel } from "@/features/folder/FolderPanel";
+import { TabBar } from "./TabBar";
+import { NothingOpen } from "./NothingOpen";
+import { SearchOverlay } from "@/features/search/SearchOverlay";
+import { AddColorDialogHost } from "@/components/ColorPicker";
+import { AttachmentPickerHost } from "@/components/AttachmentPicker";
 import { CalendarView } from "@/features/calendar/CalendarView";
 import { SearchView } from "@/features/search/SearchView";
 import { TrashView, ArchiveView } from "@/features/history/TrashView";
@@ -32,7 +37,29 @@ export function Shell({ platform }: { platform: Platform }) {
   // App-wide keyboard shortcuts
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (matches(e, "Mod+K")) {
+      if (matches(e, "Mod+Shift+F")) {
+        e.preventDefault();
+        useUI.getState().setSearchOverlay(true);
+      } else if (matches(e, "Mod+F")) {
+        e.preventDefault();
+        // In a note: find in that note. Elsewhere: search everything.
+        if (useUI.getState().view?.kind === "note") window.dispatchEvent(new Event("find-in-note"));
+        else useUI.getState().setSearchOverlay(true);
+      } else if (matches(e, "Mod+W")) {
+        e.preventDefault();
+        const ui = useUI.getState();
+        if (ui.activeTab) ui.closeTab(ui.activeTab);
+      } else if (matches(e, "Mod+Tab") || matches(e, "Mod+Shift+Tab")) {
+        e.preventDefault();
+        const ui = useUI.getState();
+        if (!ui.tabs.length) return;
+        const i = ui.tabs.findIndex((t) => t.id === ui.activeTab);
+        const next = ui.tabs[(i + (e.shiftKey ? -1 : 1) + ui.tabs.length) % ui.tabs.length];
+        ui.activateTab(next.id);
+      } else if (e.key === "Escape" && !e.defaultPrevented && !(e.target as HTMLElement).closest("input, textarea, [role=dialog], [role=menu]")) {
+        // Close the right-hand panel: the todo first (it sits on top of a folder), then the folder.
+        useUI.getState().closePanel();
+      } else if (matches(e, "Mod+K")) {
         e.preventDefault();
         setView({ kind: "search" });
         setTimeout(() => window.dispatchEvent(new Event("focus-search")), 0);
@@ -99,13 +126,19 @@ export function Shell({ platform }: { platform: Platform }) {
     <TooltipProvider>
       <div className="flex h-full">
         <Sidebar />
-        <main className="min-w-0 flex-1 overflow-y-auto" data-testid="main">
-          <MainView platform={platform} />
-        </main>
-        <TodoDetail />
+        <div className="flex min-w-0 flex-1 flex-col">
+          <TabBar />
+          <main className="min-h-0 flex-1 overflow-y-auto" data-testid="main">
+            <MainView platform={platform} />
+          </main>
+        </div>
+        <RightPanel />
       </div>
       <QuickAddDialog />
+      <SearchOverlay />
       <ConfirmDialogHost />
+      <AddColorDialogHost />
+      <AttachmentPickerHost />
       <ToastHost />
     </TooltipProvider>
   );
@@ -113,6 +146,7 @@ export function Shell({ platform }: { platform: Platform }) {
 
 function MainView({ platform }: { platform: Platform }) {
   const view = useUI((s) => s.view);
+  if (!view) return <NothingOpen />;
   switch (view.kind) {
     case "inbox":
     case "today":
@@ -130,8 +164,15 @@ function MainView({ platform }: { platform: Platform }) {
     case "settings":
       return <SettingsView platform={platform} />;
     case "note":
-      return <NoteView id={view.id} />;
-    case "folder":
-      return <FolderView id={view.id} />;
+      return <NoteView key={view.id} id={view.id} />;
   }
+}
+
+/** Todo details, or (underneath) the open folder. */
+function RightPanel() {
+  const todoId = useUI((s) => s.selectedTodoId);
+  const folderId = useUI((s) => s.selectedFolderId);
+  if (todoId) return <TodoDetail />;
+  if (folderId) return <FolderPanel id={folderId} />;
+  return null;
 }
