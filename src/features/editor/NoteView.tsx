@@ -9,6 +9,7 @@ import { createTodo, linkNote } from "@/data/todos";
 import { NoteEditor, type NoteEditorHandle } from "./NoteEditor";
 import { HistoryDialog } from "@/features/history/HistoryDialog";
 import { TodoRow } from "@/features/todos/TodoRow";
+import { FolderLabel } from "@/features/folder/folderColors";
 import { TodoPicker } from "@/components/Pickers";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/menu";
@@ -197,8 +198,8 @@ function NoteToolbar({ meta, onHistory }: { meta: { id: string; path: string; fo
           return (
             <span key={path} className="flex items-center gap-1">
               {i > 0 && <ChevronRight className="size-3" />}
-              <button className="truncate hover:text-foreground" onClick={() => folder && setView({ kind: "folder", id: folder.id })}>
-                {seg}
+              <button className="flex min-w-0 items-center gap-1 hover:text-foreground" onClick={() => folder && setView({ kind: "folder", id: folder.id })}>
+                {folder ? <FolderLabel folderId={folder.id} /> : seg}
               </button>
             </span>
           );

@@ -9,6 +9,7 @@ import { compareTodos, isOpen } from "@/lib/dates";
 import { basename, dirname } from "@/lib/paths";
 import * as notes from "@/data/notes";
 import { Button } from "@/components/ui/button";
+import { FolderColorButton, FolderLabel, useFolderColor } from "./folderColors";
 import { format } from "date-fns";
 
 /** A folder is a project: its todos and notes on one page. */
@@ -18,6 +19,7 @@ export function FolderView({ id }: { id: string }) {
   const { data: todos = [] } = useTodos();
   const setView = useUI((s) => s.setView);
   const folder = folders.find((f) => f.id === id);
+  const color = useFolderColor(id);
 
   const data = useMemo(() => {
     if (!folder) return null;
@@ -53,17 +55,24 @@ export function FolderView({ id }: { id: string }) {
           })}
         </div>
       )}
-      <PageHeader title={basename(folder.path)} subtitle={`${data.open.length} open ${data.open.length === 1 ? "todo" : "todos"} · ${data.notes.length} ${data.notes.length === 1 ? "note" : "notes"}`}>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={async () => {
-            const n = await notes.createNote(folder.path);
-            setView({ kind: "note", id: n.id });
-          }}
-        >
-          <FilePlus /> New note
-        </Button>
+      <PageHeader
+        title={basename(folder.path)}
+        icon={<Folder className="size-5 shrink-0" style={color ? { color, fill: `color-mix(in srgb, ${color} 25%, transparent)` } : { color: "var(--muted-foreground)" }} />}
+        subtitle={`${data.open.length} open ${data.open.length === 1 ? "todo" : "todos"} · ${data.notes.length} ${data.notes.length === 1 ? "note" : "notes"}`}
+      >
+        <div className="flex items-center gap-2">
+          <FolderColorButton folderId={folder.id} />
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={async () => {
+              const n = await notes.createNote(folder.path);
+              setView({ kind: "note", id: n.id });
+            }}
+          >
+            <FilePlus /> New note
+          </Button>
+        </div>
       </PageHeader>
       <div className="px-6">
         <Section title="Todos" count={data.open.length}>
@@ -77,7 +86,7 @@ export function FolderView({ id }: { id: string }) {
           <Section title="Notes" count={data.notes.length}>
             {data.subfolders.map((f) => (
               <button key={f.id} onClick={() => setView({ kind: "folder", id: f.id })} className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-[13.5px] hover:bg-muted">
-                <Folder className="size-4 text-muted-foreground" /> {basename(f.path)}
+                <FolderLabel folderId={f.id} className="[&_svg]:size-4" />
               </button>
             ))}
             {data.notes.map((n) => (

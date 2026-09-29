@@ -8,6 +8,8 @@ export const DEFAULT_SETTINGS: Settings = {
   hotkey: navigatorIsMac() ? "CommandOrControl+Shift+Space" : "Control+Alt+Space",
   vaultPath: null,
   upcomingDays: 14,
+  allTasksSort: "due",
+  allTasksShowDone: false,
   accent: DEFAULT_ACCENT,
 };
 

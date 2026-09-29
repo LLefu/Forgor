@@ -40,7 +40,12 @@ const toMeta = (r: NoteRow): NoteMeta => ({
 // ---------------------------------------------------------------- queries
 
 export async function listFolders(): Promise<Folder[]> {
-  return ctx().sql.select<Folder>(`SELECT id, path FROM folders ORDER BY path COLLATE NOCASE`);
+  return ctx().sql.select<Folder>(`SELECT id, path, color FROM folders ORDER BY path COLLATE NOCASE`);
+}
+
+export async function setFolderColor(id: string, color: string | null): Promise<void> {
+  await ctx().sql.execute(`UPDATE folders SET color = ? WHERE id = ?`, [color, id]);
+  emitChange("folders", "todos");
 }
 
 export async function listNotes(): Promise<NoteMeta[]> {

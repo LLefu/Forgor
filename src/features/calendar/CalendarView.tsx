@@ -5,7 +5,8 @@ import timeGridPlugin from "@fullcalendar/timegrid";
 import interactionPlugin from "@fullcalendar/interaction";
 import type { EventDropArg, EventInput } from "@fullcalendar/core";
 import type { EventResizeDoneArg, DateClickArg } from "@fullcalendar/interaction";
-import { useTodos } from "@/app/queries";
+import { useFolders, useTodos } from "@/app/queries";
+import { effectiveFolderColor } from "@/lib/folderColors";
 import { useUI } from "@/app/store";
 import { updateTodo } from "@/data/todos";
 import { toDateStr, todayStr } from "@/lib/dates";
@@ -17,6 +18,7 @@ const COLORS: Record<number, string> = { 1: "var(--p1)", 2: "var(--p2)", 3: "var
 /** Month/week calendar of todos by due date. Drag to reschedule, click to open. */
 export function CalendarView() {
   const { data: todos = [] } = useTodos();
+  const { data: folders = [] } = useFolders();
   const openTodo = useUI((s) => s.openTodo);
   const openQuickAdd = useUI((s) => s.openQuickAdd);
   const calRef = useRef<InstanceType<typeof FullCalendar>>(null);
@@ -42,10 +44,10 @@ export function CalendarView() {
             backgroundColor: "transparent",
             borderColor: COLORS[t.priority],
             textColor: "var(--foreground)",
-            extendedProps: { priority: t.priority },
+            extendedProps: { priority: t.priority, folderColor: effectiveFolderColor(t.folderId, folders) },
           };
         }),
-    [todos, today],
+    [todos, today, folders],
   );
 
   const onDrop = async (arg: EventDropArg | EventResizeDoneArg) => {
@@ -88,6 +90,15 @@ export function CalendarView() {
         eventResize={onDrop}
         dateClick={(info: DateClickArg) => openQuickAdd({ dueDate: toDateStr(info.date) })}
         weekNumbers
+        eventContent={(arg) => (
+          <div className="flex min-w-0 items-center gap-1 overflow-hidden">
+            {arg.event.extendedProps.folderColor && (
+              <span className="size-2 shrink-0 rounded-full" style={{ background: arg.event.extendedProps.folderColor }} data-testid="event-folder-dot" />
+            )}
+            {arg.timeText && <span className="fc-event-time shrink-0">{arg.timeText}</span>}
+            <span className="fc-event-title truncate">{arg.event.title}</span>
+          </div>
+        )}
         weekNumberCalculation="ISO"
         weekText="W"
       />

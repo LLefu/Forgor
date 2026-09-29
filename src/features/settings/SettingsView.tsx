@@ -103,14 +103,6 @@ export function SettingsView({ platform }: { platform: Platform }) {
           />
         </Row>
 
-        <Row label="Upcoming shows">
-          <Select<string>
-            value={String(settings.upcomingDays)}
-            onChange={(v) => update("upcomingDays", Number(v))}
-            options={[7, 14, 30, 60].map((d) => ({ value: String(d), label: `Next ${d} days` }))}
-          />
-        </Row>
-
         <Row
           label="Global shortcut"
           hint={`Opens the quick menu from anywhere, even when the app is in the background. Format: ${isMac ? "CommandOrControl+Shift+Space" : "Control+Alt+Space"}.${platform.kind !== "tauri" ? " (Desktop app only.)" : ""}`}

@@ -82,6 +82,8 @@ export const MIGRATIONS: string[][] = [
      SELECT rid, title, description FROM todos WHERE id IN (SELECT id FROM checklist_items)`,
     `DROP TABLE checklist_items`,
   ],
+  // v3: folder colors (null = inherit from the parent folder / none)
+  [`ALTER TABLE folders ADD COLUMN color TEXT`],
 ];
 
 export async function migrate(sql: SqlDriver): Promise<void> {

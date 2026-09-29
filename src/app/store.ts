@@ -5,7 +5,7 @@ import { DEFAULT_SETTINGS, saveSetting } from "@/data/settings";
 import { ctx } from "@/data/context";
 
 export type View =
-  | { kind: "inbox" | "today" | "upcoming" | "calendar" | "search" | "archive" | "trash" | "settings" }
+  | { kind: "inbox" | "today" | "all" | "calendar" | "search" | "archive" | "trash" | "settings" }
   | { kind: "note"; id: string }
   | { kind: "folder"; id: string };
 

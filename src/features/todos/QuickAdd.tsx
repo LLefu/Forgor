@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
 import { useUI } from "@/app/store";
-import { useFolders } from "@/app/queries";
 import { createTodo } from "@/data/todos";
 import type { Priority } from "@/data/types";
 import { PRIORITY_LABELS } from "@/data/types";
@@ -8,6 +7,8 @@ import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input, Textarea } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
+import { DatePicker, TimePicker } from "@/components/DateTimePickers";
+import { FolderSelect } from "@/features/folder/folderColors";
 import { addDaysStr, todayStr } from "@/lib/dates";
 
 export function QuickAddDialog() {
@@ -37,7 +38,6 @@ export function QuickAddForm({
   onDone: (id?: string) => void;
   autoFocus?: boolean;
 }) {
-  const { data: folders = [] } = useFolders();
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [dueDate, setDueDate] = useState<string>(defaults.dueDate ?? "");
@@ -73,8 +73,11 @@ export function QuickAddForm({
       <Input autoFocus={autoFocus} value={title} onChange={(e) => setTitle(e.target.value)} placeholder="What needs doing?" className="h-9 text-[15px]" aria-label="Title" />
       <Textarea value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Description (optional)" rows={2} className="resize-none" />
       <div className="flex flex-wrap items-center gap-2">
-        <input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} className="h-8 rounded border border-input bg-transparent px-2 text-sm" aria-label="Due date" />
-        {dueDate && <input type="time" value={dueTime} onChange={(e) => setDueTime(e.target.value)} className="h-8 rounded border border-input bg-transparent px-2 text-sm" aria-label="Due time" />}
+        <DatePicker value={dueDate || null} onChange={(v) => setDueDate(v ?? "")} className="h-8 border-input" aria-label="Due date" testId="quick-due" />
+        {dueDate && <TimePicker value={dueTime || null} onChange={(v) => setDueTime(v ?? "")} />}
+        <Button type="button" size="sm" variant={!dueDate ? "secondary" : "ghost"} onClick={() => setDueDate("")}>
+          No date
+        </Button>
         <Button type="button" size="sm" variant={dueDate === today ? "secondary" : "ghost"} onClick={() => setDueDate(today)}>
           Today
         </Button>
@@ -89,13 +92,7 @@ export function QuickAddForm({
           options={([1, 2, 3, 4] as Priority[]).map((p) => ({ value: String(p), label: PRIORITY_LABELS[p] }))}
           aria-label="Priority"
         />
-        <Select<string>
-          value={folderId}
-          onChange={setFolderId}
-          options={[{ value: "", label: "Inbox" }, ...folders.map((f) => ({ value: f.id, label: f.path }))]}
-          className="min-w-0 flex-1"
-          aria-label="Folder"
-        />
+        <FolderSelect value={folderId || null} onChange={(id) => setFolderId(id ?? "")} className="h-8 min-w-0 flex-1 border-input" testId="quick-folder" />
       </div>
       <div className="flex justify-end gap-2 pt-1">
         <Button type="button" variant="ghost" onClick={() => onDone()}>

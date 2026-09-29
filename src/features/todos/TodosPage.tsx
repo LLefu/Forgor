@@ -2,18 +2,21 @@ import { useMemo, useState } from "react";
 import { Plus, ChevronDown } from "lucide-react";
 import { useTodos } from "@/app/queries";
 import { useUI } from "@/app/store";
-import { bucketTodos, compareTodos, friendlyDate, isOpen, todayStr } from "@/lib/dates";
+import { bucketTodos, isOpen, todayStr } from "@/lib/dates";
 import type { Todo } from "@/data/types";
 import { TodoRow } from "./TodoRow";
 import { InlineAdd } from "./InlineAdd";
 import { cn } from "@/lib/utils";
-import { format, parseISO } from "date-fns";
+import { format } from "date-fns";
 
-export function PageHeader({ title, subtitle, children }: { title: string; subtitle?: string; children?: React.ReactNode }) {
+export function PageHeader({ title, subtitle, icon, children }: { title: string; subtitle?: string; icon?: React.ReactNode; children?: React.ReactNode }) {
   return (
     <header className="flex items-end justify-between gap-4 px-8 pb-3 pt-7">
-      <div>
-        <h1 className="text-xl font-semibold tracking-tight">{title}</h1>
+      <div className="min-w-0">
+        <h1 className="flex items-center gap-2 text-xl font-semibold tracking-tight">
+          {icon}
+          <span className="truncate">{title}</span>
+        </h1>
         {subtitle && <p className="mt-0.5 text-xs text-muted-foreground">{subtitle}</p>}
       </div>
       {children}
@@ -27,8 +30,11 @@ export function Section({
   tone,
   children,
   collapsible,
+  heading,
 }: {
   title: string;
+  /** Custom heading content (e.g. a colored folder label); replaces `title` visually. */
+  heading?: React.ReactNode;
   count?: number;
   tone?: "danger";
   children: React.ReactNode;
@@ -43,7 +49,7 @@ export function Section({
         disabled={!collapsible}
       >
         {collapsible && <ChevronDown className={cn("size-3.5 transition-transform", !open && "-rotate-90")} />}
-        {title}
+        {heading ?? title}
         {count !== undefined && <span className="font-normal text-muted-foreground">{count}</span>}
       </button>
       {open && children}
@@ -55,7 +61,7 @@ function Empty({ children }: { children: React.ReactNode }) {
   return <p className="px-2 py-6 text-center text-sm text-muted-foreground">{children}</p>;
 }
 
-export function TodosPage({ kind }: { kind: "inbox" | "today" | "upcoming" }) {
+export function TodosPage({ kind }: { kind: "inbox" | "today" }) {
   const { data: todos = [] } = useTodos();
   const upcomingDays = useUI((s) => s.settings.upcomingDays);
   const today = todayStr();
@@ -115,30 +121,7 @@ export function TodosPage({ kind }: { kind: "inbox" | "today" | "upcoming" }) {
     );
   }
 
-  // Upcoming
-  const noDate = todos.filter((t) => isOpen(t) && !t.parentId && !t.dueDate && !t.startDate && t.folderId);
-  return (
-    <div className="mx-auto max-w-3xl pb-16">
-      <PageHeader title="Upcoming" subtitle={`Next ${upcomingDays} days`} />
-      <div className="px-6">
-        {buckets.upcoming.length === 0 && <Empty>Nothing scheduled in the next {upcomingDays} days.</Empty>}
-        {buckets.upcoming.map((g) => (
-          <Section key={g.date} title={`${friendlyDate(g.date, today)} · ${format(parseISO(g.date), "d MMM")}`} count={g.todos.length}>
-            {g.todos.map((t) => (
-              <TodoRow key={t.id} todo={t} showDate={false} />
-            ))}
-          </Section>
-        ))}
-        {noDate.length > 0 && (
-          <Section title="Someday (no date)" count={noDate.length} collapsible>
-            {noDate.sort(compareTodos).map((t) => (
-              <TodoRow key={t.id} todo={t} />
-            ))}
-          </Section>
-        )}
-      </div>
-    </div>
-  );
+  return null;
 }
 
 function inboxOrder(a: Todo, b: Todo) {

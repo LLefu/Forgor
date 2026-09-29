@@ -42,7 +42,9 @@ test("folder → note → inline todo → Today, Calendar and Search", async ({ 
   await linked.getByTestId("todo-row").click();
   const detail = page.getByTestId("todo-detail");
   await expect(detail.getByTestId("detail-title")).toHaveValue("Draft the proposal");
-  await detail.getByRole("button", { name: "Today" }).first().click();
+  await detail.getByTestId("due-date").click();
+  await page.getByTestId("date-picker").getByRole("button", { name: "Today", exact: true }).click();
+  await expect(detail.getByTestId("due-date")).toContainText("Today");
 
   // It shows up in Today, with the note badge
   await page.getByTestId("nav-today").click();
@@ -91,4 +93,50 @@ test("theme toggle switches to dark mode", async ({ page }) => {
   await page.getByRole("button", { name: "Toggle theme" }).click(); // system → light
   await page.getByRole("button", { name: "Toggle theme" }).click(); // light → dark
   await expect(html).toHaveClass(/dark/);
+});
+
+test("date & time pickers, folder colors and All tasks", async ({ page }) => {
+  await page.goto("/");
+  // Custom date picker: opens, closes on an outside click, sets and clears a date.
+  await page.getByTestId("nav-inbox").click();
+  await page.locator('[data-testid="todo-row"][data-title="Read architecture RFC"]').click();
+  const detail = page.getByTestId("todo-detail");
+  await detail.getByTestId("due-date").click();
+  await expect(page.getByTestId("date-picker")).toBeVisible();
+  await page.mouse.click(600, 700); // outside
+  await expect(page.getByTestId("date-picker")).toHaveCount(0);
+  await detail.getByTestId("due-date").click();
+  await page.getByTestId("date-picker").getByRole("button", { name: "Tomorrow" }).click();
+  await expect(detail.getByTestId("due-date")).toContainText("Tomorrow");
+  // Time picker: type a time
+  await detail.getByTestId("due-time").click();
+  await page.getByTestId("time-picker").getByLabel("Type a time").fill("930");
+  await page.keyboard.press("Enter");
+  await expect(detail.getByTestId("due-time")).toHaveText("09:30");
+  // ...and "No date" removes it again
+  await detail.getByTestId("due-date").click();
+  await page.getByTestId("date-picker").getByRole("button", { name: "No date" }).click();
+  await expect(detail.getByTestId("due-date")).toHaveText("No date");
+  await page.keyboard.press("Escape");
+
+  // Folder color: set it on the folder page, see it in the explorer and on todo rows
+  await page.getByTestId("tree-folder-Acme migration").locator("span.truncate").click();
+  await page.getByTestId("folder-color-button").click();
+  await page.getByRole("radio", { name: "Teal" }).click();
+  const teal = "rgb(20, 184, 166)";
+  await expect(page.getByTestId("tree-folder-Acme migration").locator("svg").nth(1)).toHaveCSS("color", teal);
+  await expect(page.getByTestId("folder-view").getByTestId("folder-label").first().locator("svg")).toHaveCSS("color", teal);
+
+  // Right-click → Color picks a color AND closes the menu (it used to stay open and block the page)
+  await page.getByTestId("tree-folder-Internal").click({ button: "right" });
+  await page.getByRole("menuitem", { name: "Color" }).hover();
+  await page.getByRole("radio", { name: "Orange" }).click();
+  await expect(page.getByRole("menu")).toHaveCount(0);
+  await expect(page.getByTestId("tree-folder-Internal").locator("svg").nth(1)).toHaveCSS("color", "rgb(249, 115, 22)");
+
+  // All tasks: sort by folder groups the list per folder
+  await page.getByTestId("nav-all").click();
+  await page.getByRole("radio", { name: "Folder" }).click();
+  await expect(page.getByRole("main")).toContainText("Inbox (no folder)");
+  await expect(page.getByRole("main")).toContainText("Acme migration");
 });

@@ -45,6 +45,17 @@ describe("migrations & settings", () => {
   });
 });
 
+describe("folder colors (schema v3)", () => {
+  it("stores a color per folder and keeps it across renames", async () => {
+    const f = await notes.createFolder("", "Clients");
+    await notes.setFolderColor(f.id, "teal");
+    await notes.relocateFolder(f.id, "Customers");
+    expect((await notes.listFolders()).map((x) => [x.path, x.color])).toEqual([["Customers", "teal"]]);
+    await notes.setFolderColor(f.id, null);
+    expect((await notes.listFolders())[0].color).toBeNull();
+  });
+});
+
 describe("vault sync", () => {
   it("indexes external files and assigns ids", async () => {
     await vault.writeText("Clients/Acme/Kickoff.md", "# Kickoff\nBudget talk");

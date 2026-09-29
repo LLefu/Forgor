@@ -3,7 +3,7 @@ import type { TreeApi } from "react-arborist";
 import {
   Inbox,
   CalendarDays,
-  CalendarClock,
+  ListTodo,
   Sun,
   Search,
   Archive,
@@ -50,6 +50,7 @@ export function Sidebar() {
       inbox: todos.filter((t) => isOpen(t) && !t.folderId && !t.parentId).length,
       today: b.overdue.length + b.today.length,
       overdue: b.overdue.length,
+      all: todos.filter((t) => isOpen(t) && !t.parentId).length,
     };
   }, [todos, settings.upcomingDays]);
 
@@ -102,7 +103,7 @@ export function Sidebar() {
       <nav className="space-y-px px-2">
         <NavItem icon={Inbox} label="Inbox" count={counts.inbox} target={{ kind: "inbox" }} />
         <NavItem icon={Sun} label="Today" count={counts.today} alert={counts.overdue > 0} target={{ kind: "today" }} />
-        <NavItem icon={CalendarClock} label="Upcoming" target={{ kind: "upcoming" }} />
+        <NavItem icon={ListTodo} label="All tasks" count={counts.all} target={{ kind: "all" }} />
         <NavItem icon={CalendarDays} label="Calendar" target={{ kind: "calendar" }} />
         <NavItem icon={Search} label="Search" hint={shortcutLabel("Mod+K")} target={{ kind: "search" }} />
         <NavItem icon={Archive} label="Archive" target={{ kind: "archive" }} />

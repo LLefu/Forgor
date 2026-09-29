@@ -121,10 +121,7 @@
   label:has(> input[type="checkbox"]),
   input[type="checkbox"],
   input[type="radio"],
-  input[type="date"],
-  input[type="time"],
-  input[type="color"],
-  ::-webkit-calendar-picker-indicator {
+  input[type="color"] {
     cursor: pointer;
   }
   button:disabled,
@@ -144,25 +141,4 @@
     background-clip: padding-box;
     border-radius: 999px;
   }
-}
-
-/* Native date/time picker icon: follow the text color (readable in light and dark). */
-input[type="date"]::-webkit-calendar-picker-indicator,
-input[type="time"]::-webkit-calendar-picker-indicator {
-  opacity: 0.65;
-}
-input[type="date"]:hover::-webkit-calendar-picker-indicator,
-input[type="time"]:hover::-webkit-calendar-picker-indicator {
-  opacity: 1;
-}
-
-/* Date/time fields behave as one control (see lib/pickers.ts): the whole field
-   is highlighted while its picker is open or it has keyboard focus. */
-input[type="date"].picker-open,
-input[type="time"].picker-open,
-input[type="date"]:focus-visible,
-input[type="time"]:focus-visible {
-  background-color: color-mix(in srgb, var(--primary) 12%, transparent);
-  border-color: var(--ring);
-  outline: none;
 }

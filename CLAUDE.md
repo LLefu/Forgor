@@ -19,7 +19,8 @@ Tauri 2 desktop app (Windows + macOS), React 19 + TypeScript + Vite, Tailwind v4
 - Drag & drop: react-arborist is given `dndRootElement` (the explorer box). Its default root is the window, where react-dnd preventDefault()s every drop and silently broke Milkdown block dragging. Tauri windows set `dragDropEnabled: false` (Windows otherwise swallows HTML5 drags).
 - Tauri fs scope: `plugins.fs.requireLiteralLeadingDot` is `false` in tauri.conf.json. It defaults to true on macOS/Linux, where `**` then does not match dot-folders like `.trash` (trash failed on macOS only). `src/lib/config.test.ts` guards this and `dragDropEnabled`.
 - Unhandled promise rejections show an error toast (`components/Toasts.tsx`, `showError()`); failures must never be silent.
-- Date/time inputs: `lib/pickers.ts` prevents segment focus on mouse click and calls `showPicker()`; the segment highlight cannot be removed with CSS. `DateField` only saves complete dates (typing saved years like 0002).
+- No native `<input type=date|time>`: they behave differently on macOS (no outside-click close, broken time picker). Use `DatePicker` / `TimePicker` from `components/DateTimePickers.tsx`.
+- Folder colors: `folders.color` (schema v3); `lib/folderColors.ts#effectiveFolderColor` inherits from ancestors. Show folders with `FolderLabel` / `FolderSelect` (`features/folder/folderColors.tsx`) so the color appears everywhere. Custom controls inside Radix menus must be menu items (`ContextMenuItemRaw asChild`), otherwise the menu never closes and blocks the page.
 - Never use window.confirm/alert/prompt (unsupported in the macOS webview; lint forbids them). Use `confirmDialog()` from `components/ConfirmDialog.tsx`.
 - Explorer: the tree is sized to its rows; the space below and the "Notes" header are native drop zones (`features/explorer/move.ts`) that move items to the top level.
 - Checklists were merged into subtasks (schema v2 migrates old rows).

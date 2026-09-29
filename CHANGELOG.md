@@ -5,6 +5,19 @@ All notable changes to Forgor. Add new entries under **Unreleased**;
 
 ## Unreleased
 
+### New
+- **All tasks** replaces Upcoming: every todo in one list, sorted by due date, priority, folder, newest or title, with an option to show completed ones.
+- **Folder colors**: right-click a folder → Color, or use the Color button on its page. Subfolders use their parent's color unless they have their own. The color shows in the explorer, on todos, in folder pickers, breadcrumbs and as a dot on calendar events.
+- New date picker (with week numbers and Today / Tomorrow / Next Monday / No date) and time picker (pick from the list or type e.g. "930" or "2pm"). They work the same on Windows and macOS.
+- "No date" option when adding a todo.
+
+### Fixed
+- The date picker didn't close when clicking outside it (macOS).
+- The time picker didn't work (macOS).
+
+### Improved
+- Long subtask titles wrap instead of being cut off.
+
 ## 0.1.2 (2026-09-25)
 
 ### Fixed

@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { useUI } from "./store";
 import { Sidebar } from "./Sidebar";
 import { TodosPage } from "@/features/todos/TodosPage";
+import { AllTasks } from "@/features/todos/AllTasks";
 import { TodoDetail } from "@/features/todos/TodoDetail";
 import { QuickAddDialog } from "@/features/todos/QuickAdd";
 import { NoteView } from "@/features/editor/NoteView";
@@ -115,8 +116,9 @@ function MainView({ platform }: { platform: Platform }) {
   switch (view.kind) {
     case "inbox":
     case "today":
-    case "upcoming":
       return <TodosPage kind={view.kind} />;
+    case "all":
+      return <AllTasks />;
     case "calendar":
       return <CalendarView />;
     case "search":

@@ -53,6 +53,8 @@ export interface Folder {
   id: string;
   /** Vault-relative path, e.g. "Clients/Acme". */
   path: string;
+  /** Color id (lib/folderColors.ts); null = inherit from parent folder. */
+  color?: string | null;
 }
 
 export interface NoteMeta {
@@ -86,6 +88,8 @@ export interface Settings {
   hotkey: string;
   vaultPath: string | null;
   upcomingDays: number;
+  allTasksSort: "due" | "priority" | "folder" | "created" | "title";
+  allTasksShowDone: boolean;
   /** Highlight color id, see lib/accents.ts. */
   accent: string;
 }

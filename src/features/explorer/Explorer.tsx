@@ -1,12 +1,25 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Tree, type NodeApi, type NodeRendererProps, type TreeApi } from "react-arborist";
-import { ChevronRight, FileText, Folder, FolderOpen, FilePlus, FolderPlus, Pencil, Trash2, ExternalLink, ListTodo } from "lucide-react";
+import { ChevronRight, FileText, Folder, FolderOpen, FilePlus, FolderPlus, Pencil, Trash2, ExternalLink, ListTodo, Palette } from "lucide-react";
 import { useFolders, useNotes } from "@/app/queries";
 import { useUI } from "@/app/store";
 import * as notes from "@/data/notes";
 import { basename, dirname, joinPath } from "@/lib/paths";
 import { cn } from "@/lib/utils";
-import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuSeparator, ContextMenuTrigger } from "@/components/ui/menu";
+import {
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuItemRaw,
+  ContextMenuSeparator,
+  ContextMenuSub,
+  ContextMenuSubContent,
+  ContextMenuSubTrigger,
+  ContextMenuTrigger,
+} from "@/components/ui/menu";
+import { ColorSwatches } from "@/features/folder/folderColors";
+import { effectiveFolderColor } from "@/lib/folderColors";
+import { setFolderColor } from "@/data/notes";
 import { revealInOs } from "@/platform/os";
 import { confirmDialog } from "@/components/ConfirmDialog";
 import { moveTreeItems, useRootDropZone } from "./move";
@@ -165,6 +178,9 @@ function Row({ node, style, dragHandle }: NodeRendererProps<TreeItem>) {
   const openQuickAdd = useUI((s) => s.openQuickAdd);
   const item = node.data;
   const isFolder = item.kind === "folder";
+  const { data: folders = [] } = useFolders();
+  const folderColor = isFolder ? effectiveFolderColor(item.refId, folders) : null;
+  const ownColor = isFolder ? (folders.find((f) => f.id === item.refId)?.color ?? null) : null;
 
   const newNoteHere = async () => {
     const folderPath = isFolder ? item.path : dirname(item.path);
@@ -225,7 +241,11 @@ function Row({ node, style, dragHandle }: NodeRendererProps<TreeItem>) {
               data-testid="tree-toggle"
             >
               <ChevronRight className={cn("size-3.5 w-4 transition-transform", node.isOpen && "rotate-90")} />
-              {node.isOpen ? <FolderOpen className="size-4" /> : <Folder className="size-4" />}
+              {node.isOpen ? (
+                <FolderOpen className="size-4" style={folderColor ? { color: folderColor } : undefined} />
+              ) : (
+                <Folder className="size-4" style={folderColor ? { color: folderColor, fill: `color-mix(in srgb, ${folderColor} 25%, transparent)` } : undefined} />
+              )}
             </button>
           ) : (
             <>
@@ -250,6 +270,24 @@ function Row({ node, style, dragHandle }: NodeRendererProps<TreeItem>) {
           </ContextMenuItem>
         )}
         <ContextMenuSeparator />
+        {isFolder && (
+          <ContextMenuSub>
+            <ContextMenuSubTrigger>
+              <Palette /> Color
+            </ContextMenuSubTrigger>
+            <ContextMenuSubContent className="w-56 p-1.5">
+              <ColorSwatches
+                value={ownColor}
+                onPick={(c) => void setFolderColor(item.refId, c)}
+                wrap={(el, key) => (
+                  <ContextMenuItemRaw key={key} asChild className="outline-none data-[highlighted]:ring-2 data-[highlighted]:ring-ring">
+                    {el}
+                  </ContextMenuItemRaw>
+                )}
+              />
+            </ContextMenuSubContent>
+          </ContextMenuSub>
+        )}
         <ContextMenuItem onSelect={() => useUI.getState().requestRename(node.id)}>
           <Pencil /> Rename
         </ContextMenuItem>

@@ -18,7 +18,7 @@ import {
   PlayCircle,
 } from "lucide-react";
 import { useUI } from "@/app/store";
-import { useFolders, useNotesForTodo, useSubtasks, useTodo } from "@/app/queries";
+import { useNotesForTodo, useSubtasks, useTodo } from "@/app/queries";
 import * as todos from "@/data/todos";
 import type { Priority, Todo, TodoStatus } from "@/data/types";
 import { PRIORITY_LABELS, STATUS_LABELS } from "@/data/types";
@@ -28,9 +28,11 @@ import { Textarea } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Tooltip } from "@/components/ui/tooltip";
 import { NotePicker } from "@/components/Pickers";
+import { DatePicker, TimePicker } from "@/components/DateTimePickers";
+import { FolderSelect } from "@/features/folder/folderColors";
 import { RecurrencePicker } from "./RecurrencePicker";
 import { PRIORITY_COLOR } from "./TodoRow";
-import { addDaysStr, formatEstimate, todayStr } from "@/lib/dates";
+import { formatEstimate, friendlyDate, todayStr } from "@/lib/dates";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 
@@ -62,7 +64,6 @@ export function TodoDetail() {
 function DetailBody({ todo }: { todo: Todo }) {
   const openTodo = useUI((s) => s.openTodo);
   const setView = useUI((s) => s.setView);
-  const { data: folders = [] } = useFolders();
   const [title, setTitle] = useState(todo.title);
   const [description, setDescription] = useState(todo.description);
   useEffect(() => setTitle(todo.title), [todo.title]);
@@ -150,19 +151,11 @@ function DetailBody({ todo }: { todo: Todo }) {
             />
           </Prop>
           <Prop icon={Calendar} label="Due">
-            <DateField value={todo.dueDate} onChange={(v) => update({ dueDate: v })} testId="due-date" />
-            {todo.dueDate && (
-              <input
-                type="time"
-                value={todo.dueTime ?? ""}
-                onChange={(e) => update({ dueTime: e.target.value || null })}
-                className="ml-1 h-7 rounded border border-transparent bg-transparent px-1 text-[13px] hover:border-input"
-                aria-label="Due time"
-              />
-            )}
+            <DatePicker value={todo.dueDate} onChange={(v) => update({ dueDate: v })} testId="due-date" aria-label="Due date" />
+            {todo.dueDate && <TimePicker value={todo.dueTime} onChange={(v) => update({ dueTime: v })} testId="due-time" />}
           </Prop>
           <Prop icon={PlayCircle} label="Start">
-            <DateField value={todo.startDate} onChange={(v) => update({ startDate: v })} testId="start-date" />
+            <DatePicker value={todo.startDate} onChange={(v) => update({ startDate: v })} placeholder="No start date" testId="start-date" aria-label="Start date" />
           </Prop>
           <Prop icon={Clock} label="Repeat">
             <RecurrencePicker
@@ -190,13 +183,7 @@ function DetailBody({ todo }: { todo: Todo }) {
             />
           </Prop>
           <Prop icon={Folder} label="Folder">
-            <Select<string>
-              value={todo.folderId ?? ""}
-              onChange={(v) => update({ folderId: v || null })}
-              options={[{ value: "", label: "Inbox (no folder)" }, ...folders.map((f) => ({ value: f.id, label: f.path }))]}
-              className="h-7 max-w-full border-transparent hover:border-input"
-              aria-label="Folder"
-            />
+            <FolderSelect value={todo.folderId} onChange={(id) => update({ folderId: id })} testId="detail-folder" />
           </Prop>
         </div>
 
@@ -229,54 +216,6 @@ function Prop({ icon: Icon, label, children }: { icon: React.ComponentType<{ cla
       </div>
       <div className="flex min-w-0 items-center">{children}</div>
     </>
-  );
-}
-
-/** Native date input with quick picks and a clear button. */
-export function DateField({ value, onChange, testId }: { value: string | null; onChange: (v: string | null) => void; testId?: string }) {
-  const today = todayStr();
-  // Keep what's typed locally and only save complete dates (or on blur). Saving every
-  // keystroke stored in-between years like "0002" and the round-trip broke typing.
-  const [draft, setDraft] = useState(value ?? "");
-  useEffect(() => setDraft(value ?? ""), [value]);
-  const commit = (v: string) => {
-    const next = v || null;
-    if (next !== value) onChange(next);
-  };
-  return (
-    <div className="group flex items-center gap-1">
-      <input
-        type="date"
-        value={draft}
-        onChange={(e) => {
-          const v = e.target.value;
-          setDraft(v);
-          if (!v || Number(v.slice(0, 4)) >= 1900) commit(v); // picker choice or a full year typed
-        }}
-        onBlur={(e) => commit(e.target.value)}
-        className={cn("h-7 rounded border border-transparent bg-transparent px-1 text-[13px] hover:border-input", !value && "text-muted-foreground")}
-        data-testid={testId}
-      />
-      {!value && (
-        <span className="flex gap-1 opacity-0 transition-opacity group-hover:opacity-100">
-          <QuickDate onClick={() => onChange(today)}>Today</QuickDate>
-          <QuickDate onClick={() => onChange(addDaysStr(today, 1))}>Tomorrow</QuickDate>
-        </span>
-      )}
-      {value && (
-        <button onClick={() => onChange(null)} className="rounded-sm p-0.5 text-muted-foreground opacity-0 hover:bg-muted group-hover:opacity-100" aria-label="Clear date">
-          <X className="size-3.5" />
-        </button>
-      )}
-    </div>
-  );
-}
-
-function QuickDate({ onClick, children }: { onClick: () => void; children: React.ReactNode }) {
-  return (
-    <button onClick={onClick} className="rounded-sm bg-muted px-1.5 py-0.5 text-[11px] text-muted-foreground hover:text-foreground">
-      {children}
-    </button>
   );
 }
 
@@ -318,12 +257,12 @@ function Subtasks({ todo }: { todo: Todo }) {
     <div>
       <SubHeader icon={ListTree} title="Subtasks" extra={subtasks.length ? `${subtasks.filter((s) => s.status === "done").length}/${subtasks.length}` : null} />
       {subtasks.map((s) => (
-        <div key={s.id} className="group flex items-center gap-2 rounded px-1 py-1 hover:bg-muted/70">
-          <Checkbox round checked={s.status === "done"} color={PRIORITY_COLOR[s.priority]} onChange={(v) => todos.setDone(s.id, v)} />
-          <button className={cn("flex-1 truncate text-left text-[13px]", s.status === "done" && "text-muted-foreground line-through")} onClick={() => openTodo(s.id)}>
+        <div key={s.id} className="group flex items-start gap-2 rounded px-1 py-1 hover:bg-muted/70">
+          <Checkbox round checked={s.status === "done"} color={PRIORITY_COLOR[s.priority]} onChange={(v) => todos.setDone(s.id, v)} className="mt-0.5" />
+          <button className={cn("min-w-0 flex-1 whitespace-normal break-words text-left text-[13px] leading-5", s.status === "done" && "text-muted-foreground line-through")} onClick={() => openTodo(s.id)}>
             {s.title}
           </button>
-          {s.dueDate && <span className="text-xs text-muted-foreground">{s.dueDate}</span>}
+          {s.dueDate && <span className="shrink-0 pt-0.5 text-xs text-muted-foreground">{friendlyDate(s.dueDate)}</span>}
         </div>
       ))}
       <AddLine placeholder="Add subtask" onAdd={(t) => todos.createTodo({ title: t, parentId: todo.id, folderId: todo.folderId })} testId="add-subtask" />

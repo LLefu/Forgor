@@ -1,15 +1,15 @@
-import { Repeat, FileText, ListTree, Clock, Folder, CircleDashed, Hourglass, Ban } from "lucide-react";
+import { Repeat, FileText, ListTree, Clock, CircleDashed, Hourglass, Ban } from "lucide-react";
 import type { Todo } from "@/data/types";
 import { useUI } from "@/app/store";
 import { useFolders } from "@/app/queries";
 import { setDone } from "@/data/todos";
 import { friendlyDate, formatEstimate, todayStr } from "@/lib/dates";
-import { basename } from "@/lib/paths";
 import { cn } from "@/lib/utils";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Tooltip } from "@/components/ui/tooltip";
 import { notesForTodo } from "@/data/todos";
 import { useQuery } from "@tanstack/react-query";
+import { FolderLabel } from "@/features/folder/folderColors";
 
 export const PRIORITY_COLOR: Record<number, string> = {
   1: "var(--p1)",
@@ -82,11 +82,7 @@ export function TodoRow({ todo, showDate = true, showFolder = true }: { todo: To
             </span>
           ) : null}
           {todo.noteCount > 0 && <NoteBadge todoId={todo.id} count={todo.noteCount} />}
-          {folder && (
-            <span className="flex items-center gap-1">
-              <Folder className="size-3" /> {basename(folder.path)}
-            </span>
-          )}
+          {folder && <FolderLabel folderId={folder.id} />}
         </div>
       </div>
     </div>

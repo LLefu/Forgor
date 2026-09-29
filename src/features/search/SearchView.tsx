@@ -5,6 +5,7 @@ import { search, EMPTY_FILTERS, HL_END, HL_START, type SearchFilters } from "@/d
 import { useFolders } from "@/app/queries";
 import { useUI } from "@/app/store";
 import { Select } from "@/components/ui/select";
+import { DatePicker } from "@/components/DateTimePickers";
 import { Button } from "@/components/ui/button";
 import { TodoRow } from "@/features/todos/TodoRow";
 import { Section } from "@/features/todos/TodosPage";
@@ -106,9 +107,9 @@ export function SearchView() {
             />
             <label className="flex items-center gap-1 text-xs text-muted-foreground">
               Due
-              <input type="date" value={filters.dueFrom ?? ""} onChange={(e) => set("dueFrom", e.target.value || null)} className="h-8 rounded border border-input bg-transparent px-1.5 text-sm text-foreground" aria-label="Due from" />
+              <DatePicker value={filters.dueFrom} onChange={(v) => set("dueFrom", v)} placeholder="Any" className="h-8 border-input text-foreground" aria-label="Due from" />
               –
-              <input type="date" value={filters.dueTo ?? ""} onChange={(e) => set("dueTo", e.target.value || null)} className="h-8 rounded border border-input bg-transparent px-1.5 text-sm text-foreground" aria-label="Due to" />
+              <DatePicker value={filters.dueTo} onChange={(v) => set("dueTo", v)} placeholder="Any" className="h-8 border-input text-foreground" aria-label="Due to" />
             </label>
           </>
         )}

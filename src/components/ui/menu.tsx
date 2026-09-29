@@ -45,3 +45,23 @@ export function ContextMenuItem({
 export function ContextMenuSeparator() {
   return <CM.Separator className="my-1 h-px bg-border" />;
 }
+
+export const ContextMenuSub = CM.Sub;
+export function ContextMenuSubTrigger({ className, children, ...props }: React.ComponentProps<typeof CM.SubTrigger>) {
+  return (
+    <CM.SubTrigger className={cn(itemCls, "data-[state=open]:bg-muted", className)} {...props}>
+      {children}
+      <span className="ml-auto pl-4 text-muted-foreground">›</span>
+    </CM.SubTrigger>
+  );
+}
+export function ContextMenuSubContent({ className, ...props }: React.ComponentProps<typeof CM.SubContent>) {
+  return (
+    <CM.Portal>
+      <CM.SubContent sideOffset={4} className={cn(contentCls, className)} {...props} />
+    </CM.Portal>
+  );
+}
+
+/** Unstyled context-menu item, for wrapping custom controls (e.g. color swatches) via `asChild`. */
+export const ContextMenuItemRaw = CM.Item;
