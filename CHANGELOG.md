@@ -5,6 +5,8 @@ All notable changes to Forgor. Add new entries under **Unreleased**;
 
 ## Unreleased
 
+## 0.1.3 (2026-09-29)
+
 ### New
 - **All tasks** replaces Upcoming: every todo in one list, sorted by due date, priority, folder, newest or title, with an option to show completed ones.
 - **Folder colors**: right-click a folder → Color, or use the Color button on its page. Subfolders use their parent's color unless they have their own. The color shows in the explorer, on todos, in folder pickers, breadcrumbs and as a dot on calendar events.
