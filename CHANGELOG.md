@@ -5,6 +5,8 @@ All notable changes to Forgor. Add new entries under **Unreleased**;
 
 ## Unreleased
 
+## 0.2.0 (2026-09-29)
+
 ### New
 - **Tabs**: every note opens in its own tab (Today, Calendar and the other pages share one). Middle-click a note anywhere (explorer, links, search, folder panel) to open it in a tab. Drag tabs to reorder, middle-click or × to close, right-click for the same menu as in the explorer plus Close others / Close all. Ctrl/⌘+W closes a tab, Ctrl+Tab switches. You can close every tab. Open tabs are remembered.
 - **@ links**: type @ to link a note, todo or folder; the @ disappears and a link is left. It only starts at the beginning of a word (so e-mail addresses are safe); Esc or a space right after @ dismisses it. Links follow renames and moves. Click a link for Open / Show entire note / Remove link; Ctrl/⌘+click opens it directly. "Show entire note" shows the whole note inline; "Show as link" turns it back. /note does the same as @, for notes only. [[wiki links]] are no longer supported (they show as plain text).
