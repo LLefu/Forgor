@@ -37,6 +37,7 @@ Tauri 2 desktop app (Windows + macOS), React 19 + TypeScript + Vite, Tailwind v4
 - Crepe's reset CSS (`.milkdown *`, `.milkdown button`) is unlayered and beats Tailwind utilities inside the editor; React widgets need the `revert-layer` rule in `editor.css`.
 - Colors: presets or custom `#rrggbb` (`settings.customColors`); every picker uses `SwatchGrid` from `components/ColorPicker.tsx`.
 - react-arborist `tree.get()` only finds visible rows; call `openParents(id)` first (reveal, rename).
+- react-arborist rows get `min-width: max-content`; the explorer overrides it (`rowClassName="!min-w-0"`) or long names add scrollbars. The tree height is counted from `tree.isOpen` (`countVisibleRows`), since `visibleNodes` lags until the tree re-renders.
 - FullCalendar is pinned to 6.1.x (the v7 React wrapper doesn't match the v6 plugins).
 
 ## Debugging the real desktop window

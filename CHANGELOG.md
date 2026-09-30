@@ -8,6 +8,9 @@ All notable changes to Forgor. Add new entries under **Unreleased**;
 ### New
 - **Zoom**: Ctrl/⌘ + and Ctrl/⌘ − make the whole app bigger or smaller, like in a browser; Ctrl/⌘ 0 resets it. The level is remembered, and can also be set in Settings → Zoom.
 
+### Fixed
+- The explorer could show scrollbars (and cut off the last item) when a note or folder had a long name. Long names are now shortened with “…”.
+
 ## 0.2.0 (2026-09-29)
 
 ### New

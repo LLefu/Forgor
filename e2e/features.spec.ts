@@ -148,6 +148,32 @@ test("explorer empty space: right-click creates at the top level; header buttons
   await expect.poll(() => page.evaluate(async () => (await (window as unknown as { __wn: { vault: { exists(p: string): Promise<boolean> } } }).__wn.vault.exists("Internal/Sub")))).toBe(true);
 });
 
+test("explorer: a long note name is truncated, without scrollbars", async ({ page }) => {
+  await page.goto("/");
+  await page.getByTestId("tree-folder-Internal").getByTestId("tree-toggle").click();
+  await page.getByTestId("tree-note-1-on-1 notes").click();
+  await page.getByTestId("tree-note-1-on-1 notes").press("F2");
+  await expect(page.locator("input:focus")).toHaveValue("1-on-1 notes");
+  const long = "Dingen uit dev profielen waar ik nog eens naar wil kijken";
+  await page.keyboard.press("ControlOrMeta+a");
+  await page.keyboard.type(long);
+  await page.keyboard.press("Enter");
+  const row = page.getByTestId(`tree-note-${long}`);
+  await expect(row).toBeVisible();
+  // Rows used to grow with their content (react-arborist's min-width: max-content), which added a
+  // horizontal scrollbar that in turn hid the last row behind a vertical one.
+  const overflowing = await page.evaluate(() =>
+    [...document.querySelectorAll<HTMLElement>('[data-testid="explorer"] *')].filter((e) => {
+      const s = getComputedStyle(e);
+      const scrolls = (v: string) => v === "auto" || v === "scroll";
+      return (scrolls(s.overflowX) && e.scrollWidth > e.clientWidth) || (scrolls(s.overflowY) && e.scrollHeight > e.clientHeight);
+    }).length,
+  );
+  expect(overflowing).toBe(0);
+  const box = (await page.getByTestId("explorer").boundingBox())!;
+  expect((await row.boundingBox())!.width).toBeLessThanOrEqual(box.width);
+});
+
 test("folder dropdown in Add todo scrolls with the mouse wheel", async ({ page }) => {
   await page.goto("/");
   await expect(page.getByTestId("tab")).toHaveCount(1); // booted

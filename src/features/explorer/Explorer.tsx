@@ -47,10 +47,16 @@ export function Explorer({ treeRef }: { treeRef?: React.MutableRefObject<TreeApi
   const [dndRoot, setDndRoot] = useState<HTMLDivElement | null>(null);
   // The tree is only as tall as its rows; the space below is a "move to top level" drop zone.
   const [visibleRows, setVisibleRows] = useState(0);
-  const recount = () => setTimeout(() => setVisibleRows(localTree.current?.visibleNodes.length ?? 0), 0);
+  const dataRef = useRef(data);
+  dataRef.current = data;
+  const recount = () =>
+    setTimeout(() => {
+      const tree = localTree.current;
+      setVisibleRows(tree ? countVisibleRows(dataRef.current, tree) : 0);
+    }, 0);
   useEffect(() => {
     recount();
-  }, [data]);
+  }, [data, dndRoot]);
   const rootDrop = useRootDropZone(() => localTree.current);
 
   useEffect(() => {
@@ -165,6 +171,10 @@ export function Explorer({ treeRef }: { treeRef?: React.MutableRefObject<TreeApi
           height={Math.min(size.h, Math.max(1, visibleRows) * 26 + 2)}
           onToggle={recount}
           rowHeight={26}
+          // react-arborist gives rows min-width: max-content, so a long name widened the row and
+          // added a horizontal scrollbar (which then also hid the last row). Names truncate instead.
+          className="!overflow-x-hidden"
+          rowClassName="!min-w-0"
           indent={12}
           openByDefault={false}
           selection={activeId}
@@ -235,6 +245,20 @@ export function Explorer({ treeRef }: { treeRef?: React.MutableRefObject<TreeApi
 const FlashContext = createContext<string | null>(null);
 /** Folder whose detail panel is open. */
 const PanelContext = createContext<string | null>(null);
+
+/**
+ * Rows the tree shows, from its open state. Not `tree.visibleNodes`: the tree only
+ * rebuilds that when it re-renders, so right after a folder opened (e.g. at startup,
+ * revealing the open note) it could be a row short and the explorer got scrollbars.
+ */
+function countVisibleRows(items: TreeItem[], tree: TreeApi<TreeItem>): number {
+  let rows = 0;
+  for (const item of items) {
+    rows++;
+    if (item.children?.length && tree.isOpen(item.id)) rows += countVisibleRows(item.children, tree);
+  }
+  return rows;
+}
 
 function findItem(items: TreeItem[], id: string): TreeItem | null {
   for (const i of items) {
