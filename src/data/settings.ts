@@ -14,6 +14,7 @@ export const DEFAULT_SETTINGS: Settings = {
   customColors: [],
   sidebarWidth: 260,
   panelWidth: 400,
+  zoom: 1,
 };
 
 function navigatorIsMac() {

@@ -5,6 +5,9 @@ All notable changes to Forgor. Add new entries under **Unreleased**;
 
 ## Unreleased
 
+### New
+- **Zoom**: Ctrl/⌘ + and Ctrl/⌘ − make the whole app bigger or smaller, like in a browser; Ctrl/⌘ 0 resets it. The level is remembered, and can also be set in Settings → Zoom.
+
 ## 0.2.0 (2026-09-29)
 
 ### New

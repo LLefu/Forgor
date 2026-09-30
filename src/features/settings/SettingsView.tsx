@@ -22,6 +22,7 @@ import { ctx } from "@/data/context";
 import type { Platform } from "@/platform/types";
 import { chooseVault } from "@/app/boot";
 import { isMac } from "@/lib/keys";
+import { ZOOM_LEVELS, zoomLabel } from "@/lib/zoom";
 import { applyHotkey } from "@/app/hotkey";
 
 export function SettingsView({ platform }: { platform: Platform }) {
@@ -73,6 +74,21 @@ export function SettingsView({ platform }: { platform: Platform }) {
               { value: "light", label: "Light" },
               { value: "dark", label: "Dark" },
             ]}
+          />
+        </Row>
+
+        <Row
+          label="Zoom"
+          hint={`Makes everything bigger or smaller. Shortcuts: ${isMac ? "⌘+ / ⌘− / ⌘0" : "Ctrl++ / Ctrl+− / Ctrl+0"}.${platform.kind !== "tauri" ? " (Desktop app only; in the browser use its own zoom.)" : ""}`}
+        >
+          <Select<string>
+            aria-label="Zoom"
+            value={String(settings.zoom)}
+            onChange={(v) => update("zoom", Number(v))}
+            options={(ZOOM_LEVELS.includes(settings.zoom) ? ZOOM_LEVELS : [...ZOOM_LEVELS, settings.zoom].sort((a, b) => a - b)).map((z) => ({
+              value: String(z),
+              label: zoomLabel(z),
+            }))}
           />
         </Row>
 

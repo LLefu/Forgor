@@ -13,6 +13,7 @@
     "core:window:allow-set-focus",
     "core:window:allow-center",
     "core:window:allow-unminimize",
+    "core:webview:allow-set-webview-zoom",
     "core:event:allow-emit-to",
     "opener:default",
     "opener:allow-reveal-item-in-dir",

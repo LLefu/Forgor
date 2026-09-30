@@ -97,4 +97,6 @@ export interface Settings {
   /** Widths (px) of the left sidebar and the right-hand detail panel. */
   sidebarWidth: number;
   panelWidth: number;
+  /** Window zoom factor (1 = 100%), Ctrl/⌘ +/-. */
+  zoom: number;
 }

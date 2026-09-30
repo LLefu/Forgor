@@ -4,6 +4,7 @@ import { boot, chooseVault, type BootResult } from "./boot";
 import { queryClient } from "./queries";
 import { useUI } from "./store";
 import { useApplyTheme } from "./theme";
+import { useZoom } from "./zoom";
 import { Shell } from "./Shell";
 import { VaultSetup } from "./VaultSetup";
 import { loadSettings } from "@/data/settings";
@@ -13,6 +14,7 @@ export default function App() {
   const [error, setError] = useState<string | null>(null);
   const initSettings = useUI((s) => s.initSettings);
   useApplyTheme();
+  useZoom();
 
   useEffect(() => {
     boot()

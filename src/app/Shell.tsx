@@ -26,6 +26,7 @@ import { openExternal } from "@/platform/os";
 import { startUpdateChecks } from "./updates";
 import { ConfirmDialogHost } from "@/components/ConfirmDialog";
 import { ToastHost } from "@/components/Toasts";
+import { ZoomIndicator } from "./zoom";
 
 export function Shell({ platform }: { platform: Platform }) {
   const setView = useUI((s) => s.setView);
@@ -140,6 +141,7 @@ export function Shell({ platform }: { platform: Platform }) {
       <AddColorDialogHost />
       <AttachmentPickerHost />
       <ToastHost />
+      <ZoomIndicator />
     </TooltipProvider>
   );
 }
