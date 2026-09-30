@@ -5,7 +5,8 @@ Tauri 2 desktop app (Windows + macOS), React 19 + TypeScript + Vite, Tailwind v4
 ## Commands
 - `npm test`: Vitest (unit + data-layer integration against sql.js). `npm run e2e`: Playwright against the browser build (port 1430).
 - `npm run typecheck`, `npm run lint`, `npm run build`.
-- `npm run tauri dev` / `npm run tauri build`: needs cargo on PATH (`/c/Users/tommy/.cargo/bin` in Git Bash).
+- `npm run tauri dev` / `npm run tauri build`: needs cargo on PATH (`/c/Users/tommy/.cargo/bin` in Git Bash on Windows, `~/.cargo/bin` on macOS via `. ~/.cargo/env`).
+- `npm run tauri dev` merges `src-tauri/tauri.dev.conf.json` (via `scripts/tauri.mjs`): identifier `com.llefu.forgor.dev`, so dev has its own database/settings, runs next to an installed Forgor, and starts on `dev-vault/` in the repo (gitignored; `__DEV_VAULT__` in vite.config.ts, only set by `vite serve`).
 
 ## Gotchas
 - The folder name contains `&`, which breaks Windows `.cmd` shims (`npx`, `node_modules/.bin`). npm scripts call `node node_modules/<pkg>/<entry>` directly; do the same for new tools.

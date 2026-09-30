@@ -103,8 +103,11 @@ test("date & time pickers, folder colors and All tasks", async ({ page }) => {
   const detail = page.getByTestId("todo-detail");
   await detail.getByTestId("due-date").click();
   await expect(page.getByTestId("date-picker")).toBeVisible();
-  await page.mouse.click(600, 700); // outside
-  await expect(page.getByTestId("date-picker")).toHaveCount(0);
+  // Radix attaches its outside-click listener a tick after opening, so retry the click
+  await expect(async () => {
+    await page.mouse.click(600, 700); // outside
+    await expect(page.getByTestId("date-picker")).toHaveCount(0, { timeout: 500 });
+  }).toPass();
   await detail.getByTestId("due-date").click();
   await page.getByTestId("date-picker").getByRole("button", { name: "Tomorrow" }).click();
   await expect(detail.getByTestId("due-date")).toContainText("Tomorrow");

@@ -7,13 +7,15 @@ import process from "node:process";
 const host = process.env.TAURI_DEV_HOST;
 
 // https://vite.dev/config/
-export default defineConfig(() => ({
+export default defineConfig(({ command }) => ({
   plugins: [react(), tailwindcss()],
   // Milkdown Crepe uses Vue internally; these silence its build-flag warning.
   define: {
     __VUE_OPTIONS_API__: "false",
     __VUE_PROD_DEVTOOLS__: "false",
     __VUE_PROD_HYDRATION_MISMATCH_DETAILS__: "false",
+    // `tauri dev` keeps its notes in the repo (never in release builds).
+    __DEV_VAULT__: JSON.stringify(command === "serve" ? path.resolve(import.meta.dirname, "dev-vault") : ""),
   },
   resolve: {
     alias: { "@": path.resolve(import.meta.dirname, "./src") },

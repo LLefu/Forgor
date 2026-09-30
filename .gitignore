@@ -26,3 +26,6 @@ dist-ssr
 # Tests
 test-results/
 playwright-report/
+
+# Notes folder of `npm run tauri dev`
+dev-vault/

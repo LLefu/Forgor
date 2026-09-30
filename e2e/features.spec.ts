@@ -130,6 +130,7 @@ test("explorer empty space: right-click creates at the top level; header buttons
   await page.getByTestId("tree-note-1-on-1 notes").click(); // a note inside a folder is open
   await page.getByTestId("explorer-root-drop").click({ button: "right" });
   await page.getByRole("menuitem", { name: "New folder" }).click();
+  await expect(page.locator("input:focus")).toHaveValue("New folder"); // the rename input appears after the folder is created
   await page.keyboard.type("Top");
   await page.keyboard.press("Enter");
   await expect.poll(() => page.evaluate(async () => (await (window as unknown as { __wn: { vault: { exists(p: string): Promise<boolean> } } }).__wn.vault.exists("Top")))).toBe(true);
@@ -141,6 +142,7 @@ test("explorer empty space: right-click creates at the top level; header buttons
 
   await page.getByTestId("tree-folder-Internal").locator("span.truncate").click();
   await page.getByRole("button", { name: "New folder" }).click();
+  await expect(page.locator("input:focus")).toHaveValue("New folder");
   await page.keyboard.type("Sub");
   await page.keyboard.press("Enter");
   await expect.poll(() => page.evaluate(async () => (await (window as unknown as { __wn: { vault: { exists(p: string): Promise<boolean> } } }).__wn.vault.exists("Internal/Sub")))).toBe(true);

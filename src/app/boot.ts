@@ -52,6 +52,11 @@ async function doBoot(): Promise<BootResult> {
     return { platform, settings, needsVault: false };
   }
 
+  // `tauri dev` has its own database (tauri.dev.conf.json) and starts on dev-vault/ in the repo.
+  if (!settings.vaultPath && __DEV_VAULT__) {
+    await saveSetting(platform.sql, "vaultPath", __DEV_VAULT__);
+    settings.vaultPath = __DEV_VAULT__;
+  }
   if (!settings.vaultPath) return { platform, settings, needsVault: true };
   const vault = await platform.openVault(settings.vaultPath);
   await activateVault(platform, vault, settings);

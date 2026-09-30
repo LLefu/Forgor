@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import conf from "../../src-tauri/tauri.conf.json";
+import devConf from "../../src-tauri/tauri.dev.conf.json";
 
 /** Settings that only matter on one OS, so they're easy to break without noticing. */
 describe("tauri.conf.json", () => {
@@ -11,5 +12,11 @@ describe("tauri.conf.json", () => {
 
   it("disables native drag-drop on every window (it swallows HTML5 drags)", () => {
     for (const w of conf.app.windows) expect(w.dragDropEnabled).toBe(false);
+  });
+});
+
+describe("tauri.dev.conf.json", () => {
+  it("gives `tauri dev` its own identifier, so it never shares the real database", () => {
+    expect(devConf.identifier).not.toBe(conf.identifier);
   });
 });
