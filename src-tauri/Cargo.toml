@@ -1,6 +1,6 @@
 [package]
 name = "forgor"
-version = "0.2.0"
+version = "0.3.0"
 description = "Forgor: work notes and todos"
 authors = ["LLefu"]
 edition = "2021"

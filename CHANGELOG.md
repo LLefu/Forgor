@@ -5,6 +5,8 @@ All notable changes to Forgor. Add new entries under **Unreleased**;
 
 ## Unreleased
 
+## 0.3.0 (2026-10-01)
+
 ### New
 - **Meeting recordings** (turn on in Settings → Meeting recordings): record a meeting and get a transcript and summary (summary, key points, action items) in a note. Records your microphone and everything the computer plays, so the other people in a call are included, and labels who spoke ("Ik"/"Anderen", "Me"/"Others"). Dutch and English are both recognized, also mixed. Everything runs on your computer after a one-time model download (about 5.3 GB), which you can delete again in Settings. Start and stop from **Meetings** in the sidebar, the quick menu or the tray icon, which turns red while recording (the Dock/taskbar icon gets a badge too). After stopping, Forgor asks for a name and folder. Recordings without a folder only show under Meetings; assign one there and the note appears in that folder. The audio is deleted once the note is written; a recording cut off by a crash is processed on the next start.
 - **Zoom**: Ctrl/⌘ + and Ctrl/⌘ − make the whole app bigger or smaller, like in a browser; Ctrl/⌘ 0 resets it. The level is remembered, and can also be set in Settings → Zoom.
