@@ -21,7 +21,7 @@ export function ctx(): Ctx {
 }
 
 /** Listeners notified after any data mutation (UI uses this to refetch). */
-type Topic = "notes" | "todos" | "folders" | "settings" | "trash" | "versions" | "files";
+type Topic = "notes" | "todos" | "folders" | "settings" | "trash" | "versions" | "files" | "meetings";
 const listeners = new Set<(topics: Topic[]) => void>();
 
 export function onDataChange(fn: (topics: Topic[]) => void): () => void {

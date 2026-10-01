@@ -27,6 +27,10 @@ import { startUpdateChecks } from "./updates";
 import { ConfirmDialogHost } from "@/components/ConfirmDialog";
 import { ToastHost } from "@/components/Toasts";
 import { ZoomIndicator } from "./zoom";
+import { startMeetings } from "./meetings";
+import { MeetingsPage } from "@/features/meetings/MeetingsPage";
+import { NameRecordingDialogHost } from "@/features/meetings/NameRecordingDialog";
+import { SpeakersDialogHost } from "@/features/meetings/SpeakersDialog";
 
 export function Shell({ platform }: { platform: Platform }) {
   const setView = useUI((s) => s.setView);
@@ -106,6 +110,9 @@ export function Shell({ platform }: { platform: Platform }) {
   // Desktop: look for updates in the background (installing is always manual)
   useEffect(() => startUpdateChecks(), []);
 
+  // Meeting recordings: recording state from the native side, unfinished recordings
+  useEffect(() => startMeetings(), []);
+
   // Desktop: global shortcut + requests from the popup window
   useEffect(() => {
     if (platform.kind !== "tauri") return;
@@ -142,6 +149,8 @@ export function Shell({ platform }: { platform: Platform }) {
       <AttachmentPickerHost />
       <ToastHost />
       <ZoomIndicator />
+      <NameRecordingDialogHost />
+      <SpeakersDialogHost />
     </TooltipProvider>
   );
 }
@@ -157,6 +166,8 @@ function MainView({ platform }: { platform: Platform }) {
       return <AllTasks />;
     case "calendar":
       return <CalendarView />;
+    case "meetings":
+      return <MeetingsPage />;
     case "search":
       return <SearchView />;
     case "archive":

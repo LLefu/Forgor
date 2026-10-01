@@ -15,6 +15,9 @@ export const DEFAULT_SETTINGS: Settings = {
   sidebarWidth: 260,
   panelWidth: 400,
   zoom: 1,
+  meetingsEnabled: false,
+  meetingMic: null,
+  meetingLanguage: "auto",
 };
 
 function navigatorIsMac() {

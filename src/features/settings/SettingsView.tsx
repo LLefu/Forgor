@@ -24,6 +24,9 @@ import { chooseVault } from "@/app/boot";
 import { isMac } from "@/lib/keys";
 import { ZOOM_LEVELS, zoomLabel } from "@/lib/zoom";
 import { applyHotkey } from "@/app/hotkey";
+import { Row } from "./Row";
+import { MeetingsSettings } from "@/features/meetings/MeetingsSettings";
+import { StorageRow } from "./StorageRow";
 
 export function SettingsView({ platform }: { platform: Platform }) {
   const settings = useUI((s) => s.settings);
@@ -105,6 +108,10 @@ export function SettingsView({ platform }: { platform: Platform }) {
             options={[1, 3, 7, 14, 30, 90].map((d) => ({ value: String(d), label: `${d} day${d === 1 ? "" : "s"}` }))}
           />
         </Row>
+
+        <MeetingsSettings desktop={platform.kind === "tauri"} />
+
+        <StorageRow desktop={platform.kind === "tauri"} />
 
         <Row
           label="Global shortcut"
@@ -205,17 +212,5 @@ function UpdatesRow({ desktop }: { desktop: boolean }) {
         <VersionHistoryDialog open={historyOpen} onOpenChange={setHistoryOpen} />
       </div>
     </Row>
-  );
-}
-
-function Row({ label, hint, children }: { label: string; hint?: string; children: React.ReactNode }) {
-  return (
-    <div className="grid grid-cols-[200px_1fr] gap-4 border-b pb-5">
-      <div>
-        <div className="text-sm font-medium">{label}</div>
-        {hint && <p className="mt-1 text-xs text-muted-foreground">{hint}</p>}
-      </div>
-      <div className="min-w-0">{children}</div>
-    </div>
   );
 }

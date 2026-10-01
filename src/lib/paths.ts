@@ -23,8 +23,17 @@ export function isIgnoredPath(path: string): boolean {
   return path.split("/").some((seg) => seg.startsWith(".") || seg === ATTACHMENTS_DIR);
 }
 
+/** Meeting recording notes are indexed (searchable, openable) but, as a dot-folder, not shown in the explorer. */
+export function isIndexedPath(path: string): boolean {
+  return !isIgnoredPath(path) || (dirname(path) === MEETINGS_DIR && path.toLowerCase().endsWith(".md"));
+}
+
+export const isMeetingsPath = (path: string) => dirname(path) === MEETINGS_DIR;
+
 export const ATTACHMENTS_DIR = "_attachments";
 export const TRASH_DIR = ".trash";
+/** Meeting recordings that aren't assigned to a folder yet. */
+export const MEETINGS_DIR = ".meetings";
 
 // Characters not allowed in Windows/macOS file names, including control characters.
 // eslint-disable-next-line no-control-regex

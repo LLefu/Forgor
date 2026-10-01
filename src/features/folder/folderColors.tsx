@@ -111,11 +111,14 @@ export function FolderSelect({
   onChange,
   className,
   testId,
+  noneLabel = "Inbox (no folder)",
 }: {
   value: string | null;
   onChange: (folderId: string | null) => void;
   className?: string;
   testId?: string;
+  /** Label of the "no folder" choice. */
+  noneLabel?: string;
 }) {
   const { data: folders = [] } = useFolders();
   const [open, setOpen] = useState(false);
@@ -135,7 +138,7 @@ export function FolderSelect({
           data-testid={testId}
           aria-label="Folder"
         >
-          <FolderLabel folderId={value} fallback="Inbox (no folder)" full />
+          <FolderLabel folderId={value} fallback={noneLabel} full />
           <ChevronDown className="size-3.5 shrink-0 text-muted-foreground" />
         </button>
       </PopoverTrigger>
@@ -151,7 +154,7 @@ export function FolderSelect({
         )}
         <div className="max-h-72 overflow-y-auto">
           <FolderOption selected={value === null} onClick={() => pick(null)}>
-            <FolderLabel folderId={null} fallback="Inbox (no folder)" />
+            <FolderLabel folderId={null} fallback={noneLabel} />
           </FolderOption>
           {options.map((f) => (
             <FolderOption key={f.id} selected={value === f.id} onClick={() => pick(f.id)}>

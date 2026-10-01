@@ -29,6 +29,21 @@ tauri-plugin-global-shortcut = "2.3.2"
 tauri-plugin-single-instance = "2.4.5"
 tauri-plugin-updater = "2.12.0"
 tauri-plugin-process = "2.3.1"
+tauri-plugin-notification = "2"
+# Meeting recordings: audio capture (mic + system loopback), local speech
+# recognition (sherpa-onnx, statically linked) and local summaries (llama.cpp).
+cpal = "0.18"
+hound = "3"
+sherpa-onnx = "1.13.8"
+llama-cpp-2 = "0.1.157"
+encoding_rs = "0.8"
+reqwest = { version = "0.13", features = ["stream"] }
+futures-util = "0.3"
+sha2 = "0.10"
+tokio = { version = "1", features = ["fs", "io-util"] }
+
+[target.'cfg(target_os = "macos")'.dependencies]
+llama-cpp-2 = { version = "0.1.157", features = ["metal"] }
 
 
 # Read the optimization guideline for more details: https://tauri.app/concept/size/#cargo-configuration

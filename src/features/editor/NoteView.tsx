@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { ChevronRight, History, MoreHorizontal, Trash2, ExternalLink, Link2, FileText, ListTodo, LocateFixed } from "lucide-react";
+import { ChevronRight, History, MoreHorizontal, Trash2, ExternalLink, Link2, FileText, ListTodo, LocateFixed, AudioLines, Users } from "lucide-react";
 import { useUI } from "@/app/store";
 import { useBacklinks, useFolders, useNoteMeta, useTodosForNote } from "@/app/queries";
 import { onDataChange } from "@/data/context";
@@ -13,12 +13,15 @@ import { FolderLabel } from "@/features/folder/folderColors";
 import { TodoPicker } from "@/components/Pickers";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/menu";
-import { basename, dirname, stripMd } from "@/lib/paths";
+import { basename, dirname, isMeetingsPath, stripMd } from "@/lib/paths";
 import { openVaultFile, revealInOs } from "@/platform/os";
 import { FindBar } from "./FindBar";
 import { format } from "date-fns";
 import { trashItem } from "@/features/explorer/ItemMenu";
 import { noteLinkProps } from "@/app/noteLink";
+import { useQuery } from "@tanstack/react-query";
+import { getMeetingByNote, hasSpeakers } from "@/data/meetings";
+import { useMeetingsStore } from "@/app/meetings";
 
 const SAVE_DELAY = 600;
 
@@ -127,7 +130,8 @@ function LoadedNote({ id, initialBody }: { id: string; initialBody: string }) {
               else if (kind === "folder") useUI.getState().openFolder(target);
               else setView({ kind: "note", id: target });
             }}
-            onCreateNote={(title) => notes.createNote(dirname(meta.path), title)}
+            // New notes go next to this one; not into the hidden folder of unassigned recordings.
+            onCreateNote={(title) => notes.createNote(isMeetingsPath(meta.path) ? "" : dirname(meta.path), title)}
             onOpenFile={(path) => void openVaultFile(path)}
           />
           <NoteFooter noteId={id} folderId={meta.folderId} />
@@ -192,12 +196,19 @@ function TitleInput({ id, title, onEnter }: { id: string; title: string; onEnter
 function NoteToolbar({ meta, onHistory }: { meta: { id: string; path: string; folderId: string | null }; onHistory: () => void }) {
   const { data: folders = [] } = useFolders();
   const { data: linked = [] } = useTodosForNote(meta.id);
-  const segments = dirname(meta.path) ? dirname(meta.path).split("/") : [];
+  const unassignedMeeting = isMeetingsPath(meta.path);
+  const { data: meeting } = useQuery({ queryKey: ["meetingByNote", meta.id], queryFn: () => getMeetingByNote(meta.id) });
+  const segments = dirname(meta.path) && !unassignedMeeting ? dirname(meta.path).split("/") : [];
   const open = linked.filter((t) => t.status !== "done").length;
 
   return (
     <div className="flex h-11 shrink-0 items-center justify-between border-b px-4">
       <nav className="flex min-w-0 items-center gap-1 text-xs text-muted-foreground">
+        {unassignedMeeting && (
+          <button className="flex items-center gap-1 hover:text-foreground" onClick={() => useUI.getState().setView({ kind: "meetings" })}>
+            <AudioLines className="size-3.5" /> Meetings (unassigned)
+          </button>
+        )}
         {segments.map((seg, i) => {
           const path = segments.slice(0, i + 1).join("/");
           const folder = folders.find((f) => f.path === path);
@@ -212,6 +223,11 @@ function NoteToolbar({ meta, onHistory }: { meta: { id: string; path: string; fo
         })}
       </nav>
       <div className="flex items-center gap-1">
+        {meeting && hasSpeakers(meeting) && (
+          <Button variant="ghost" size="sm" onClick={() => useMeetingsStore.getState().setSpeakersOf(meeting.id)} data-testid="note-speakers">
+            <Users /> Speakers
+          </Button>
+        )}
         {linked.length > 0 && (
           <Button
             variant="ghost"

@@ -16,6 +16,7 @@ import {
   Moon,
   Monitor,
   LocateFixed,
+  AudioLines,
 } from "lucide-react";
 import { useResizableWidth } from "@/components/ResizeHandle";
 import { useUI, type View } from "./store";
@@ -30,6 +31,9 @@ import { Button } from "@/components/ui/button";
 import { Tooltip } from "@/components/ui/tooltip";
 import * as notes from "@/data/notes";
 import { shortcutLabel } from "@/lib/keys";
+import { useMeetingsStore } from "./meetings";
+import { useElapsed } from "@/features/meetings/RecordButton";
+import { formatTimestamp } from "@/lib/meetingNote";
 
 export function Sidebar() {
   const view = useUI((s) => s.view);
@@ -106,6 +110,7 @@ export function Sidebar() {
         <NavItem icon={Sun} label="Today" count={counts.today} alert={counts.overdue > 0} target={{ kind: "today" }} />
         <NavItem icon={ListTodo} label="All tasks" count={counts.all} target={{ kind: "all" }} />
         <NavItem icon={CalendarDays} label="Calendar" target={{ kind: "calendar" }} />
+        {settings.meetingsEnabled && <MeetingsNavItem />}
         <NavItem icon={Search} label="Search" hint={shortcutLabel("Mod+K")} target={{ kind: "search" }} />
         <NavItem icon={Archive} label="Archive" target={{ kind: "archive" }} />
       </nav>
@@ -196,12 +201,33 @@ function UpdateNotice() {
   );
 }
 
+/** "Meetings", with a red dot and the running time while recording. */
+function MeetingsNavItem() {
+  const startedAt = useMeetingsStore((s) => s.current?.startedAt ?? null);
+  const elapsed = useElapsed(startedAt);
+  return (
+    <NavItem
+      icon={AudioLines}
+      label="Meetings"
+      target={{ kind: "meetings" }}
+      badge={
+        elapsed !== null && (
+          <span className="flex items-center gap-1 text-xs tabular-nums text-destructive" data-testid="recording-indicator">
+            <span className="size-2 animate-pulse rounded-full bg-destructive" /> {formatTimestamp(elapsed)}
+          </span>
+        )
+      }
+    />
+  );
+}
+
 function NavItem({
   icon: Icon,
   label,
   count,
   alert,
   hint,
+  badge,
   target,
 }: {
   icon: React.ComponentType<{ className?: string }>;
@@ -209,6 +235,7 @@ function NavItem({
   count?: number;
   alert?: boolean;
   hint?: string;
+  badge?: React.ReactNode;
   target: View;
 }) {
   const view = useUI((s) => s.view);
@@ -226,6 +253,7 @@ function NavItem({
       <Icon className={cn("size-4", active ? "text-accent-foreground" : "text-muted-foreground")} />
       <span className="flex-1 text-left">{label}</span>
       {hint && <span className="text-[11px] text-muted-foreground">{hint}</span>}
+      {badge}
       {!!count && <span className={cn("text-xs tabular-nums", alert ? "text-destructive" : "text-muted-foreground")}>{count}</span>}
     </button>
   );

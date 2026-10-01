@@ -6,7 +6,14 @@ All notable changes to Forgor. Add new entries under **Unreleased**;
 ## Unreleased
 
 ### New
+- **Meeting recordings** (turn on in Settings → Meeting recordings): record a meeting and get a transcript and summary (summary, key points, action items) in a note. Records your microphone and everything the computer plays, so the other people in a call are included, and labels who spoke ("Ik"/"Anderen", "Me"/"Others"). Dutch and English are both recognized, also mixed. Everything runs on your computer after a one-time model download (about 5.3 GB), which you can delete again in Settings. Start and stop from **Meetings** in the sidebar, the quick menu or the tray icon, which turns red while recording (the Dock/taskbar icon gets a badge too). After stopping, Forgor asks for a name and folder. Recordings without a folder only show under Meetings; assign one there and the note appears in that folder. The audio is deleted once the note is written; a recording cut off by a crash is processed on the next start.
 - **Zoom**: Ctrl/⌘ + and Ctrl/⌘ − make the whole app bigger or smaller, like in a browser; Ctrl/⌘ 0 resets it. The level is remembered, and can also be set in Settings → Zoom.
+
+- **Who said what in meetings**: with the optional speaker separation (34 MB, Settings → Meeting recordings) the other participants become "Spreker 1, 2, 3…" instead of one "Anderen". Name them with the Speakers button (a quote per speaker helps you recognize them); the transcript and summary use the names, and giving two numbers the same name merges them. Named voices are recognized in later meetings; the voice fingerprints stay on your computer and can be forgotten per person under Known voices.
+- Meeting summaries have a **Besluiten / Decisions** section, and list every task people say they'll do (also in stand-ups); a request to someone else ("kun jij…") is that person's action item.
+- Better meeting transcripts: short replies stay Dutch, fewer skipped words, and the other side's voice (heard through your speakers) is cut out of your own lines.
+- While recording, the quick menu and the Meetings page show level meters for your microphone and the computer's sound, and warn when the mic gives no sound at all (muted or no permission), when only the mic can be recorded, and after 10 minutes without any sound (with a notification: "Still recording?").
+- **Storage** in Settings: how much Forgor uses and where (notes, attachments, trash, database, models, recordings, cache), with a button to show each in Finder / Explorer.
 
 ### Fixed
 - The explorer could show scrollbars (and cut off the last item) when a note or folder had a long name. Long names are now shortened with “…”.

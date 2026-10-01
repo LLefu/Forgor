@@ -8,8 +8,9 @@
 - **Views:** Inbox, Today, Upcoming, Calendar (month/week, drag to reschedule), folder/project pages, Search (full text + filters), Archive, Trash.
 - **Version history** for notes, with a diff and restore.
 - **Global shortcut** (`Ctrl+Alt+Space` on Windows, `Cmd+Shift+Space` on macOS) opens a quick menu: New note / New todo / Search. It works even when the app is hidden in the tray.
+- **Meeting recordings** (optional, off by default): records your microphone and the computer's sound (the other people in a call), then writes a transcript and a summary into a note. Speech recognition and summaries run on your computer; nothing is uploaded.
 
-Everything is local: notes in your folder, todos and the search index in a SQLite database in the app-data folder. Your data is never sent anywhere. The only network request is the update check against GitHub.
+Everything is local: notes in your folder, todos and the search index in a SQLite database in the app-data folder. Your data is never sent anywhere. The only network requests are the update check against GitHub and, if you turn on meeting recordings, the one-time model download from Hugging Face.
 
 ## Using it
 
@@ -23,13 +24,15 @@ Everything is local: notes in your folder, todos and the search index in a SQLit
 
 Completed todos move to the Archive after 7 days (configurable in Settings).
 
+**Meeting recordings:** turn them on in Settings → Meeting recordings and click **Download models** (about 5.3 GB, once). Then start a recording from **Meetings** in the sidebar, the quick menu, or the tray icon (which turns red while recording; right-click → Stop recording). When you stop, Forgor asks for a name and folder; the transcript and summary appear in the note a minute or two later and the audio is deleted. Recordings without a folder only show under Meetings; assign a folder there and the note appears in the explorer like any other. Dutch and English are both recognized, also mixed. Use headphones for the cleanest transcript; without them your microphone also picks up the others (Forgor filters most of that out). The models: [Parakeet TDT 0.6B v3](https://huggingface.co/nvidia/parakeet-tdt-0.6b-v3) (speech, via [sherpa-onnx](https://github.com/k2-fsa/sherpa-onnx)) and [Gemma 4 E4B](https://huggingface.co/google/gemma-4-E4B-it) (summaries, via [llama.cpp](https://github.com/ggml-org/llama.cpp)). You can delete them in Settings at any time.
+
 **Updates:** Forgor checks GitHub for a new version shortly after it starts and every 6 hours. When there is one, an "Update to x.y.z" button appears in the sidebar. Nothing is installed until you click **Install update** (Settings → Updates). Your notes and todos are untouched by updates.
 
 **Notes and other editors:** you can edit the `.md` files in VS Code or anywhere else, and the app picks up changes automatically. A `- [ ]` line only becomes a linked todo once the note is edited in the app. Each file gets a small frontmatter block (`id`, `created`) so links survive renames.
 
 ## Development
 
-Requirements: Node 22+, Rust (stable), and on Windows the Visual Studio C++ Build Tools. See [Tauri prerequisites](https://tauri.app/start/prerequisites/).
+Requirements: Node 22+, Rust (stable), CMake (builds llama.cpp; `brew install cmake` / `winget install Kitware.CMake`), and on Windows the Visual Studio C++ Build Tools. See [Tauri prerequisites](https://tauri.app/start/prerequisites/).
 
 ```bash
 npm install
@@ -79,6 +82,7 @@ src/
   popup/      the global-shortcut quick menu (separate window)
   app/        boot, store (Zustand), queries (TanStack Query), shell, sidebar
 src-tauri/    Rust: plugins, tray, window behaviour, global shortcut
+  src/meetings/  meeting recordings: audio capture (cpal), models (download/delete), transcription + summary
 ```
 
 The UI never talks to Tauri or the disk directly, only to `src/data`, which only uses the two platform interfaces. Adding cloud sync later (e.g. Supabase) means adding another platform implementation.

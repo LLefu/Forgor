@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import plist from "../../src-tauri/Info.plist?raw";
 import conf from "../../src-tauri/tauri.conf.json";
 import devConf from "../../src-tauri/tauri.dev.conf.json";
 
@@ -18,5 +19,12 @@ describe("tauri.conf.json", () => {
 describe("tauri.dev.conf.json", () => {
   it("gives `tauri dev` its own identifier, so it never shares the real database", () => {
     expect(devConf.identifier).not.toBe(conf.identifier);
+  });
+});
+
+describe("Info.plist (macOS)", () => {
+  it("explains mic and system audio use (macOS refuses access without it)", () => {
+    expect(plist).toContain("<key>NSMicrophoneUsageDescription</key>");
+    expect(plist).toContain("<key>NSAudioCaptureUsageDescription</key>");
   });
 });

@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!-- Merged into the app's Info.plist by Tauri. macOS refuses mic / system audio access without these. -->
+<plist version="1.0">
+<dict>
+  <key>NSMicrophoneUsageDescription</key>
+  <string>Forgor records your microphone when you record a meeting. The audio stays on this Mac and is deleted after transcription.</string>
+  <key>NSAudioCaptureUsageDescription</key>
+  <string>Forgor records the sound of your meeting apps (the other participants) when you record a meeting. The audio stays on this Mac and is deleted after transcription.</string>
+</dict>
+</plist>

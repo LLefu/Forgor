@@ -5,7 +5,7 @@ import { DEFAULT_SETTINGS, saveSetting } from "@/data/settings";
 import { ctx } from "@/data/context";
 import { newId } from "@/lib/utils";
 
-export type PageKind = "inbox" | "today" | "all" | "calendar" | "search" | "archive" | "trash" | "settings";
+export type PageKind = "inbox" | "today" | "all" | "calendar" | "meetings" | "search" | "archive" | "trash" | "settings";
 export type View = { kind: PageKind } | { kind: "note"; id: string };
 
 export interface Tab {

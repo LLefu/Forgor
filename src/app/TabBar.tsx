@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { X, FileText, Inbox, Sun, ListTodo, CalendarDays, Search, Archive, Trash2, Settings } from "lucide-react";
+import { X, FileText, Inbox, Sun, ListTodo, CalendarDays, Search, Archive, Trash2, Settings, AudioLines } from "lucide-react";
 import { useUI, type PageKind, type Tab } from "./store";
 import { useNotes } from "./queries";
 import { cn } from "@/lib/utils";
@@ -11,6 +11,7 @@ const PAGES: Record<PageKind, { label: string; icon: React.ComponentType<{ class
   today: { label: "Today", icon: Sun },
   all: { label: "All tasks", icon: ListTodo },
   calendar: { label: "Calendar", icon: CalendarDays },
+  meetings: { label: "Meetings", icon: AudioLines },
   search: { label: "Search", icon: Search },
   archive: { label: "Archive", icon: Archive },
   trash: { label: "Trash", icon: Trash2 },

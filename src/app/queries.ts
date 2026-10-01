@@ -3,6 +3,7 @@ import { onDataChange } from "@/data/context";
 import * as notes from "@/data/notes";
 import * as todos from "@/data/todos";
 import * as history from "@/data/history";
+import * as meetings from "@/data/meetings";
 
 export const queryClient = new QueryClient({
   defaultOptions: {
@@ -18,7 +19,8 @@ onDataChange(() => {
   pending = true;
   queueMicrotask(() => {
     pending = false;
-    void queryClient.invalidateQueries();
+    // Not the storage overview: it walks the whole notes folder, so it refreshes on demand only.
+    void queryClient.invalidateQueries({ predicate: (q) => q.queryKey[0] !== "storage" });
   });
 });
 
@@ -39,3 +41,5 @@ export const useAttachments = (folderPath: string) => useQuery({ queryKey: ["att
 
 export const useTrash = () => useQuery({ queryKey: ["trash"], queryFn: history.listTrash });
 export const useVersions = (noteId: string) => useQuery({ queryKey: ["versions", noteId], queryFn: () => history.listVersions(noteId) });
+
+export const useMeetings = () => useQuery({ queryKey: ["meetings"], queryFn: meetings.listMeetings });

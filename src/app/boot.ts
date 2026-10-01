@@ -9,6 +9,7 @@ import { syncVault } from "@/data/notes";
 import { archiveCompleted } from "@/data/todos";
 import type { Settings } from "@/data/types";
 import { seedDemo } from "./demo";
+import { meetings } from "@/platform/meetings";
 
 export interface BootResult {
   platform: Platform;
@@ -48,7 +49,7 @@ async function doBoot(): Promise<BootResult> {
     await activateVault(platform, vault, settings);
     if (!new URLSearchParams(location.search).has("empty")) await seedDemo();
     // Browser/dev only: lets e2e tests inspect the in-memory files and database.
-    (window as unknown as { __wn: unknown }).__wn = { vault, sql: platform.sql };
+    (window as unknown as { __wn: unknown }).__wn = { vault, sql: platform.sql, meetings: meetings() };
     return { platform, settings, needsVault: false };
   }
 

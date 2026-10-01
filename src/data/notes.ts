@@ -8,6 +8,7 @@ import {
   basename,
   dirname,
   isIgnoredPath,
+  isIndexedPath,
   joinPath,
   relativePath,
   resolvePath,
@@ -73,7 +74,8 @@ export async function folderPathForId(id: string | null): Promise<string> {
 // ---------------------------------------------------------------- index helpers
 
 async function ensureFolderRow(path: string): Promise<string | null> {
-  if (!path) return null;
+  // Hidden folders (.meetings) hold notes but are not folders in the app.
+  if (!path || isIgnoredPath(path)) return null;
   const existing = await folderIdForPath(path);
   if (existing) return existing;
   // Make sure parents exist too.
@@ -144,7 +146,7 @@ export function syncVault(): Promise<void> {
 
 async function doSync(): Promise<void> {
   const { sql, vault } = ctx();
-  const entries = (await vault.list()).filter((e) => !isIgnoredPath(e.path));
+  const entries = (await vault.list()).filter((e) => (e.isDir ? !isIgnoredPath(e.path) : isIndexedPath(e.path)));
   let changed = false;
 
   // Folders

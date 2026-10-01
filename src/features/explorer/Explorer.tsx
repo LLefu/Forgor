@@ -4,7 +4,7 @@ import { ChevronRight, FileText, Folder, FolderOpen, PanelRight, FilePlus, Folde
 import { useFolders, useNotes } from "@/app/queries";
 import { useUI } from "@/app/store";
 import * as notes from "@/data/notes";
-import { basename, dirname, joinPath } from "@/lib/paths";
+import { basename, dirname, isMeetingsPath, joinPath } from "@/lib/paths";
 import { cn } from "@/lib/utils";
 import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuTrigger } from "@/components/ui/menu";
 import { effectiveFolderColor } from "@/lib/folderColors";
@@ -22,6 +22,7 @@ function buildTree(folders: { id: string; path: string }[], noteList: { id: stri
     (byPath.get(dirname(f.path))?.children ?? root).push(item);
   }
   for (const n of noteList) {
+    if (isMeetingsPath(n.path)) continue; // unassigned recordings only show under Meetings
     const item: TreeItem = { id: `n:${n.id}`, kind: "note", refId: n.id, name: n.title, path: n.path };
     (byPath.get(dirname(n.path))?.children ?? root).push(item);
   }

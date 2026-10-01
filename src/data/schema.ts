@@ -84,6 +84,30 @@ export const MIGRATIONS: string[][] = [
   ],
   // v3: folder colors (null = inherit from the parent folder / none)
   [`ALTER TABLE folders ADD COLUMN color TEXT`],
+  // v4: meeting recordings (the note holds the text; this tracks processing)
+  [
+    `CREATE TABLE IF NOT EXISTS meetings (
+      id TEXT PRIMARY KEY,
+      note_id TEXT,
+      started_at TEXT NOT NULL,
+      duration_sec INTEGER NOT NULL DEFAULT 0,
+      status TEXT NOT NULL,
+      error TEXT
+    )`,
+  ],
+  // v5: the transcript as data (to rebuild the note when speakers get names) and those names
+  [`ALTER TABLE meetings ADD COLUMN result TEXT`, `ALTER TABLE meetings ADD COLUMN speakers TEXT`],
+  // v6: voice fingerprints of named speakers, one per meeting (a person's voice is their average)
+  [
+    `CREATE TABLE IF NOT EXISTS voice_samples (
+      meeting_id TEXT NOT NULL,
+      speaker_id INTEGER NOT NULL,
+      name TEXT NOT NULL,
+      print TEXT NOT NULL,
+      created_at TEXT NOT NULL,
+      PRIMARY KEY (meeting_id, speaker_id)
+    )`,
+  ],
 ];
 
 export async function migrate(sql: SqlDriver): Promise<void> {

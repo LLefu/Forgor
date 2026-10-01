@@ -99,4 +99,10 @@ export interface Settings {
   panelWidth: number;
   /** Window zoom factor (1 = 100%), Ctrl/⌘ +/-. */
   zoom: number;
+  /** Meeting recordings (off until turned on in Settings). */
+  meetingsEnabled: boolean;
+  /** Microphone device name; null = system default. */
+  meetingMic: string | null;
+  /** Language of the summary; speech in Dutch and English is recognized either way. */
+  meetingLanguage: "auto" | "nl" | "en";
 }

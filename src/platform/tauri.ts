@@ -4,7 +4,7 @@ import { open } from "@tauri-apps/plugin-dialog";
 import { convertFileSrc } from "@tauri-apps/api/core";
 import { documentDir, join, sep } from "@tauri-apps/api/path";
 import type { FsEntry, Platform, SqlDriver, SqlValue, VaultFs } from "./types";
-import { TRASH_DIR } from "@/lib/paths";
+import { MEETINGS_DIR, TRASH_DIR } from "@/lib/paths";
 
 class TauriSqlDriver implements SqlDriver {
   constructor(private db: Database) {}
@@ -39,8 +39,8 @@ class TauriVault implements VaultFs {
         const p = rel ? `${rel}/${e.name}` : e.name;
         if (e.isDirectory) {
           // Skip hidden folders (.git, .obsidian, …); the app ignores them anyway and
-          // they can be huge. Our own .trash is kept: restoring/purging needs it.
-          if (e.name.startsWith(".") && e.name !== TRASH_DIR) continue;
+          // they can be huge. Our own .trash (restoring/purging) and .meetings (unassigned recordings) are kept.
+          if (e.name.startsWith(".") && e.name !== TRASH_DIR && !(e.name === MEETINGS_DIR && !rel)) continue;
           out.push({ path: p, isDir: true });
           await walk(p);
         } else if (e.isFile) {
