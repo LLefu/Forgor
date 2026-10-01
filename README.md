@@ -32,7 +32,7 @@ Completed todos move to the Archive after 7 days (configurable in Settings).
 
 ## Development
 
-Requirements: Node 22+, Rust (stable), CMake (builds llama.cpp; `brew install cmake` / `winget install Kitware.CMake`), and on Windows the Visual Studio C++ Build Tools. See [Tauri prerequisites](https://tauri.app/start/prerequisites/).
+Requirements: Node 22+, Rust (stable), CMake (builds llama.cpp; `brew install cmake` / `winget install Kitware.CMake`), and on Windows the Visual Studio C++ Build Tools plus LLVM (`winget install LLVM.LLVM`, then set `LIBCLANG_PATH=C:Program FilesLLVMin`; llama.cpp's Rust bindings need libclang). The CMake that ships with the Build Tools works too (`…BuildToolsCommon7IDECommonExtensionsMicrosoftCMakeCMakein`). See [Tauri prerequisites](https://tauri.app/start/prerequisites/).
 
 ```bash
 npm install
