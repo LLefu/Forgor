@@ -11,6 +11,11 @@ describe("tauri.conf.json", () => {
     expect((conf.plugins as { fs?: { requireLiteralLeadingDot?: boolean } }).fs?.requireLiteralLeadingDot).toBe(false);
   });
 
+  it("targets macOS 12+: llama.cpp needs std::filesystem (10.15+), and Tauri's default 10.13 broke the release build", () => {
+    const v = (conf.bundle as { macOS?: { minimumSystemVersion?: string } }).macOS?.minimumSystemVersion ?? "10.13";
+    expect(Number(v.split(".")[0])).toBeGreaterThanOrEqual(12);
+  });
+
   it("disables native drag-drop on every window (it swallows HTML5 drags)", () => {
     for (const w of conf.app.windows) expect(w.dragDropEnabled).toBe(false);
   });
