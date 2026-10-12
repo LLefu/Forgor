@@ -3,7 +3,7 @@
 //! audio, the models and the tray / dock indicators.
 
 pub mod models;
-mod process;
+pub(crate) mod process;
 mod recorder;
 
 use recorder::Recorder;

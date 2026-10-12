@@ -4,7 +4,7 @@ import { useUI } from "@/app/store";
 import { useBacklinks, useFolders, useNoteMeta, useTodosForNote } from "@/app/queries";
 import { onDataChange } from "@/data/context";
 import * as notes from "@/data/notes";
-import { saveNote } from "@/data/noteSave";
+import { saveNote, snapshotNow } from "@/data/noteSave";
 import { createTodo, linkNote } from "@/data/todos";
 import { NoteEditor, type NoteEditorHandle } from "./NoteEditor";
 import { HistoryDialog } from "@/features/history/HistoryDialog";
@@ -22,6 +22,8 @@ import { noteLinkProps } from "@/app/noteLink";
 import { useQuery } from "@tanstack/react-query";
 import { getMeetingByNote, hasSpeakers } from "@/data/meetings";
 import { useMeetingsStore } from "@/app/meetings";
+import { useWritingAvailable } from "@/app/writing";
+import { AskAIButton } from "./AskAIButton";
 
 const SAVE_DELAY = 600;
 
@@ -63,6 +65,7 @@ function LoadedNote({ id, initialBody }: { id: string; initialBody: string }) {
   const setView = useUI((s) => s.setView);
   const editor = useRef<NoteEditorHandle>(null);
   const [historyOpen, setHistoryOpen] = useState(false);
+  const ai = useWritingAvailable();
 
   // ---- saving: debounce edits, flush on unmount; reload on external changes when clean
   const lastSaved = useRef(initialBody);
@@ -113,7 +116,11 @@ function LoadedNote({ id, initialBody }: { id: string; initialBody: string }) {
   if (!meta) return null;
   return (
     <div className="flex h-full flex-col">
-      <NoteToolbar meta={meta} onHistory={() => setHistoryOpen(true)} />
+      <NoteToolbar
+        meta={meta}
+        onHistory={() => setHistoryOpen(true)}
+        ai={ai ? { hasSelection: () => !!editor.current?.selectedText().trim(), run: (instruction) => editor.current?.runAI(instruction) } : null}
+      />
       <FindBar editor={editor} />
       <div className="min-h-0 flex-1 overflow-y-auto" id="note-scroll">
         <div className="mx-auto max-w-[760px] px-10 pb-24">
@@ -133,6 +140,11 @@ function LoadedNote({ id, initialBody }: { id: string; initialBody: string }) {
             // New notes go next to this one; not into the hidden folder of unassigned recordings.
             onCreateNote={(title) => notes.createNote(isMeetingsPath(meta.path) ? "" : dirname(meta.path), title)}
             onOpenFile={(path) => void openVaultFile(path)}
+            ai={ai}
+            onBeforeAI={async () => {
+              await flush();
+              await snapshotNow(id);
+            }}
           />
           <NoteFooter noteId={id} folderId={meta.folderId} />
         </div>
@@ -193,7 +205,15 @@ function TitleInput({ id, title, onEnter }: { id: string; title: string; onEnter
   );
 }
 
-function NoteToolbar({ meta, onHistory }: { meta: { id: string; path: string; folderId: string | null }; onHistory: () => void }) {
+function NoteToolbar({
+  meta,
+  onHistory,
+  ai,
+}: {
+  meta: { id: string; path: string; folderId: string | null };
+  onHistory: () => void;
+  ai: { hasSelection: () => boolean; run: (instruction: string) => void } | null;
+}) {
   const { data: folders = [] } = useFolders();
   const { data: linked = [] } = useTodosForNote(meta.id);
   const unassignedMeeting = isMeetingsPath(meta.path);
@@ -238,6 +258,7 @@ function NoteToolbar({ meta, onHistory }: { meta: { id: string; path: string; fo
             <ListTodo /> {open} open {open === 1 ? "todo" : "todos"}
           </Button>
         )}
+        {ai && <AskAIButton hasSelection={ai.hasSelection} onRun={ai.run} />}
         <Button variant="ghost" size="icon" onClick={onHistory} aria-label="Version history" title="Version history">
           <History />
         </Button>

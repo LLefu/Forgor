@@ -226,6 +226,9 @@ pub fn meetings_delete_model(app: AppHandle, downloads: tauri::State<'_, Downloa
         return Err("Wait for the download to finish (or cancel it) first".into());
     }
     let dir = model_dir(&app, &id)?;
+    if id == "summary" {
+        super::process::unload_model();
+    }
     if dir.exists() {
         std::fs::remove_dir_all(&dir).map_err(|e| format!("Could not delete {}: {e}", dir.display()))?;
     }

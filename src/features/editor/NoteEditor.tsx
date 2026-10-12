@@ -1,10 +1,13 @@
 import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from "react";
 import { Crepe } from "@milkdown/crepe";
-import { commandsCtx, editorViewCtx } from "@milkdown/kit/core";
+import { commandsCtx, editorViewCtx, serializerCtx } from "@milkdown/kit/core";
 import { clearTextInCurrentBlockCommand } from "@milkdown/kit/preset/commonmark";
 import { replaceAll, insert } from "@milkdown/kit/utils";
 import type { EditorView } from "@milkdown/kit/prose/view";
-import { TextSelection } from "@milkdown/kit/prose/state";
+import type { Node as ProseNode } from "@milkdown/kit/prose/model";
+import { AllSelection, TextSelection, type EditorState } from "@milkdown/kit/prose/state";
+import { streamingPluginKey } from "@milkdown/kit/plugin/streaming";
+import { clearDiffReviewCmd, diffPluginKey } from "@milkdown/kit/plugin/diff";
 import "@milkdown/crepe/theme/common/style.css";
 import "./editor.css";
 import { useUI } from "@/app/store";
@@ -14,7 +17,7 @@ import { listAttachments, saveAttachment } from "@/data/notes";
 import { pickAttachment, type PickKind } from "@/components/AttachmentPicker";
 import { basename, dirname, relativePath, resolvePath } from "@/lib/paths";
 import { escapeLinkText, mentionHref, type MentionKind } from "@/lib/mentions";
-import { assignMarkersInView, filePastePlugin, inlineTodoDecorations } from "./plugins";
+import { assignMarkersInView, filePastePlugin, inlineTodoDecorations, reviewKeys } from "./plugins";
 import {
   currentFind,
   findPlugin,
@@ -38,6 +41,8 @@ import { buildSlashMenu } from "./slashMenu";
 import { codeTheme } from "./codeTheme";
 import { cleanMarkdown } from "@/lib/markdown";
 import { ACCEPT, fileKind } from "@/lib/files";
+import { showError } from "@/components/Toasts";
+import { writer } from "@/platform/writing";
 
 export interface NoteEditorHandle {
   /** Replace content (external change). */
@@ -48,6 +53,8 @@ export interface NoteEditorHandle {
   find: (patch: { query?: string; step?: 1 | -1 }) => { index: number; count: number };
   /** Selected text (to prefill the find bar). */
   selectedText: () => string;
+  /** Writing tools: rewrite the selection, or the whole note when nothing is selected. */
+  runAI: (instruction: string) => void;
 }
 
 interface Props {
@@ -60,12 +67,34 @@ interface Props {
   /** Create a note for "@new title" and return it. */
   onCreateNote: (title: string) => Promise<{ id: string; title: string }>;
   onOpenFile: (vaultPath: string) => void;
+  /** Writing tools (the "Ask AI" button in the selection toolbar). */
+  ai?: boolean;
+  /** Before each AI request: save, and keep the current text in the version history. */
+  onBeforeAI?: () => Promise<void>;
+}
+
+/**
+ * What the writing tools get: the selected markdown, exactly the range the reply
+ * replaces. Crepe's own version falls back to plain text when the selection
+ * can't be serialized, which would drop images and links from what the model
+ * sees and then replace them with its reply; this refuses instead.
+ */
+function aiContext(state: EditorState, serialize: (doc: ProseNode) => string, instruction: string) {
+  const document = serialize(state.doc);
+  const { from, to, empty } = state.selection;
+  if (empty) return { document, selection: "", instruction };
+  if (from === 0 && to === state.doc.content.size) return { document, selection: document, instruction };
+  const { content } = state.doc.slice(from, to);
+  const { schema } = state;
+  const wrapper = schema.topNodeType.createAndFill(null, content) ?? schema.topNodeType.createAndFill(null, schema.nodes.paragraph?.createAndFill(null, content) ?? null);
+  if (!wrapper) throw new Error("This selection can't be rewritten as a whole. Select whole paragraphs or list items.");
+  return { document, selection: serialize(wrapper), instruction };
 }
 
 const isExternal = (url: string) => /^(https?:|data:|blob:|asset:|http:\/\/asset\.localhost)/.test(url);
 
 export const NoteEditor = forwardRef<NoteEditorHandle, Props>(function NoteEditor(
-  { noteId, notePath, initial, onChange, onOpenMention, onCreateNote, onOpenFile },
+  { noteId, notePath, initial, onChange, onOpenMention, onCreateNote, onOpenFile, ai = false, onBeforeAI },
   ref,
 ) {
   const root = useRef<HTMLDivElement>(null);
@@ -79,8 +108,8 @@ export const NoteEditor = forwardRef<NoteEditorHandle, Props>(function NoteEdito
   const { data: folders = [] } = useFolders();
 
   // Latest values for use inside long-lived editor callbacks.
-  const live = useRef({ notes, todos, folders, notePath, onChange, onOpenMention, onOpenFile });
-  live.current = { notes, todos, folders, notePath, onChange, onOpenMention, onOpenFile };
+  const live = useRef({ notes, todos, folders, notePath, onChange, onOpenMention, onOpenFile, onBeforeAI });
+  live.current = { notes, todos, folders, notePath, onChange, onOpenMention, onOpenFile, onBeforeAI };
 
   const withView = <T,>(fn: (view: EditorView) => T): T | undefined => crepeRef.current?.editor.action((c) => fn(c.get(editorViewCtx)));
 
@@ -103,6 +132,16 @@ export const NoteEditor = forwardRef<NoteEditorHandle, Props>(function NoteEdito
         const { from, to } = v.state.selection;
         return v.state.doc.textBetween(from, to, " ");
       }) ?? "",
+    runAI: (instruction) =>
+      crepeRef.current?.editor.action((c) => {
+        const view = c.get(editorViewCtx);
+        // Focus first: focusing reads the browser's selection back, which can't span an image and shrank "the whole note" to its first paragraph.
+        view.focus();
+        const { doc, selection } = view.state;
+        if (selection.empty) view.dispatch(view.state.tr.setSelection(new AllSelection(doc)));
+        // By name: importing runAICmd from "@milkdown/crepe/feature/ai" gives a second copy whose key the editor doesn't know.
+        c.get(commandsCtx).call("RunAI", { instruction });
+      }),
   }));
 
   useEffect(() => {
@@ -152,8 +191,27 @@ export const NoteEditor = forwardRef<NoteEditorHandle, Props>(function NoteEdito
     const crepe = new Crepe({
       root: root.current,
       defaultValue: initial,
-      features: { [Crepe.Feature.AI]: false, [Crepe.Feature.Latex]: false, [Crepe.Feature.TopBar]: false },
+      features: { [Crepe.Feature.AI]: ai, [Crepe.Feature.Latex]: false, [Crepe.Feature.TopBar]: false },
       featureConfigs: {
+        // Writing tools: the reply streams in and is shown as a diff to accept or reject.
+        [Crepe.Feature.AI]: {
+          provider: async function* (c, signal) {
+            await live.current.onBeforeAI?.(); // a restore point in the version history, whatever happens next
+            let wrote = "";
+            for await (const piece of writer()({ instruction: c.instruction, selection: c.selection, document: c.document }, signal, (warnings) => {
+              if (warnings.length) showError(`Check before accepting: the AI's version ${warnings.join(" and ")}.`, "Writing tools");
+            })) {
+              wrote += piece;
+              yield piece;
+            }
+            // An empty reply would show as "delete the selection"; failing puts the text back (Crepe aborts the stream).
+            if (!wrote.trim() && !signal.aborted) throw new Error("The AI didn't write anything. Try describing what you want a bit more.");
+          },
+          buildAISuggestions: (b) => void b.clear(), // just the prompt
+          buildContext: (c, instruction) => aiContext(c.get(editorViewCtx).state, c.get(serializerCtx), instruction),
+          instructionPlaceholder: "What should AI do with this?",
+          onError: (e) => showError(e.cause ?? e, "Writing tools"),
+        },
         [Crepe.Feature.Placeholder]: { text: "Start writing… type / for blocks, @ to link a note or todo, - [ ] for a todo", mode: "doc" },
         [Crepe.Feature.CodeMirror]: { theme: codeTheme },
         [Crepe.Feature.ImageBlock]: {
@@ -215,6 +273,7 @@ export const NoteEditor = forwardRef<NoteEditorHandle, Props>(function NoteEdito
         }),
       )
       .use(findPlugin())
+      .use(reviewKeys(() => crepe.editor.action((c) => c.get(commandsCtx).call(clearDiffReviewCmd.key))))
       .use(
         filePastePlugin(async (files, view, pos) => {
           for (const file of files) {
@@ -228,8 +287,11 @@ export const NoteEditor = forwardRef<NoteEditorHandle, Props>(function NoteEdito
 
     let markerTimer: ReturnType<typeof setTimeout> | undefined;
     crepe.on((api) => {
-      api.markdownUpdated((_ctx, markdown, prev) => {
+      api.markdownUpdated((c, markdown, prev) => {
         if (markdown === prev) return;
+        // Writing tools: while text streams in (and during the review) the note keeps its old text until accepted.
+        const state = c.get(editorViewCtx).state;
+        if (streamingPluginKey.getState(state)?.active || diffPluginKey.getState(state)?.active) return;
         live.current.onChange(cleanMarkdown(markdown));
         // After a pause, give new "- [ ]" items a todo marker (creates the todo on save).
         clearTimeout(markerTimer);
@@ -288,9 +350,9 @@ export const NoteEditor = forwardRef<NoteEditorHandle, Props>(function NoteEdito
         void crepe.destroy();
       }
     };
-    // The editor is created once per note; content updates go through setMarkdown.
+    // The editor is created once per note (and again when writing tools are turned on or off); content updates go through setMarkdown.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [noteId]);
+  }, [noteId, ai]);
 
   // Re-check "@" links (missing or not) when notes, todos or folders change.
   useEffect(() => {

@@ -16,7 +16,7 @@ import { forgetVoice, listVoices } from "@/data/voices";
 const MODEL_INFO: Record<ModelId, { label: string; detail: string }> = {
   speech: { label: "Speech recognition", detail: "Parakeet v3 (NVIDIA): Dutch, English and 23 more languages" },
   speakers: { label: "Speaker separation", detail: "pyannote + CAM++: tells the other participants apart (Spreker 1, 2…). Optional" },
-  summary: { label: "Summaries", detail: "Gemma 4 E4B (Google): summary, key points and action items" },
+  summary: { label: "Summaries", detail: "Gemma 4 E4B (Google): summary, key points and action items. Also used by the writing tools" },
 };
 
 /** Settings → Meeting recordings: the feature toggle, the models (download / delete), mic and language. */
@@ -113,7 +113,7 @@ export function MeetingsSettings({ desktop }: { desktop: boolean }) {
   );
 }
 
-function ModelRow({ model }: { model: ModelStatus }) {
+export function ModelRow({ model }: { model: ModelStatus }) {
   const progress = useMeetingsStore((s) => s.downloads[model.id]);
   const queued = useMeetingsStore((s) => s.queued.includes(model.id));
   const info = MODEL_INFO[model.id];

@@ -16,7 +16,13 @@ use sherpa_onnx::{
     OfflineSpeakerSegmentationModelConfig, OfflineSpeakerSegmentationPyannoteModelConfig, OfflineTransducerModelConfig, SileroVadModelConfig,
     SpeakerEmbeddingExtractor, SpeakerEmbeddingExtractorConfig, VadModelConfig, VoiceActivityDetector,
 };
-use std::{collections::HashMap, num::NonZeroU32, path::Path, sync::OnceLock};
+use std::{
+    collections::HashMap,
+    num::NonZeroU32,
+    path::{Path, PathBuf},
+    sync::{Arc, Mutex, OnceLock},
+    time::{Duration, Instant},
+};
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 #[serde(rename_all = "camelCase")]
@@ -679,15 +685,7 @@ fn similarity(a: &str, b: &str) -> f32 {
 
 /// "nl" or "en", from common function words (Parakeet doesn't report the language).
 pub fn detect_language(segments: &[Segment]) -> &'static str {
-    const NL: &[&str] = &["de", "het", "een", "en", "ik", "je", "niet", "dat", "van", "zijn", "voor", "met", "op", "ook", "maar", "wel", "nog", "wat", "dan"];
-    const EN: &[&str] = &["the", "and", "to", "of", "you", "that", "it", "for", "with", "on", "this", "not", "but", "are", "have", "what", "so", "just"];
-    let (mut nl, mut en) = (0, 0);
-    for s in segments {
-        for w in words(&s.text) {
-            nl += NL.contains(&w.as_str()) as usize;
-            en += EN.contains(&w.as_str()) as usize;
-        }
-    }
+    let (nl, en) = segments.iter().map(|s| language_votes(&s.text)).fold((0, 0), |(a, b), (x, y)| (a + x, b + y));
     if en > nl {
         "en"
     } else {
@@ -695,9 +693,35 @@ pub fn detect_language(segments: &[Segment]) -> &'static str {
     }
 }
 
+/// The language of a piece of text, when its function words make it clear.
+pub fn text_language(text: &str) -> Option<&'static str> {
+    match language_votes(text) {
+        (nl, en) if nl > en => Some("nl"),
+        (nl, en) if en > nl => Some("en"),
+        _ => None,
+    }
+}
+
+#[cfg(test)]
+pub fn language_votes_pub(text: &str) -> (usize, usize) {
+    language_votes(text)
+}
+
+/// How many common Dutch and English function words the text has.
+fn language_votes(text: &str) -> (usize, usize) {
+    const NL: &[&str] = &["de", "het", "een", "en", "ik", "je", "niet", "dat", "van", "zijn", "voor", "met", "op", "ook", "maar", "wel", "nog", "wat", "dan"];
+    const EN: &[&str] = &["the", "and", "to", "of", "you", "that", "it", "for", "with", "on", "this", "not", "but", "are", "have", "what", "so", "just"];
+    let (mut nl, mut en) = (0, 0);
+    for w in words(text) {
+        nl += NL.contains(&w.as_str()) as usize;
+        en += EN.contains(&w.as_str()) as usize;
+    }
+    (nl, en)
+}
+
 // ---------------------------------------------------------------- summary
 
-fn backend() -> Result<&'static LlamaBackend, String> {
+pub(crate) fn backend() -> Result<&'static LlamaBackend, String> {
     // llama.cpp may only be initialised once per process.
     static BACKEND: OnceLock<Result<LlamaBackend, String>> = OnceLock::new();
     BACKEND
@@ -785,8 +809,62 @@ pub fn transcript_text(segments: &[Segment], lang: &str, names: &HashMap<u32, St
 }
 
 /// Gemma 4's chat format (llama.cpp's built-in template list doesn't know it).
-fn gemma_prompt(system: &str, user: &str) -> String {
+pub(crate) fn gemma_prompt(system: &str, user: &str) -> String {
     format!("<|turn>system\n{system}<turn|>\n<|turn>user\n{user}<turn|>\n<|turn>model\n")
+}
+
+/// The language model stays loaded this long after its last use, so the next
+/// summary or writing request doesn't wait for 4.6 GB to load again.
+const KEEP_LOADED: Duration = Duration::from_secs(5 * 60);
+
+struct Loaded {
+    path: PathBuf,
+    model: Arc<LlamaModel>,
+    last_used: Instant,
+}
+
+static LOADED: Mutex<Option<Loaded>> = Mutex::new(None);
+
+/// The model at `path`, loaded once and shared by summaries and writing tools.
+pub(crate) fn shared_model(path: &Path) -> Result<Arc<LlamaModel>, String> {
+    let backend = backend()?;
+    let mut loaded = LOADED.lock().unwrap_or_else(|e| e.into_inner());
+    if let Some(l) = loaded.as_mut().filter(|l| l.path == path) {
+        l.last_used = Instant::now();
+        return Ok(l.model.clone());
+    }
+    *loaded = None; // another file: free the old one first
+    // All layers on the GPU where there is one (Metal on macOS); CPU otherwise.
+    let model = Arc::new(
+        LlamaModel::load_from_file(backend, path, &LlamaModelParams::default().with_n_gpu_layers(999))
+            .map_err(|e| format!("Could not load the language model: {e}"))?,
+    );
+    *loaded = Some(Loaded { path: path.to_path_buf(), model: model.clone(), last_used: Instant::now() });
+    drop(loaded);
+    static WATCHER: OnceLock<()> = OnceLock::new();
+    WATCHER.get_or_init(|| {
+        std::thread::spawn(|| loop {
+            std::thread::sleep(Duration::from_secs(30));
+            let mut loaded = LOADED.lock().unwrap_or_else(|e| e.into_inner());
+            // Still in use (a summary or writing request holds a clone): keep it.
+            if loaded.as_ref().is_some_and(|l| l.last_used.elapsed() > KEEP_LOADED && Arc::strong_count(&l.model) == 1) {
+                *loaded = None;
+            }
+        });
+    });
+    Ok(model)
+}
+
+/// Marks the shared model as used now (at the end of a long request).
+pub(crate) fn touch_model() {
+    if let Some(l) = LOADED.lock().unwrap_or_else(|e| e.into_inner()).as_mut() {
+        l.last_used = Instant::now();
+    }
+}
+
+/// Frees the shared model (before its file is deleted: Windows can't delete a mapped file).
+pub(crate) fn unload_model() {
+    *LOADED.lock().unwrap_or_else(|e| e.into_inner()) = None;
 }
 
 /// Transcripts up to this many tokens are summarized in one go; longer ones in parts.
@@ -798,9 +876,7 @@ pub fn summarize(segments: &[Segment], lang: &str, names: &HashMap<u32, String>,
         return Ok(String::new());
     }
     let backend = backend()?;
-    // All layers on the GPU where there is one (Metal on macOS); CPU otherwise.
-    let model = LlamaModel::load_from_file(backend, model_path, &LlamaModelParams::default().with_n_gpu_layers(999))
-        .map_err(|e| format!("Could not load the summary model: {e}"))?;
+    let model = shared_model(model_path)?;
     let p = prompts(lang);
     let text = transcript_text(segments, lang, names);
     let tokens = model.str_to_token(&text, AddBos::Never).map_err(|e| e.to_string())?.len();
@@ -828,8 +904,27 @@ pub fn summarize(segments: &[Segment], lang: &str, names: &HashMap<u32, String>,
 }
 
 fn generate(backend: &LlamaBackend, model: &LlamaModel, prompt: &str) -> Result<String, String> {
+    // Low temperature: summaries should stick to the transcript.
+    generate_with(backend, model, prompt, &Generation { max_output: MAX_OUTPUT, temperature: 0.3, seed: 42 }, &mut |_| true)
+}
+
+pub(crate) struct Generation {
+    pub max_output: usize,
+    pub temperature: f32,
+    pub seed: u32,
+}
+
+/// Runs the model on `prompt`. `on_piece` gets the text as it is generated and
+/// returns false to stop early.
+pub(crate) fn generate_with(
+    backend: &LlamaBackend,
+    model: &LlamaModel,
+    prompt: &str,
+    g: &Generation,
+    on_piece: &mut dyn FnMut(&str) -> bool,
+) -> Result<String, String> {
     let tokens = model.str_to_token(prompt, AddBos::Always).map_err(|e| e.to_string())?;
-    let n_ctx = (tokens.len() + MAX_OUTPUT + 64) as u32;
+    let n_ctx = (tokens.len() + g.max_output + 64) as u32;
     let batch_size = 2048;
     let params = LlamaContextParams::default()
         .with_n_ctx(NonZeroU32::new(n_ctx))
@@ -850,22 +945,26 @@ fn generate(backend: &LlamaBackend, model: &LlamaModel, prompt: &str) -> Result<
         pos += chunk.len() as i32;
     }
 
-    // Low temperature: summaries should stick to the transcript.
-    let mut sampler = LlamaSampler::chain_simple([LlamaSampler::temp(0.3), LlamaSampler::top_p(0.9, 1), LlamaSampler::dist(42)]);
+    let mut sampler = LlamaSampler::chain_simple([LlamaSampler::temp(g.temperature), LlamaSampler::top_p(0.9, 1), LlamaSampler::dist(g.seed)]);
     let mut decoder = encoding_rs::UTF_8.new_decoder();
     let mut out = String::new();
-    for _ in 0..MAX_OUTPUT {
+    for _ in 0..g.max_output {
         let token = sampler.sample(&ctx, batch.n_tokens() - 1);
         sampler.accept(token);
         if model.is_eog_token(token) {
             break;
         }
-        out += &model.token_to_piece(token, &mut decoder, false, None).map_err(|e| e.to_string())?;
+        let piece = model.token_to_piece(token, &mut decoder, false, None).map_err(|e| e.to_string())?;
+        out += &piece;
+        if !on_piece(&piece) {
+            break;
+        }
         batch.clear();
         batch.add(token, pos, &[0], true).map_err(|e| e.to_string())?;
         pos += 1;
         ctx.decode(&mut batch).map_err(|e| e.to_string())?;
     }
+    touch_model();
     Ok(out)
 }
 

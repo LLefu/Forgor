@@ -328,3 +328,16 @@ body.resizing-media * {
 .note-editor .milkdown .milkdown-image-block > .caption-input {
   text-align: left;
 }
+
+/* Writing tools review: one decision for the whole change (Accept all / Reject all in the bar).
+   Per-change buttons left the review open after accepting one of many small changes, which blocked typing. */
+.milkdown .milkdown-diff-controls {
+  display: none;
+}
+.milkdown .milkdown-ai-diff-actions.review-nudge {
+  animation: review-nudge 0.5s ease;
+}
+@keyframes review-nudge {
+  0%, 100% { transform: translateX(-50%) scale(1); }
+  40% { transform: translateX(-50%) scale(1.08); }
+}

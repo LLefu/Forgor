@@ -1,4 +1,5 @@
 mod meetings;
+mod writing;
 mod storage;
 
 use tauri::{
@@ -104,6 +105,8 @@ pub fn run() {
             meetings::models::meetings_download,
             meetings::models::meetings_cancel_download,
             meetings::models::meetings_delete_model,
+            writing::writing_run,
+            writing::writing_cancel,
             storage::storage_usage,
         ])
         .setup(|app| {
@@ -155,6 +158,8 @@ pub fn run() {
         // Quitting while recording: finish the audio files (processed on the next start).
         if let tauri::RunEvent::Exit = event {
             meetings::finish_for_quit(app);
+            // A language model still loaded at exit makes llama.cpp's Metal code abort ("quit unexpectedly").
+            meetings::process::unload_model();
         }
         // macOS: clicking the dock icon re-opens the hidden main window.
         #[cfg(target_os = "macos")]

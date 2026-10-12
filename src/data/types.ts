@@ -105,4 +105,6 @@ export interface Settings {
   meetingMic: string | null;
   /** Language of the summary; speech in Dutch and English is recognized either way. */
   meetingLanguage: "auto" | "nl" | "en";
+  /** Writing tools in the editor (off until turned on; uses the summary model). */
+  writingEnabled: boolean;
 }

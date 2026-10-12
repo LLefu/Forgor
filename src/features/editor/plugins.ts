@@ -1,6 +1,7 @@
 import { Plugin, PluginKey, TextSelection } from "@milkdown/kit/prose/state";
 import { Decoration, DecorationSet, type EditorView } from "@milkdown/kit/prose/view";
 import { $prose } from "@milkdown/kit/utils";
+import { diffPluginKey } from "@milkdown/kit/plugin/diff";
 import { newId } from "@/lib/utils";
 
 // ------------------------------------------------------------ inline todo markers
@@ -115,6 +116,38 @@ export function filePastePlugin(onFiles: (files: File[], view: EditorView, pos: 
               }
               return false;
             },
+          },
+        },
+      }),
+  );
+}
+
+/**
+ * Writing tools review: the note can't be edited until the AI's change is
+ * accepted or rejected (Milkdown's diff plugin blocks it). Esc rejects; typing
+ * makes the Accept/Reject bar pulse so it's clear why nothing happens.
+ */
+export function reviewKeys(reject: () => void) {
+  return $prose(
+    () =>
+      new Plugin({
+        key: new PluginKey("forgor-review-keys"),
+        props: {
+          handleKeyDown(view, event) {
+            if (!diffPluginKey.getState(view.state)?.active) return false;
+            if (event.key === "Escape") {
+              reject();
+              return true;
+            }
+            if (event.metaKey || event.ctrlKey || event.altKey) return false; // ⌘/Ctrl+Enter accepts (Crepe), copy etc.
+            if (event.key.length === 1 || event.key === "Enter" || event.key === "Backspace" || event.key === "Delete") {
+              const bar = view.dom.parentElement?.querySelector(".milkdown-ai-diff-actions");
+              bar?.classList.remove("review-nudge");
+              void (bar as HTMLElement | undefined)?.offsetWidth; // restart the animation
+              bar?.classList.add("review-nudge");
+              return true;
+            }
+            return false;
           },
         },
       }),

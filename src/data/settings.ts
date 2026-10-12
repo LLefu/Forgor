@@ -18,6 +18,7 @@ export const DEFAULT_SETTINGS: Settings = {
   meetingsEnabled: false,
   meetingMic: null,
   meetingLanguage: "auto",
+  writingEnabled: false,
 };
 
 function navigatorIsMac() {
