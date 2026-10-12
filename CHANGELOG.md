@@ -5,6 +5,8 @@ All notable changes to Forgor. Add new entries under **Unreleased**;
 
 ## Unreleased
 
+## 0.4.0 (2026-10-12)
+
 ### New
 - **Writing tools** (turn on in Settings → Writing tools): select text and click the ✨ button in the toolbar, or use **AI** above a note for the whole note, and type what you want: shorter, more formal, fix the spelling, translate, turn it into a list… The answer appears in the note as a change to review (Accept all / Reject all / Retry; ⌘/Ctrl+Enter accepts, Esc rejects) and nothing is saved until you accept. Runs on your computer with the same model as the meeting summaries. Images, links, files, code and todos are kept out of the AI's reach, you're warned when its version would leave one out, the text from before every request is kept in the version history, and Ctrl/⌘+Z undoes an accepted change.
 
