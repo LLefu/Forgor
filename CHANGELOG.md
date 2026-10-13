@@ -5,6 +5,8 @@ All notable changes to Forgor. Add new entries under **Unreleased**;
 
 ## Unreleased
 
+## 0.5.1 (2026-10-13)
+
 ### New
 - A folder can link **more than one Jira board** (Add board in the folder's panel). The folder shows your tickets from all of them together, and View all opens them on one page. Each board can be unlinked on its own.
 - In the **Jira** overview, tickets from a board that's linked to a folder with an icon show that icon, so you can tell the projects apart at a glance.
