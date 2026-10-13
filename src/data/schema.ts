@@ -108,6 +108,8 @@ export const MIGRATIONS: string[][] = [
       PRIMARY KEY (meeting_id, speaker_id)
     )`,
   ],
+  // v7: the Jira board linked to a folder (JSON, lib/jira.ts JiraBoardRef)
+  [`ALTER TABLE folders ADD COLUMN jira_board TEXT`],
 ];
 
 export async function migrate(sql: SqlDriver): Promise<void> {

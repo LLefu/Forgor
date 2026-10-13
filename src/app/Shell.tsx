@@ -12,7 +12,6 @@ import { NothingOpen } from "./NothingOpen";
 import { SearchOverlay } from "@/features/search/SearchOverlay";
 import { AddColorDialogHost } from "@/components/ColorPicker";
 import { AttachmentPickerHost } from "@/components/AttachmentPicker";
-import { CalendarView } from "@/features/calendar/CalendarView";
 import { SearchView } from "@/features/search/SearchView";
 import { TrashView, ArchiveView } from "@/features/history/TrashView";
 import { SettingsView } from "@/features/settings/SettingsView";
@@ -29,6 +28,8 @@ import { ToastHost } from "@/components/Toasts";
 import { ZoomIndicator } from "./zoom";
 import { startMeetings } from "./meetings";
 import { MeetingsPage } from "@/features/meetings/MeetingsPage";
+import { JiraBoardPage, JiraOverview } from "@/features/jira/JiraPages";
+import { IssuePanel } from "@/features/jira/IssuePanel";
 import { NameRecordingDialogHost } from "@/features/meetings/NameRecordingDialog";
 import { SpeakersDialogHost } from "@/features/meetings/SpeakersDialog";
 
@@ -164,8 +165,10 @@ function MainView({ platform }: { platform: Platform }) {
       return <TodosPage kind={view.kind} />;
     case "all":
       return <AllTasks />;
-    case "calendar":
-      return <CalendarView />;
+    case "jira":
+      return <JiraOverview />;
+    case "jira-board":
+      return <JiraBoardPage key={view.boardId} boardId={view.boardId} name={view.name} />;
     case "meetings":
       return <MeetingsPage />;
     case "search":
@@ -181,11 +184,13 @@ function MainView({ platform }: { platform: Platform }) {
   }
 }
 
-/** Todo details, or (underneath) the open folder. */
+/** Todo details, a Jira ticket, or (underneath) the open folder. */
 function RightPanel() {
   const todoId = useUI((s) => s.selectedTodoId);
   const folderId = useUI((s) => s.selectedFolderId);
+  const issueKey = useUI((s) => s.selectedIssueKey);
   if (todoId) return <TodoDetail />;
+  if (issueKey) return <IssuePanel />;
   if (folderId) return <FolderPanel id={folderId} />;
   return null;
 }

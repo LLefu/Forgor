@@ -19,8 +19,8 @@ onDataChange(() => {
   pending = true;
   queueMicrotask(() => {
     pending = false;
-    // Not the storage overview: it walks the whole notes folder, so it refreshes on demand only.
-    void queryClient.invalidateQueries({ predicate: (q) => q.queryKey[0] !== "storage" });
+    // Not the storage overview (it walks the whole notes folder) or Jira (remote; it refreshes on its own schedule).
+    void queryClient.invalidateQueries({ predicate: (q) => q.queryKey[0] !== "storage" && q.queryKey[0] !== "jira" });
   });
 });
 

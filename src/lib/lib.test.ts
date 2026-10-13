@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { bucketTodos, friendlyDate, shouldArchive, formatEstimate } from "./dates";
-import { nextOccurrence, presetToRRule, customRRule, describeRRule, occurrences } from "./recurrence";
+import { nextOccurrence, presetToRRule, customRRule, describeRRule } from "./recurrence";
 import { parseNote, stringifyNote } from "./frontmatter";
 import { assignTaskIds, parseTasks, setTaskChecked, setTaskText } from "./inlineTodos";
 import { cleanMarkdown } from "./markdown";
@@ -111,14 +111,6 @@ describe("recurrence", () => {
   });
   it("custom every 3 days", () => {
     expect(nextOccurrence(customRRule(3, "day"), "2026-09-24")).toBe("2026-09-27");
-  });
-  it("occurrences within a range", () => {
-    expect(occurrences(presetToRRule("daily")!, "2026-09-24", "2026-09-27")).toEqual([
-      "2026-09-24",
-      "2026-09-25",
-      "2026-09-26",
-      "2026-09-27",
-    ]);
   });
   it("describes rules", () => {
     expect(describeRRule(presetToRRule("daily"))).toBe("Every day");

@@ -24,13 +24,6 @@ export function nextOccurrence(rrule: string, anchor: string): string | null {
   return next ? fromUtcDay(next) : null;
 }
 
-/** First N occurrences starting at (and including) `anchor`. Used for the calendar and previews. */
-export function occurrences(rrule: string, anchor: string, until: string, limit = 60): string[] {
-  const opts = RRule.parseString(rrule);
-  const rule = new RRule({ ...opts, dtstart: toUtcDay(anchor), until: toUtcDay(until) });
-  return rule.all((_, i) => i < limit).map(fromUtcDay);
-}
-
 export function describeRRule(rrule: string | null): string {
   if (!rrule) return "Does not repeat";
   try {

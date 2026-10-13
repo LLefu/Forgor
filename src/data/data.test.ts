@@ -56,6 +56,18 @@ describe("folder colors (schema v3)", () => {
   });
 });
 
+describe("Jira board per folder (schema v7)", () => {
+  it("links a board to a folder, keeps it across renames, and unlinks", async () => {
+    const f = await notes.createFolder("", "Website");
+    const board = { id: 1, name: "WEB board", projectKey: "WEB", projectName: "Website" };
+    await notes.setFolderJiraBoard(f.id, board);
+    await notes.relocateFolder(f.id, "Site");
+    expect((await notes.listFolders())[0]).toMatchObject({ path: "Site", jiraBoard: board });
+    await notes.setFolderJiraBoard(f.id, null);
+    expect((await notes.listFolders())[0].jiraBoard).toBeNull();
+  });
+});
+
 describe("vault sync", () => {
   it("indexes external files and assigns ids", async () => {
     await vault.writeText("Clients/Acme/Kickoff.md", "# Kickoff\nBudget talk");

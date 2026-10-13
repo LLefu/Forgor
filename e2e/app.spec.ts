@@ -8,7 +8,7 @@ async function readVaultFile(page: Page, suffix: string) {
   }, suffix);
 }
 
-test("folder → note → inline todo → Today, Calendar and Search", async ({ page }) => {
+test("folder → note → inline todo → Today and Search", async ({ page }) => {
   const errors: string[] = [];
   page.on("pageerror", (e) => errors.push(e.message));
   await page.goto("/?empty");
@@ -51,10 +51,6 @@ test("folder → note → inline todo → Today, Calendar and Search", async ({ 
   const row = page.locator('[data-testid="todo-row"][data-title="Draft the proposal"]');
   await expect(row).toBeVisible();
   await expect(row.getByTestId("note-badge")).toHaveText("1");
-
-  // …and in the calendar
-  await page.getByTestId("nav-calendar").click();
-  await expect(page.getByTestId("calendar")).toContainText("Draft the proposal");
 
   // Completing it updates the checkbox inside the markdown file
   await page.getByTestId("nav-today").click();

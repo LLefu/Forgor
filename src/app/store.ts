@@ -5,18 +5,20 @@ import { DEFAULT_SETTINGS, saveSetting } from "@/data/settings";
 import { ctx } from "@/data/context";
 import { newId } from "@/lib/utils";
 
-export type PageKind = "inbox" | "today" | "all" | "calendar" | "meetings" | "search" | "archive" | "trash" | "settings";
-export type View = { kind: PageKind } | { kind: "note"; id: string };
+export type PageKind = "inbox" | "today" | "all" | "jira" | "meetings" | "search" | "archive" | "trash" | "settings";
+/** `jira-board`: all my tickets on one board (from a folder's "View all"). */
+export type View = { kind: PageKind } | { kind: "note"; id: string } | { kind: "jira-board"; boardId: number; name: string };
 
 export interface Tab {
   id: string;
   view: View;
 }
 
-const sameView = (a: View, b: View) => a.kind === b.kind && (a.kind !== "note" || (b.kind === "note" && a.id === b.id));
+const sameView = (a: View, b: View) =>
+  a.kind === b.kind && (a.kind !== "note" || (b.kind === "note" && a.id === b.id)) && (a.kind !== "jira-board" || (b.kind === "jira-board" && a.boardId === b.boardId));
 
 interface UIState {
-  /** Tabs across the top. Every note gets its own tab; the pages (Today, Calendar…) share one. */
+  /** Tabs across the top. Every note gets its own tab; the pages (Today, Search…) share one. */
   tabs: Tab[];
   /** null = no tabs open (the "nothing open" state). */
   activeTab: string | null;
@@ -33,11 +35,15 @@ interface UIState {
   closeAllTabs: () => void;
   moveTab: (id: string, toIndex: number) => void;
 
-  /** The right-hand detail panel shows one thing at a time: a todo or a folder. */
+  /** The right-hand detail panel shows one thing at a time: a todo, a folder or a Jira ticket. */
   selectedTodoId: string | null;
   openTodo: (id: string | null) => void;
   selectedFolderId: string | null;
   openFolder: (id: string | null) => void;
+  /** Jira ticket key; `issueFromFolder` is the folder it was opened from (its panel's back button). */
+  selectedIssueKey: string | null;
+  issueFromFolder: string | null;
+  openIssue: (key: string | null, fromFolder?: string | null) => void;
   closePanel: () => void;
 
   /** Explorer item ("f:<id>" / "n:<id>") to put into rename mode once it appears in the tree. */
@@ -63,11 +69,14 @@ interface UIState {
 
 const TABS_KEY = "forgor.tabs";
 
+const REMOVED_PAGES: string[] = ["calendar"];
+
 function loadTabs(): { tabs: Tab[]; activeTab: string | null } {
   try {
     const raw = JSON.parse(localStorage.getItem(TABS_KEY) ?? "null") as { tabs: Tab[]; activeTab: string | null } | null;
     if (raw && Array.isArray(raw.tabs)) {
-      const tabs = raw.tabs.filter((t) => t && t.id && t.view && (t.view.kind !== "note" || typeof t.view.id === "string"));
+      // Drops tabs of pages that no longer exist (the calendar was removed in 0.5).
+      const tabs = raw.tabs.filter((t) => t && t.id && t.view && (t.view.kind !== "note" || typeof t.view.id === "string") && (t.view.kind !== "jira-board" || typeof t.view.boardId === "number") && !REMOVED_PAGES.includes(t.view.kind));
       return { tabs, activeTab: tabs.some((t) => t.id === raw.activeTab) ? raw.activeTab : (tabs[0]?.id ?? null) };
     }
   } catch {
@@ -169,10 +178,13 @@ export const useUI = create<UIState>((set, get) => {
     },
 
     selectedTodoId: null,
-    openTodo: (id) => set({ selectedTodoId: id, selectedFolderId: null }),
+    openTodo: (id) => set({ selectedTodoId: id, selectedFolderId: null, selectedIssueKey: null }),
     selectedFolderId: null,
-    openFolder: (id) => set({ selectedFolderId: id, selectedTodoId: null }),
-    closePanel: () => set({ selectedFolderId: null, selectedTodoId: null }),
+    openFolder: (id) => set({ selectedFolderId: id, selectedTodoId: null, selectedIssueKey: null }),
+    selectedIssueKey: null,
+    issueFromFolder: null,
+    openIssue: (key, fromFolder = null) => set({ selectedIssueKey: key, issueFromFolder: key ? fromFolder : null, selectedTodoId: null, selectedFolderId: null }),
+    closePanel: () => set({ selectedFolderId: null, selectedTodoId: null, selectedIssueKey: null }),
 
     pendingRename: null,
     requestRename: (treeId) => set({ pendingRename: treeId }),

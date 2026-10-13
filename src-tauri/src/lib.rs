@@ -1,3 +1,4 @@
+mod jira;
 mod meetings;
 mod writing;
 mod storage;
@@ -106,6 +107,10 @@ pub fn run() {
             meetings::models::meetings_cancel_download,
             meetings::models::meetings_delete_model,
             writing::writing_run,
+            jira::jira_connect,
+            jira::jira_disconnect,
+            jira::jira_get,
+            jira::jira_attachment,
             writing::writing_cancel,
             storage::storage_usage,
         ])

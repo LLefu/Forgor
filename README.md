@@ -5,7 +5,7 @@
 - **Notes** are plain `.md` files in a folder you choose. Every folder is a project.
 - **Todos** have due date and time, start date, priority, status, subtasks, checklist, recurrence and estimate.
 - Todos and notes link **many-to-many**. Type `- [ ] something` in a note and it becomes a real todo.
-- **Views:** Inbox, Today, Upcoming, Calendar (month/week, drag to reschedule), folder/project pages, Search (full text + filters), Archive, Trash.
+- **Views:** Inbox, Today, Upcoming, Jira (tickets assigned to you), folder/project pages, Search (full text + filters), Archive, Trash.
 - **Version history** for notes, with a diff and restore.
 - **Global shortcut** (`Ctrl+Alt+Space` on Windows, `Cmd+Shift+Space` on macOS) opens a quick menu: New note / New todo / Search. It works even when the app is hidden in the tray.
 - **Meeting recordings** (optional, off by default): records your microphone and the computer's sound (the other people in a call), then writes a transcript and a summary into a note. Speech recognition and summaries run on your computer; nothing is uploaded.
@@ -78,7 +78,7 @@ src/
   platform/   SqlDriver + VaultFs interfaces; Tauri (real disk + SQLite) and memory (sql.js) implementations
   data/       services on top of the platform: notes/folders indexer, todos, search, trash, versions
   lib/        pure logic (dates, recurrence, frontmatter, inline todos, wiki links, paths), unit tested
-  features/   UI: explorer, editor (Milkdown), todos, calendar, search, history, settings, folder
+  features/   UI: explorer, editor (Milkdown), todos, search, history, settings, folder
   popup/      the global-shortcut quick menu (separate window)
   app/        boot, store (Zustand), queries (TanStack Query), shell, sidebar
 src-tauri/    Rust: plugins, tray, window behaviour, global shortcut

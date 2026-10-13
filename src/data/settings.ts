@@ -19,6 +19,8 @@ export const DEFAULT_SETTINGS: Settings = {
   meetingMic: null,
   meetingLanguage: "auto",
   writingEnabled: false,
+  jiraEnabled: false,
+  jiraAccount: null,
 };
 
 function navigatorIsMac() {

@@ -43,9 +43,9 @@ test("tabs: notes open in tabs, reorder, middle-click and × close, right-click 
   await expect(tabs.nth(1)).toHaveAttribute("aria-selected", "true");
 
   // Pages share one tab
-  await page.getByTestId("nav-calendar").click();
+  await page.getByTestId("nav-archive").click();
   await expect(tabs).toHaveCount(3);
-  await expect(tabs.nth(0)).toHaveAttribute("data-title", "Calendar");
+  await expect(tabs.nth(0)).toHaveAttribute("data-title", "Archive");
 
   // Drag "1-on-1 notes" before "Project plan"
   await tabs.nth(2).dragTo(tabs.nth(1), { targetPosition: { x: 5, y: 10 } });

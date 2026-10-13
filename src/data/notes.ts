@@ -1,5 +1,6 @@
 import { ctx, emitChange } from "./context";
 import type { Folder, NoteMeta } from "./types";
+import type { JiraBoardRef } from "@/lib/jira";
 import { parseNote, stringifyNote } from "@/lib/frontmatter";
 import { extractMentions, renameMentions, type MentionKind } from "@/lib/mentions";
 import {
@@ -41,7 +42,22 @@ const toMeta = (r: NoteRow): NoteMeta => ({
 // ---------------------------------------------------------------- queries
 
 export async function listFolders(): Promise<Folder[]> {
-  return ctx().sql.select<Folder>(`SELECT id, path, color FROM folders ORDER BY path COLLATE NOCASE`);
+  const rows = await ctx().sql.select<Folder & { jira_board: string | null }>(`SELECT id, path, color, jira_board FROM folders ORDER BY path COLLATE NOCASE`);
+  return rows.map(({ jira_board, ...f }) => ({ ...f, jiraBoard: parseBoard(jira_board) }));
+}
+
+function parseBoard(json: string | null): JiraBoardRef | null {
+  try {
+    return json ? (JSON.parse(json) as JiraBoardRef) : null;
+  } catch {
+    return null;
+  }
+}
+
+/** Link a Jira board to a folder (null unlinks). */
+export async function setFolderJiraBoard(id: string, board: JiraBoardRef | null): Promise<void> {
+  await ctx().sql.execute(`UPDATE folders SET jira_board = ? WHERE id = ?`, [board ? JSON.stringify(board) : null, id]);
+  emitChange("folders");
 }
 
 export async function setFolderColor(id: string, color: string | null): Promise<void> {

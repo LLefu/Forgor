@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { X, FileText, Inbox, Sun, ListTodo, CalendarDays, Search, Archive, Trash2, Settings, AudioLines } from "lucide-react";
+import { X, FileText, Inbox, Sun, ListTodo, Search, Archive, Trash2, Settings, AudioLines, Ticket, SquareKanban } from "lucide-react";
 import { useUI, type PageKind, type Tab } from "./store";
 import { useNotes } from "./queries";
 import { cn } from "@/lib/utils";
@@ -10,7 +10,7 @@ const PAGES: Record<PageKind, { label: string; icon: React.ComponentType<{ class
   inbox: { label: "Inbox", icon: Inbox },
   today: { label: "Today", icon: Sun },
   all: { label: "All tasks", icon: ListTodo },
-  calendar: { label: "Calendar", icon: CalendarDays },
+  jira: { label: "Jira", icon: Ticket },
   meetings: { label: "Meetings", icon: AudioLines },
   search: { label: "Search", icon: Search },
   archive: { label: "Archive", icon: Archive },
@@ -109,7 +109,7 @@ function TabButton({
   const { data: notes = [] } = useNotes();
 
   const note = tab.view.kind === "note" ? notes.find((n) => n.id === (tab.view as { id: string }).id) : null;
-  const page = tab.view.kind !== "note" ? PAGES[tab.view.kind] : null;
+  const page = tab.view.kind === "jira-board" ? { label: tab.view.name, icon: SquareKanban } : tab.view.kind !== "note" ? PAGES[tab.view.kind] : null;
   const title = page ? page.label : (note?.title ?? "Missing note");
   const Icon = page ? page.icon : FileText;
 

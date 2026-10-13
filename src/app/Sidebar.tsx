@@ -1,8 +1,8 @@
 import { useMemo, useRef } from "react";
 import type { TreeApi } from "react-arborist";
 import {
+  Ticket,
   Inbox,
-  CalendarDays,
   ListTodo,
   Sun,
   Search,
@@ -109,7 +109,7 @@ export function Sidebar() {
         <NavItem icon={Inbox} label="Inbox" count={counts.inbox} target={{ kind: "inbox" }} />
         <NavItem icon={Sun} label="Today" count={counts.today} alert={counts.overdue > 0} target={{ kind: "today" }} />
         <NavItem icon={ListTodo} label="All tasks" count={counts.all} target={{ kind: "all" }} />
-        <NavItem icon={CalendarDays} label="Calendar" target={{ kind: "calendar" }} />
+        {settings.jiraEnabled && <NavItem icon={Ticket} label="Jira" target={{ kind: "jira" }} />}
         {settings.meetingsEnabled && <MeetingsNavItem />}
         <NavItem icon={Search} label="Search" hint={shortcutLabel("Mod+K")} target={{ kind: "search" }} />
         <NavItem icon={Archive} label="Archive" target={{ kind: "archive" }} />

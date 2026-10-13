@@ -28,6 +28,7 @@ import { Row } from "./Row";
 import { MeetingsSettings } from "@/features/meetings/MeetingsSettings";
 import { StorageRow } from "./StorageRow";
 import { WritingSettings } from "./WritingSettings";
+import { JiraSettings } from "@/features/jira/JiraSettings";
 
 export function SettingsView({ platform }: { platform: Platform }) {
   const settings = useUI((s) => s.settings);
@@ -113,6 +114,8 @@ export function SettingsView({ platform }: { platform: Platform }) {
         <MeetingsSettings desktop={platform.kind === "tauri"} />
 
         <WritingSettings desktop={platform.kind === "tauri"} />
+
+        <JiraSettings desktop={platform.kind === "tauri"} />
 
         <StorageRow desktop={platform.kind === "tauri"} />
 

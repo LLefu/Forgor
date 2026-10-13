@@ -1,3 +1,5 @@
+import type { JiraBoardRef } from "@/lib/jira";
+import type { JiraAccount } from "@/platform/jira";
 export type TodoStatus = "todo" | "in_progress" | "waiting" | "blocked" | "done";
 export type Priority = 1 | 2 | 3 | 4;
 
@@ -55,6 +57,8 @@ export interface Folder {
   path: string;
   /** Color id (lib/folderColors.ts); null = inherit from parent folder. */
   color?: string | null;
+  /** The Jira board linked to this folder. */
+  jiraBoard?: JiraBoardRef | null;
 }
 
 export interface NoteMeta {
@@ -107,4 +111,8 @@ export interface Settings {
   meetingLanguage: "auto" | "nl" | "en";
   /** Writing tools in the editor (off until turned on; uses the summary model). */
   writingEnabled: boolean;
+  /** Jira integration (off until turned on). */
+  jiraEnabled: boolean;
+  /** The connected Jira account; the API token itself is in the OS keychain. */
+  jiraAccount: JiraAccount | null;
 }

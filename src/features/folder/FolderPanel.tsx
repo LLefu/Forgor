@@ -18,6 +18,8 @@ import { trashItem } from "@/features/explorer/ItemMenu";
 import { FolderColorButton, FolderLabel, useFolderColor } from "./folderColors";
 import { format } from "date-fns";
 import { noteLinkProps } from "@/app/noteLink";
+import { FolderJira } from "@/features/jira/FolderJira";
+import type { Folder as FolderRow } from "@/data/types";
 
 /** A folder is a project: its todos, notes and subfolders in a panel on the right (like a todo's details). */
 export function FolderPanel({ id }: { id: string }) {
@@ -39,7 +41,7 @@ export function FolderPanel({ id }: { id: string }) {
   );
 }
 
-function FolderBody({ folder }: { folder: { id: string; path: string } }) {
+function FolderBody({ folder }: { folder: FolderRow }) {
   const { data: folders = [] } = useFolders();
   const { data: allNotes = [] } = useNotes();
   const { data: todos = [] } = useTodos();
@@ -168,6 +170,8 @@ function FolderBody({ folder }: { folder: { id: string; path: string } }) {
               ))}
             </Section>
           )}
+
+          <FolderJira folder={folder} />
 
           <Attachments folderPath={folder.path} />
 
