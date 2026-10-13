@@ -68,6 +68,17 @@ describe("Jira board per folder (schema v7)", () => {
   });
 });
 
+describe("folder icons (schema v8)", () => {
+  it("stores an icon per folder, keeps it across renames, and removes it", async () => {
+    const f = await notes.createFolder("", "Clients");
+    await notes.setFolderIcon(f.id, "data:image/png;base64,AAAA");
+    await notes.relocateFolder(f.id, "Customers");
+    expect((await notes.listFolders())[0]).toMatchObject({ path: "Customers", icon: "data:image/png;base64,AAAA" });
+    await notes.setFolderIcon(f.id, null);
+    expect((await notes.listFolders())[0].icon).toBeNull();
+  });
+});
+
 describe("vault sync", () => {
   it("indexes external files and assigns ids", async () => {
     await vault.writeText("Clients/Acme/Kickoff.md", "# Kickoff\nBudget talk");

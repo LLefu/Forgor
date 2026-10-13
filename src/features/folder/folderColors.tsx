@@ -1,7 +1,9 @@
 import { useState } from "react";
-import { Check, ChevronDown, Folder as FolderIcon, Inbox, Palette } from "lucide-react";
+import { Check, ChevronDown, Folder as FolderIcon, FolderOpen, ImageMinus, ImagePlus, Inbox, Palette } from "lucide-react";
 import { useFolders } from "@/app/queries";
-import { setFolderColor } from "@/data/notes";
+import { setFolderColor, setFolderIcon } from "@/data/notes";
+import { chooseIconImage } from "@/lib/folderIcon";
+import { showError } from "@/components/Toasts";
 import { FOLDER_COLORS, effectiveFolderColor } from "@/lib/folderColors";
 import { basename } from "@/lib/paths";
 import { cn } from "@/lib/utils";
@@ -12,6 +14,72 @@ import { SwatchGrid, type Swatch } from "@/components/ColorPicker";
 export function useFolderColor(folderId: string | null | undefined): string | null {
   const { data: folders = [] } = useFolders();
   return effectiveFolderColor(folderId, folders);
+}
+
+/**
+ * A folder's symbol: its uploaded icon, or the folder glyph in its color.
+ * Every place that draws a folder uses this.
+ */
+export function FolderGlyph({ icon, color, open, className }: { icon?: string | null; color: string | null; open?: boolean; className?: string }) {
+  if (icon) return <img src={icon} alt="" draggable={false} className={cn("shrink-0 rounded-[3px] object-contain", className)} data-testid="folder-icon" />;
+  const Glyph = open ? FolderOpen : FolderIcon;
+  return (
+    <Glyph
+      className={cn("shrink-0", className)}
+      style={color ? { color, fill: open ? undefined : `color-mix(in srgb, ${color} 25%, transparent)` } : undefined}
+    />
+  );
+}
+
+/** Upload an icon for a folder (file dialog); errors become a toast. */
+export function uploadFolderIcon(folderId: string) {
+  chooseIconImage()
+    .then((icon) => (icon ? setFolderIcon(folderId, icon) : undefined))
+    .catch((e) => showError(e, "Folder icon"));
+}
+
+/** Button + popover to upload or remove a folder's icon. */
+export function FolderIconButton({ folderId }: { folderId: string }) {
+  const { data: folders = [] } = useFolders();
+  const [open, setOpen] = useState(false);
+  const icon = folders.find((f) => f.id === folderId)?.icon ?? null;
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <button type="button" className="inline-flex h-7 items-center gap-1.5 rounded border px-2 text-xs hover:bg-muted" data-testid="folder-icon-button">
+          {icon ? <img src={icon} alt="" className="size-3.5 rounded-[2px] object-contain" /> : <ImagePlus className="size-3.5 text-muted-foreground" />}
+          Icon
+        </button>
+      </PopoverTrigger>
+      <PopoverContent className="w-56 p-1" align="end">
+        <button
+          type="button"
+          className="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-left text-[13px] hover:bg-muted"
+          onClick={() => {
+            setOpen(false);
+            uploadFolderIcon(folderId);
+          }}
+          data-testid="folder-icon-upload"
+        >
+          <ImagePlus className="size-4 text-muted-foreground" /> {icon ? "Upload another image…" : "Upload an image…"}
+        </button>
+        {icon && (
+          <button
+            type="button"
+            className="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-left text-[13px] hover:bg-muted"
+            onClick={() => {
+              setOpen(false);
+              void setFolderIcon(folderId, null);
+            }}
+            data-testid="folder-icon-remove"
+          >
+            <ImageMinus className="size-4 text-muted-foreground" /> Remove icon
+          </button>
+        )}
+        <p className="px-2 pb-1 pt-1.5 text-[11px] text-muted-foreground">Shown instead of the folder symbol. Any image works; it's scaled down to a small icon.</p>
+      </PopoverContent>
+    </Popover>
+  );
 }
 
 /** Folder icon + name in the folder's color. Used wherever a folder is referenced. */
@@ -39,7 +107,7 @@ export function FolderLabel({
   }
   return (
     <span className={cn("inline-flex min-w-0 items-center gap-1", className)} data-testid="folder-label">
-      <FolderIcon className="size-3 shrink-0" style={color ? { color, fill: `color-mix(in srgb, ${color} 25%, transparent)` } : undefined} />
+      <FolderGlyph icon={folder.icon} color={color} className="size-3" />
       <span className="truncate">{full ? folder.path : basename(folder.path)}</span>
     </span>
   );

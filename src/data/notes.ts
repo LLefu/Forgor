@@ -42,7 +42,7 @@ const toMeta = (r: NoteRow): NoteMeta => ({
 // ---------------------------------------------------------------- queries
 
 export async function listFolders(): Promise<Folder[]> {
-  const rows = await ctx().sql.select<Folder & { jira_board: string | null }>(`SELECT id, path, color, jira_board FROM folders ORDER BY path COLLATE NOCASE`);
+  const rows = await ctx().sql.select<Folder & { jira_board: string | null }>(`SELECT id, path, color, jira_board, icon FROM folders ORDER BY path COLLATE NOCASE`);
   return rows.map(({ jira_board, ...f }) => ({ ...f, jiraBoard: parseBoard(jira_board) }));
 }
 
@@ -52,6 +52,12 @@ function parseBoard(json: string | null): JiraBoardRef | null {
   } catch {
     return null;
   }
+}
+
+/** Set or remove (null) a folder's icon (a PNG data URL, see lib/folderIcon.ts). */
+export async function setFolderIcon(id: string, icon: string | null): Promise<void> {
+  await ctx().sql.execute(`UPDATE folders SET icon = ? WHERE id = ?`, [icon, id]);
+  emitChange("folders");
 }
 
 /** Link a Jira board to a folder (null unlinks). */

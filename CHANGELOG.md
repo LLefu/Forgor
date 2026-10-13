@@ -8,6 +8,8 @@ All notable changes to Forgor. Add new entries under **Unreleased**;
 ### New
 - **Jira** (turn on in Settings → Jira): connect your Jira Cloud account with your email and an API token (stored in your computer's keychain). Link a Jira board to a folder in its panel, and the tickets assigned to you on that board show below the notes, with **View all** for the full list. **Jira** in the sidebar lists every ticket assigned to you, with search, filters (status, project, priority) and sorting. Click a ticket to see its details, description and comments on the right, or open it in Jira. Read-only: Forgor never changes anything in Jira.
 
+- **Folder icons**: upload any image as a folder's icon (Icon in the folder's panel, or right-click → Icon in the explorer). It replaces the folder symbol everywhere the folder appears; remove it the same way.
+
 ### Removed
 - The **Calendar** view. Due dates, times and repeating todos are unchanged and still show under Today and All tasks.
 

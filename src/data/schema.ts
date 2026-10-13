@@ -110,6 +110,8 @@ export const MIGRATIONS: string[][] = [
   ],
   // v7: the Jira board linked to a folder (JSON, lib/jira.ts JiraBoardRef)
   [`ALTER TABLE folders ADD COLUMN jira_board TEXT`],
+  // v8: an uploaded folder icon (small PNG as a data URL; lib/folderIcon.ts)
+  [`ALTER TABLE folders ADD COLUMN icon TEXT`],
 ];
 
 export async function migrate(sql: SqlDriver): Promise<void> {

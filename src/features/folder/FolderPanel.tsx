@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { FileText, Folder, FilePlus, ChevronRight, X, Trash2, ListTodo, LocateFixed, Paperclip, Image, Film, Music } from "lucide-react";
+import { FileText, FilePlus, ChevronRight, X, Trash2, ListTodo, LocateFixed, Paperclip, Image, Film, Music } from "lucide-react";
 import { useAttachments, useFolders, useNotes, useTodos } from "@/app/queries";
 import { openVaultFile } from "@/platform/os";
 import { confirmDialog } from "@/components/ConfirmDialog";
@@ -15,7 +15,7 @@ import { Button } from "@/components/ui/button";
 import { Tooltip } from "@/components/ui/tooltip";
 import { useResizableWidth } from "@/components/ResizeHandle";
 import { trashItem } from "@/features/explorer/ItemMenu";
-import { FolderColorButton, FolderLabel, useFolderColor } from "./folderColors";
+import { FolderColorButton, FolderGlyph, FolderIconButton, FolderLabel, useFolderColor } from "./folderColors";
 import { format } from "date-fns";
 import { noteLinkProps } from "@/app/noteLink";
 import { FolderJira } from "@/features/jira/FolderJira";
@@ -110,10 +110,7 @@ function FolderBody({ folder }: { folder: FolderRow }) {
           </nav>
         )}
         <div className="flex items-center gap-2">
-          <Folder
-            className="size-5 shrink-0"
-            style={color ? { color, fill: `color-mix(in srgb, ${color} 25%, transparent)` } : { color: "var(--muted-foreground)" }}
-          />
+          <FolderGlyph icon={folder.icon} color={color} className="size-5 text-muted-foreground" />
           <FolderName folder={folder} />
         </div>
         <p className="mt-1 text-xs text-muted-foreground">
@@ -121,6 +118,7 @@ function FolderBody({ folder }: { folder: FolderRow }) {
         </p>
         <div className="mt-3 flex flex-wrap items-center gap-2">
           <FolderColorButton folderId={folder.id} />
+          <FolderIconButton folderId={folder.id} />
           <Button
             variant="outline"
             size="sm"

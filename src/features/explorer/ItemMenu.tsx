@@ -1,4 +1,4 @@
-import { FilePlus, FolderPlus, Pencil, Trash2, ExternalLink, ListTodo, Palette, LocateFixed } from "lucide-react";
+import { FilePlus, FolderPlus, Pencil, Trash2, ExternalLink, ListTodo, Palette, LocateFixed, ImagePlus, ImageMinus } from "lucide-react";
 import { useFolders } from "@/app/queries";
 import { useUI } from "@/app/store";
 import * as notes from "@/data/notes";
@@ -11,7 +11,7 @@ import {
   ContextMenuSubContent,
   ContextMenuSubTrigger,
 } from "@/components/ui/menu";
-import { ColorSwatches } from "@/features/folder/folderColors";
+import { ColorSwatches, uploadFolderIcon } from "@/features/folder/folderColors";
 import { revealInOs } from "@/platform/os";
 import { confirmDialog } from "@/components/ConfirmDialog";
 
@@ -85,6 +85,7 @@ export function ItemMenuItems({ item, onOpenFolder, showReveal }: { item: TreeIt
   const { data: folders = [] } = useFolders();
   const isFolder = item.kind === "folder";
   const ownColor = isFolder ? (folders.find((f) => f.id === item.refId)?.color ?? null) : null;
+  const ownIcon = isFolder ? (folders.find((f) => f.id === item.refId)?.icon ?? null) : null;
   const here = isFolder ? item.path : dirname(item.path);
 
   const newNoteHere = async () => {
@@ -128,6 +129,23 @@ export function ItemMenuItems({ item, onOpenFolder, showReveal }: { item: TreeIt
                 </ContextMenuItemRaw>
               )}
             />
+          </ContextMenuSubContent>
+        </ContextMenuSub>
+      )}
+      {isFolder && (
+        <ContextMenuSub>
+          <ContextMenuSubTrigger>
+            <ImagePlus /> Icon
+          </ContextMenuSubTrigger>
+          <ContextMenuSubContent>
+            <ContextMenuItem onSelect={() => uploadFolderIcon(item.refId)}>
+              <ImagePlus /> {ownIcon ? "Upload another image…" : "Upload an image…"}
+            </ContextMenuItem>
+            {ownIcon && (
+              <ContextMenuItem onSelect={() => void notes.setFolderIcon(item.refId, null)}>
+                <ImageMinus /> Remove icon
+              </ContextMenuItem>
+            )}
           </ContextMenuSubContent>
         </ContextMenuSub>
       )}

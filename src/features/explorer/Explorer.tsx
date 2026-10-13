@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { Tree, type NodeApi, type NodeRendererProps, type TreeApi } from "react-arborist";
-import { ChevronRight, FileText, Folder, FolderOpen, PanelRight, FilePlus, FolderPlus, ListTodo } from "lucide-react";
+import { ChevronRight, FileText, PanelRight, FilePlus, FolderPlus, ListTodo } from "lucide-react";
 import { useFolders, useNotes } from "@/app/queries";
 import { useUI } from "@/app/store";
 import * as notes from "@/data/notes";
@@ -8,6 +8,7 @@ import { basename, dirname, isMeetingsPath, joinPath } from "@/lib/paths";
 import { cn } from "@/lib/utils";
 import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuTrigger } from "@/components/ui/menu";
 import { effectiveFolderColor } from "@/lib/folderColors";
+import { FolderGlyph } from "@/features/folder/folderColors";
 import { moveTreeItems, useRootDropZone } from "./move";
 import { ItemMenuItems, trashItems, type TreeItem } from "./ItemMenu";
 
@@ -276,6 +277,7 @@ function Row({ node, style, dragHandle }: NodeRendererProps<TreeItem>) {
   const isFolder = item.kind === "folder";
   const { data: folders = [] } = useFolders();
   const folderColor = isFolder ? effectiveFolderColor(item.refId, folders) : null;
+  const folderIcon = isFolder ? (folders.find((f) => f.id === item.refId)?.icon ?? null) : null;
   const flashing = useContext(FlashContext) === item.id;
   const panelFolderId = useContext(PanelContext);
   const inPanel = isFolder && panelFolderId === item.refId;
@@ -327,11 +329,7 @@ function Row({ node, style, dragHandle }: NodeRendererProps<TreeItem>) {
               data-testid="tree-toggle"
             >
               <ChevronRight className={cn("size-3.5 w-4 transition-transform", node.isOpen && "rotate-90")} />
-              {node.isOpen ? (
-                <FolderOpen className="size-4" style={folderColor ? { color: folderColor } : undefined} />
-              ) : (
-                <Folder className="size-4" style={folderColor ? { color: folderColor, fill: `color-mix(in srgb, ${folderColor} 25%, transparent)` } : undefined} />
-              )}
+              <FolderGlyph icon={folderIcon} color={folderColor} open={node.isOpen} className="size-4" />
             </button>
           ) : (
             <>
