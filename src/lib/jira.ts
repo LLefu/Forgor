@@ -65,7 +65,8 @@ export const MY_RECENT_JQL = "assignee = currentUser() AND (statusCategory != Do
 const enc = encodeURIComponent;
 
 export const paths = {
-  boards: (name: string) => `/rest/agile/1.0/board?maxResults=50${name.trim() ? `&name=${enc(name.trim())}` : ""}`,
+  /** One page of all boards; the search is done here (`matchBoards`), since Jira's only matches the board name. */
+  boards: (startAt: number) => `/rest/agile/1.0/board?maxResults=50&startAt=${startAt}`,
   boardIssues: (boardId: number, withDone: boolean) =>
     `/rest/agile/1.0/board/${boardId}/issue?maxResults=100&fields=${LIST_FIELDS}&jql=${enc(withDone ? MY_RECENT_JQL : MY_OPEN_JQL)}`,
   search: (jql: string, nextPageToken?: string) =>
@@ -141,6 +142,21 @@ export function mediaAttachments(doc: AdfNode | null, attachments: JiraAttachmen
 
 export function toComment(raw: { id: string; author?: unknown; created?: string; body?: unknown }): JiraComment {
   return { id: raw.id, author: name(raw.author) ?? "Unknown", created: raw.created ?? "", body: (raw.body as AdfNode | null) ?? null };
+}
+
+/**
+ * Boards matching a search on board name, project name or project key (a
+ * project's board is often called "SG board" or "Sprint board", so searching
+ * the project's name has to find it too). Sorted by board name.
+ */
+export function matchBoards(boards: JiraBoardRef[], query: string): JiraBoardRef[] {
+  const words = query.toLowerCase().split(/\s+/).filter(Boolean);
+  return boards
+    .filter((b) => {
+      const text = `${b.name} ${b.projectName ?? ""} ${b.projectKey ?? ""}`.toLowerCase();
+      return words.every((w) => text.includes(w));
+    })
+    .sort((a, b) => a.name.localeCompare(b.name));
 }
 
 export const issueUrl = (site: string, key: string) => `${site}/browse/${key}`;

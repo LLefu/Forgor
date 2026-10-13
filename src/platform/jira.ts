@@ -73,6 +73,9 @@ const FAKE_ISSUES = [
 const FAKE_BOARDS = [
   { id: 1, name: "WEB board", type: "scrum", location: { projectKey: "WEB", projectName: "Website", displayName: "Website (WEB)" } },
   { id: 2, name: "APP board", type: "kanban", location: { projectKey: "APP", projectName: "Mobile app", displayName: "Mobile app (APP)" } },
+  // A board not named after its project, and enough boards for more than one page (50)
+  { id: 3, name: "Sprint board", type: "scrum", location: { projectKey: "SG", projectName: "Schadegarant", displayName: "Schadegarant (SG)" } },
+  ...Array.from({ length: 60 }, (_, i) => ({ id: 100 + i, name: `Team ${i + 1} board`, type: "kanban", location: { projectKey: "OPS", projectName: "Operations", displayName: "Operations (OPS)" } })),
 ];
 
 function fakeIssue(i: (typeof FAKE_ISSUES)[number]) {
@@ -131,8 +134,9 @@ function fakeBackend(): JiraBackend {
       let m: RegExpExecArray | null;
       if (p === "/rest/api/3/myself") return { ...ME, emailAddress: "demo@example.com" } as T;
       if (p === "/rest/agile/1.0/board") {
-        const name = (q.get("name") ?? "").toLowerCase();
-        return { values: FAKE_BOARDS.filter((b) => b.name.toLowerCase().includes(name)), isLast: true } as T;
+        const start = Number(q.get("startAt") ?? 0);
+        const size = Number(q.get("maxResults") ?? 50);
+        return { values: FAKE_BOARDS.slice(start, start + size), startAt: start, isLast: start + size >= FAKE_BOARDS.length } as T;
       }
       if ((m = /^\/rest\/agile\/1\.0\/board\/(\d+)\/issue$/.exec(p))) {
         const board = FAKE_BOARDS.find((b) => b.id === Number(m![1]));

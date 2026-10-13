@@ -6,8 +6,8 @@ import { ctx } from "@/data/context";
 import { newId } from "@/lib/utils";
 
 export type PageKind = "inbox" | "today" | "all" | "jira" | "meetings" | "search" | "archive" | "trash" | "settings";
-/** `jira-board`: all my tickets on one board (from a folder's "View all"). */
-export type View = { kind: PageKind } | { kind: "note"; id: string } | { kind: "jira-board"; boardId: number; name: string };
+/** `jira-folder`: all my tickets on a folder's Jira boards (its "View all"). */
+export type View = { kind: PageKind } | { kind: "note"; id: string } | { kind: "jira-folder"; folderId: string };
 
 export interface Tab {
   id: string;
@@ -15,7 +15,7 @@ export interface Tab {
 }
 
 const sameView = (a: View, b: View) =>
-  a.kind === b.kind && (a.kind !== "note" || (b.kind === "note" && a.id === b.id)) && (a.kind !== "jira-board" || (b.kind === "jira-board" && a.boardId === b.boardId));
+  a.kind === b.kind && (a.kind !== "note" || (b.kind === "note" && a.id === b.id)) && (a.kind !== "jira-folder" || (b.kind === "jira-folder" && a.folderId === b.folderId));
 
 interface UIState {
   /** Tabs across the top. Every note gets its own tab; the pages (Today, Search…) share one. */
@@ -69,14 +69,15 @@ interface UIState {
 
 const TABS_KEY = "forgor.tabs";
 
-const REMOVED_PAGES: string[] = ["calendar"];
+/** Pages that no longer exist: the calendar (removed in 0.5), one board's page (now per folder, 0.6). */
+const REMOVED_PAGES: string[] = ["calendar", "jira-board"];
 
 function loadTabs(): { tabs: Tab[]; activeTab: string | null } {
   try {
     const raw = JSON.parse(localStorage.getItem(TABS_KEY) ?? "null") as { tabs: Tab[]; activeTab: string | null } | null;
     if (raw && Array.isArray(raw.tabs)) {
       // Drops tabs of pages that no longer exist (the calendar was removed in 0.5).
-      const tabs = raw.tabs.filter((t) => t && t.id && t.view && (t.view.kind !== "note" || typeof t.view.id === "string") && (t.view.kind !== "jira-board" || typeof t.view.boardId === "number") && !REMOVED_PAGES.includes(t.view.kind));
+      const tabs = raw.tabs.filter((t) => t && t.id && t.view && (t.view.kind !== "note" || typeof t.view.id === "string") && (t.view.kind !== "jira-folder" || typeof t.view.folderId === "string") && !REMOVED_PAGES.includes(t.view.kind));
       return { tabs, activeTab: tabs.some((t) => t.id === raw.activeTab) ? raw.activeTab : (tabs[0]?.id ?? null) };
     }
   } catch {

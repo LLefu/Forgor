@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { MemoryVault, SqlJsDriver } from "@/platform/memory";
-import { setCtx } from "./context";
+import { ctx, setCtx } from "./context";
 import { migrate, MIGRATIONS } from "./schema";
 import * as notes from "./notes";
 import * as todos from "./todos";
@@ -56,15 +56,23 @@ describe("folder colors (schema v3)", () => {
   });
 });
 
-describe("Jira board per folder (schema v7)", () => {
-  it("links a board to a folder, keeps it across renames, and unlinks", async () => {
+describe("Jira boards per folder (schema v7)", () => {
+  it("links boards to a folder, keeps them across renames, and unlinks", async () => {
     const f = await notes.createFolder("", "Website");
-    const board = { id: 1, name: "WEB board", projectKey: "WEB", projectName: "Website" };
-    await notes.setFolderJiraBoard(f.id, board);
+    const web = { id: 1, name: "WEB board", projectKey: "WEB", projectName: "Website" };
+    const ops = { id: 3, name: "Ops board", projectKey: "OPS", projectName: "Operations" };
+    await notes.setFolderJiraBoards(f.id, [web, ops]);
     await notes.relocateFolder(f.id, "Site");
-    expect((await notes.listFolders())[0]).toMatchObject({ path: "Site", jiraBoard: board });
-    await notes.setFolderJiraBoard(f.id, null);
-    expect((await notes.listFolders())[0].jiraBoard).toBeNull();
+    expect((await notes.listFolders())[0]).toMatchObject({ path: "Site", jiraBoards: [web, ops] });
+    await notes.setFolderJiraBoards(f.id, []);
+    expect((await notes.listFolders())[0].jiraBoards).toEqual([]);
+  });
+
+  it("reads the single board 0.5.0 stored", async () => {
+    const f = await notes.createFolder("", "Old");
+    const web = { id: 1, name: "WEB board", projectKey: "WEB", projectName: "Website" };
+    await ctx().sql.execute(`UPDATE folders SET jira_board = ? WHERE id = ?`, [JSON.stringify(web), f.id]);
+    expect((await notes.listFolders())[0].jiraBoards).toEqual([web]);
   });
 });
 

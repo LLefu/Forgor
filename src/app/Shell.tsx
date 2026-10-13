@@ -28,7 +28,7 @@ import { ToastHost } from "@/components/Toasts";
 import { ZoomIndicator } from "./zoom";
 import { startMeetings } from "./meetings";
 import { MeetingsPage } from "@/features/meetings/MeetingsPage";
-import { JiraBoardPage, JiraOverview } from "@/features/jira/JiraPages";
+import { JiraFolderPage, JiraOverview } from "@/features/jira/JiraPages";
 import { IssuePanel } from "@/features/jira/IssuePanel";
 import { NameRecordingDialogHost } from "@/features/meetings/NameRecordingDialog";
 import { SpeakersDialogHost } from "@/features/meetings/SpeakersDialog";
@@ -167,8 +167,8 @@ function MainView({ platform }: { platform: Platform }) {
       return <AllTasks />;
     case "jira":
       return <JiraOverview />;
-    case "jira-board":
-      return <JiraBoardPage key={view.boardId} boardId={view.boardId} name={view.name} />;
+    case "jira-folder":
+      return <JiraFolderPage key={view.folderId} folderId={view.folderId} />;
     case "meetings":
       return <MeetingsPage />;
     case "search":

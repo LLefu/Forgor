@@ -108,7 +108,7 @@ export const MIGRATIONS: string[][] = [
       PRIMARY KEY (meeting_id, speaker_id)
     )`,
   ],
-  // v7: the Jira board linked to a folder (JSON, lib/jira.ts JiraBoardRef)
+  // v7: the Jira boards linked to a folder (JSON: a list of lib/jira.ts JiraBoardRef; 0.5.0 stored one object)
   [`ALTER TABLE folders ADD COLUMN jira_board TEXT`],
   // v8: an uploaded folder icon (small PNG as a data URL; lib/folderIcon.ts)
   [`ALTER TABLE folders ADD COLUMN icon TEXT`],

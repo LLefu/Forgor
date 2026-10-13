@@ -1,18 +1,17 @@
 import { useState } from "react";
-import { ChevronRight, Link2, Loader2, MoreHorizontal, SquareKanban, Unlink } from "lucide-react";
+import { ChevronRight, Loader2, Plus, SquareKanban, X } from "lucide-react";
 import { useUI } from "@/app/store";
-import { useBoardIssues, useBoards, useJiraAccount } from "@/app/jira";
-import { setFolderJiraBoard } from "@/data/notes";
+import { useAllBoards, useBoardsIssues, useJiraAccount } from "@/app/jira";
+import { setFolderJiraBoards } from "@/data/notes";
 import type { Folder } from "@/data/types";
-import type { JiraBoardRef } from "@/lib/jira";
+import { matchBoards, type JiraBoardRef } from "@/lib/jira";
 import { Section } from "@/features/todos/TodosPage";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/menu";
+import { Tooltip } from "@/components/ui/tooltip";
 import { IssueRow } from "./IssueRow";
 
-/** In the folder panel, below the notes: link a Jira board, then my tickets on it. */
+/** In the folder panel, below the notes: the folder's Jira boards and my tickets on them (together). */
 export function FolderJira({ folder }: { folder: Folder }) {
   const enabled = useUI((s) => s.settings.jiraEnabled);
   const account = useJiraAccount();
@@ -29,115 +28,105 @@ export function FolderJira({ folder }: { folder: Folder }) {
       </Section>
     );
   }
-  return folder.jiraBoard ? <LinkedBoard folder={folder} board={folder.jiraBoard} /> : <BoardPicker folderId={folder.id} />;
+  return <FolderBoards folder={folder} boards={folder.jiraBoards ?? []} />;
 }
 
 /** Shown in the folder; the rest is behind "View all". */
 const PREVIEW = 8;
 
-function LinkedBoard({ folder, board }: { folder: Folder; board: JiraBoardRef }) {
-  const { data: issues = [], isLoading, error } = useBoardIssues(board.id);
-  // The count is part of the heading here, with room on the right for the "…" menu.
-  const heading = (
-    <span className="flex min-w-0 flex-1 items-center gap-1.5 pr-6">
-      <SquareKanban className="size-3.5 shrink-0 text-muted-foreground" />
-      <span className="truncate">Jira · {board.name}</span>
-      {!isLoading && <span className="font-normal text-muted-foreground">{issues.length}</span>}
-    </span>
-  );
+function FolderBoards({ folder, boards }: { folder: Folder; boards: JiraBoardRef[] }) {
+  const { data: issues = [], isLoading, error } = useBoardsIssues(boards.map((b) => b.id));
+  // Inline, not a popover: a popover opened from a menu closed again right away (the closing menu took the focus).
+  const [adding, setAdding] = useState(false);
+  const linked = boards.length > 0;
+  const add = (b: JiraBoardRef) => void setFolderJiraBoards(folder.id, [...boards.filter((x) => x.id !== b.id), b]).then(() => setAdding(false));
+  const remove = (b: JiraBoardRef) => void setFolderJiraBoards(folder.id, boards.filter((x) => x.id !== b.id));
+
   return (
-    <div className="relative" data-testid="folder-jira">
-      <Section title="Jira" heading={heading}>
-        {isLoading ? (
+    <div data-testid="folder-jira">
+      <Section title="Jira" count={linked && !isLoading ? issues.length : undefined}>
+        {/* The linked boards, each with × to unlink, and + to add one */}
+        <div className="flex flex-wrap items-center gap-1.5 px-2 pb-1.5 pt-0.5">
+          {boards.map((b) => (
+            <span key={b.id} className="inline-flex max-w-full items-center gap-1 rounded border py-0.5 pl-1.5 pr-0.5 text-xs" data-testid="jira-board-chip">
+              <SquareKanban className="size-3.5 shrink-0 text-muted-foreground" />
+              <span className="truncate">{b.name}</span>
+              <Tooltip content="Unlink this board">
+                <button className="rounded-sm p-0.5 text-muted-foreground hover:bg-muted hover:text-foreground" onClick={() => remove(b)} aria-label={`Unlink ${b.name}`}>
+                  <X className="size-3" />
+                </button>
+              </Tooltip>
+            </span>
+          ))}
+          {!adding && (
+            <Button variant={linked ? "ghost" : "outline"} size="sm" className="h-6 px-1.5 text-xs" onClick={() => setAdding(true)} data-testid="jira-link-board">
+              <Plus /> {linked ? "Add board" : "Link a Jira board"}
+            </Button>
+          )}
+        </div>
+        {adding && (
+          <div className="px-1 pb-2">
+            <BoardList onPick={add} onCancel={() => setAdding(false)} exclude={boards.map((b) => b.id)} />
+          </div>
+        )}
+
+        {!linked ? (
+          !adding && <p className="px-2 text-xs text-muted-foreground">Shows the tickets assigned to you on the folder's boards here.</p>
+        ) : isLoading ? (
           <p className="flex items-center gap-2 px-2 py-1.5 text-xs text-muted-foreground">
             <Loader2 className="size-3.5 animate-spin" /> Loading tickets…
           </p>
         ) : error ? (
           <p className="px-2 py-1.5 text-xs text-destructive">{String((error as Error).message ?? error)}</p>
         ) : issues.length === 0 ? (
-          <p className="px-2 py-1.5 text-xs text-muted-foreground">No open tickets assigned to you on this board.</p>
+          <p className="px-2 py-1.5 text-xs text-muted-foreground">No open tickets assigned to you on {boards.length === 1 ? "this board" : "these boards"}.</p>
         ) : (
           issues.slice(0, PREVIEW).map((i) => <IssueRow key={i.key} issue={i} fromFolder={folder.id} />)
         )}
-        <Button
-          variant="ghost"
-          size="sm"
-          className="mt-1 text-xs text-muted-foreground"
-          onClick={() => useUI.getState().setView({ kind: "jira-board", boardId: board.id, name: board.name })}
-          data-testid="jira-view-all"
-        >
-          View all{issues.length > PREVIEW ? ` (${issues.length})` : ""} <ChevronRight />
-        </Button>
-      </Section>
-      <BoardMenu folderId={folder.id} />
-    </div>
-  );
-}
-
-/** "…" next to the heading: change or unlink the board. */
-function BoardMenu({ folderId }: { folderId: string }) {
-  const [picking, setPicking] = useState(false);
-  return (
-    <div className="absolute right-0 top-0">
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <button className="rounded-sm p-0.5 text-muted-foreground hover:text-foreground" aria-label="Jira board options" data-testid="jira-board-menu">
-            <MoreHorizontal className="size-4" />
-          </button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end">
-          <DropdownMenuItem onSelect={() => setPicking(true)}>
-            <Link2 /> Link another board
-          </DropdownMenuItem>
-          <DropdownMenuItem onSelect={() => void setFolderJiraBoard(folderId, null)}>
-            <Unlink /> Unlink board
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
-      {picking && <BoardSearch onPick={(b) => void setFolderJiraBoard(folderId, b).then(() => setPicking(false))} onClose={() => setPicking(false)} anchorless />}
-    </div>
-  );
-}
-
-function BoardPicker({ folderId }: { folderId: string }) {
-  const [open, setOpen] = useState(false);
-  return (
-    <Section title="Jira">
-      <Popover open={open} onOpenChange={setOpen}>
-        <PopoverTrigger asChild>
-          <Button variant="outline" size="sm" className="mx-2 my-1" data-testid="jira-link-board">
-            <SquareKanban /> Link a Jira board
+        {linked && (
+          <Button
+            variant="ghost"
+            size="sm"
+            className="mt-1 text-xs text-muted-foreground"
+            onClick={() => useUI.getState().setView({ kind: "jira-folder", folderId: folder.id })}
+            data-testid="jira-view-all"
+          >
+            View all{issues.length > PREVIEW ? ` (${issues.length})` : ""} <ChevronRight />
           </Button>
-        </PopoverTrigger>
-        <PopoverContent className="w-80 p-2">
-          <BoardList onPick={(b) => void setFolderJiraBoard(folderId, b).then(() => setOpen(false))} />
-        </PopoverContent>
-      </Popover>
-      <p className="px-2 text-xs text-muted-foreground">Shows the tickets assigned to you on that board here.</p>
-    </Section>
+        )}
+      </Section>
+    </div>
   );
 }
 
-/** A board picker without a trigger (from the "…" menu): a small dialog-like popover. */
-function BoardSearch({ onPick, onClose, anchorless }: { onPick: (b: JiraBoardRef) => void; onClose: () => void; anchorless?: boolean }) {
-  return (
-    <Popover open onOpenChange={(o) => !o && onClose()}>
-      <PopoverTrigger asChild>
-        <span className={anchorless ? "absolute right-0 top-5" : undefined} />
-      </PopoverTrigger>
-      <PopoverContent align="end" className="w-80 p-2">
-        <BoardList onPick={onPick} />
-      </PopoverContent>
-    </Popover>
-  );
-}
-
-function BoardList({ onPick }: { onPick: (b: JiraBoardRef) => void }) {
+/** Search and pick a board; × or Esc cancels. */
+function BoardList({ onPick, onCancel, exclude }: { onPick: (b: JiraBoardRef) => void; onCancel: () => void; exclude: number[] }) {
   const [name, setName] = useState("");
-  const { data: boards = [], isLoading, error } = useBoards(name, true);
+  const { data = [], isLoading, error } = useAllBoards(true);
+  const matches = matchBoards(data, name);
+  const boards = matches.filter((b) => !exclude.includes(b.id));
   return (
     <div data-testid="jira-board-picker">
-      <Input autoFocus value={name} onChange={(e) => setName(e.target.value)} placeholder="Search boards" aria-label="Search boards" />
+      <div className="flex items-center gap-1">
+        <Input
+          autoFocus
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Escape") {
+              e.stopPropagation(); // not the panel too
+              onCancel();
+            }
+          }}
+          placeholder="Search by board or project"
+          aria-label="Search boards"
+        />
+        <Tooltip content="Cancel (Esc)">
+          <Button variant="ghost" size="icon" className="size-8 shrink-0" onClick={onCancel} aria-label="Cancel" data-testid="jira-board-cancel">
+            <X />
+          </Button>
+        </Tooltip>
+      </div>
       <div className="mt-2 max-h-72 overflow-y-auto">
         {isLoading ? (
           <p className="flex items-center gap-2 px-2 py-2 text-xs text-muted-foreground">
@@ -146,7 +135,7 @@ function BoardList({ onPick }: { onPick: (b: JiraBoardRef) => void }) {
         ) : error ? (
           <p className="px-2 py-2 text-xs text-destructive">{String((error as Error).message ?? error)}</p>
         ) : boards.length === 0 ? (
-          <p className="px-2 py-2 text-xs text-muted-foreground">No boards found.</p>
+          <p className="px-2 py-2 text-xs text-muted-foreground">{matches.length ? "Those boards are already linked to this folder." : data.length ? "No board matches that name or project." : "No boards found."}</p>
         ) : (
           boards.map((b) => (
             <button key={b.id} onClick={() => onPick(b)} className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-[13px] hover:bg-muted" data-testid="jira-board-option">

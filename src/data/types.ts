@@ -57,8 +57,8 @@ export interface Folder {
   path: string;
   /** Color id (lib/folderColors.ts); null = inherit from parent folder. */
   color?: string | null;
-  /** The Jira board linked to this folder. */
-  jiraBoard?: JiraBoardRef | null;
+  /** The Jira boards linked to this folder (a project can have several). */
+  jiraBoards?: JiraBoardRef[];
   /** Uploaded icon (PNG data URL) shown instead of the folder symbol; not inherited by subfolders. */
   icon?: string | null;
 }

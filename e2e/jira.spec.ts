@@ -64,41 +64,73 @@ test("overview: all my tickets, with search, filters and sorting; a ticket opens
   expect(errors).toEqual([]);
 });
 
-test("a folder links a board: my tickets under the notes, View all, back from a ticket", async ({ page }) => {
+test("a folder links one or more boards: my tickets under the notes, View all, back from a ticket", async ({ page }) => {
   await page.goto("/");
   await connect(page);
   await page.getByTestId("tree-folder-Acme migration").locator("span.truncate").click();
   const folder = page.getByTestId("folder-panel");
-  await folder.getByTestId("jira-link-board").click();
-  await page.getByTestId("jira-board-picker").getByLabel("Search boards").fill("web");
-  await expect(page.getByTestId("jira-board-option")).toHaveCount(1);
-  await page.getByTestId("jira-board-option").click();
-
   const section = folder.getByTestId("folder-jira");
-  await expect(section).toContainText("WEB board");
+  const pick = async (search: string) => {
+    await section.getByTestId("jira-link-board").click();
+    await page.waitForTimeout(300); // the list stays open
+    await section.getByTestId("jira-board-picker").getByLabel("Search boards").fill(search);
+    await expect(section.getByTestId("jira-board-option")).toHaveCount(1);
+    await section.getByTestId("jira-board-option").click();
+  };
+
+  await pick("web");
+  await expect(section.getByTestId("jira-board-chip")).toHaveText(["WEB board"]);
   await expect(section.getByTestId("issue-row")).toHaveCount(3);
   // Below the notes
   const below = await folder.evaluate((el) => {
     const headings = [...el.querySelectorAll("section > button")].map((b) => b.textContent ?? "");
-    return headings.findIndex((h) => h.startsWith("Notes")) < headings.findIndex((h) => h.includes("WEB board"));
+    return headings.findIndex((h) => h.startsWith("Notes")) < headings.findIndex((h) => h.startsWith("Jira"));
   });
   expect(below).toBe(true);
+
+  // A second board: its tickets join the list
+  await pick("app");
+  await expect(section.getByTestId("jira-board-chip")).toHaveText(["WEB board", "APP board"]);
+  await expect(section.getByTestId("issue-row")).toHaveCount(5);
+  // A board that's already linked isn't offered again
+  await section.getByTestId("jira-link-board").click();
+  await section.getByLabel("Search boards").fill("board");
+  await expect(section.getByTestId("jira-board-option").filter({ hasText: /^(WEB|APP) board/ })).toHaveCount(0);
+  await section.getByTestId("jira-board-cancel").click();
+  await expect(section.getByTestId("jira-board-picker")).toHaveCount(0);
+  // Esc cancels too (and leaves the folder panel open)
+  await section.getByTestId("jira-link-board").click();
+  await section.getByLabel("Search boards").press("Escape");
+  await expect(section.getByTestId("jira-board-picker")).toHaveCount(0);
+  await expect(folder).toBeVisible();
+
+  // Boards are found by project name too, also beyond the first page of 50
+  await section.getByTestId("jira-link-board").click();
+  await section.getByLabel("Search boards").fill("schadegarant");
+  await expect(section.getByTestId("jira-board-option")).toHaveText([/Sprint board/]);
+  await section.getByLabel("Search boards").fill("team 60");
+  await expect(section.getByTestId("jira-board-option")).toHaveText([/Team 60 board/]);
+  await section.getByLabel("Search boards").press("Escape");
 
   // A ticket opens in the panel, with a way back to the folder
   await section.getByTestId("issue-row").first().click();
   await expect(page.getByTestId("issue-panel")).toBeVisible();
   await page.getByRole("button", { name: "Back to the folder" }).click();
-  await expect(folder.getByTestId("folder-jira")).toBeVisible();
+  await expect(section).toBeVisible();
 
-  // View all → the board's page
-  await folder.getByTestId("jira-view-all").click();
-  await expect(page.getByTestId("tab").first()).toHaveAttribute("data-title", "WEB board");
-  await expect(page.getByTestId("jira-list").getByTestId("issue-row")).toHaveCount(3);
+  // View all → the folder's page with both boards
+  await section.getByTestId("jira-view-all").click();
+  await expect(page.getByTestId("tab").first()).toHaveAttribute("data-title", "Jira · Acme migration");
+  await expect(page.getByTestId("jira-page")).toContainText("WEB board · APP board");
+  await expect(page.getByTestId("jira-list").getByTestId("issue-row")).toHaveCount(5);
 
-  // Unlink
-  await folder.getByTestId("jira-board-menu").click();
-  await page.getByRole("menuitem", { name: "Unlink board" }).click();
-  await expect(folder.getByTestId("jira-link-board")).toBeVisible();
+  // Unlink one board, then the other
+  await section.getByRole("button", { name: "Unlink WEB board" }).click();
+  await expect(section.getByTestId("jira-board-chip")).toHaveText(["APP board"]);
+  await expect(section.getByTestId("issue-row")).toHaveCount(2);
+  await section.getByRole("button", { name: "Unlink APP board" }).click();
+  await expect(section.getByTestId("jira-board-chip")).toHaveCount(0);
+  await expect(section.getByTestId("jira-link-board")).toHaveText(/Link a Jira board/);
 });
 
 test("disconnecting forgets the account", async ({ page }) => {
@@ -109,4 +141,33 @@ test("disconnecting forgets the account", async ({ page }) => {
   await expect(page.getByTestId("jira-connect")).toBeVisible();
   await page.getByTestId("nav-jira").click();
   await expect(page.getByTestId("jira-not-connected")).toBeVisible();
+});
+
+test("in the overview, tickets of a board linked to a folder with an icon show that icon", async ({ page }) => {
+  await page.goto("/");
+  await connect(page);
+  await page.getByTestId("tree-folder-Acme migration").locator("span.truncate").click();
+  const folder = page.getByTestId("folder-panel");
+  await folder.getByTestId("jira-link-board").click();
+  await page.getByTestId("jira-board-picker").getByLabel("Search boards").fill("web");
+  await expect(page.getByTestId("jira-board-option")).toHaveCount(1);
+  await page.getByTestId("jira-board-option").click();
+  await folder.getByTestId("folder-icon-button").click();
+  const chooser = page.waitForEvent("filechooser");
+  await page.getByTestId("folder-icon-upload").click();
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64"><circle cx="32" cy="32" r="30" fill="#16a34a"/></svg>`;
+  await (await chooser).setFiles({ name: "acme.svg", mimeType: "image/svg+xml", buffer: Buffer.from(svg) });
+  await expect(folder.getByTestId("folder-icon").first()).toBeVisible();
+
+  await page.getByTestId("nav-jira").click();
+  const list = page.getByTestId("jira-list");
+  await expect(list.locator('[data-key="WEB-12"]').getByTestId("issue-folder-icon")).toBeVisible();
+  await expect(list.locator('[data-key="WEB-12"]').getByTestId("issue-folder-icon")).toHaveAttribute("title", "Acme migration · Priority: High");
+  await expect(list.locator('[data-key="APP-41"]').getByTestId("issue-folder-icon")).toHaveCount(0);
+  // The icon replaces the priority bar
+  await expect(list.locator('[data-key="WEB-12"]').getByLabel(/^Priority:/)).toHaveCount(0);
+  await expect(list.locator('[data-key="APP-41"]').getByLabel("Priority: Highest")).toBeVisible();
+  // Titles line up with or without an icon
+  const lefts = await list.getByTestId("issue-row").evaluateAll((rows) => rows.map((r) => Math.round(r.querySelector(".truncate")!.getBoundingClientRect().left)));
+  expect(new Set(lefts).size).toBe(1);
 });

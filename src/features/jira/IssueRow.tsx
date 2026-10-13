@@ -1,4 +1,7 @@
 import { useUI } from "@/app/store";
+import { useFolderForProject } from "@/app/jira";
+import { FolderGlyph } from "@/features/folder/folderColors";
+import { basename } from "@/lib/paths";
 import { priorityRank, type JiraIssue, type StatusCategory } from "@/lib/jira";
 import { friendlyDate, todayStr } from "@/lib/dates";
 import { cn } from "@/lib/utils";
@@ -25,8 +28,26 @@ export function PriorityMark({ priority }: { priority: string | null }) {
   return <span className="h-4 w-1 shrink-0 rounded-full" style={{ background: PRIORITY_VAR[priorityRank(priority)] }} title={`Priority: ${priority}`} aria-label={`Priority: ${priority}`} />;
 }
 
-/** One ticket in a list; clicking opens it in the right-hand panel. */
-export function IssueRow({ issue, fromFolder = null, showProject = false }: { issue: JiraIssue; fromFolder?: string | null; showProject?: boolean }) {
+/**
+ * One ticket in a list; clicking opens it in the right-hand panel. With
+ * `showProject` (the overview), a ticket whose project's board is linked to a
+ * folder with an icon shows that icon instead of its priority bar, to tell the
+ * projects apart at a glance (the priority is in its tooltip and the panel).
+ */
+export function IssueRow({
+  issue,
+  fromFolder = null,
+  showProject = false,
+  iconSlot = false,
+}: {
+  issue: JiraIssue;
+  fromFolder?: string | null;
+  showProject?: boolean;
+  /** Keep room for a folder icon when there is none, so titles line up with the rows that have one. */
+  iconSlot?: boolean;
+}) {
+  const folder = useFolderForProject(issue.project.key);
+  const icon = showProject ? folder?.icon : null;
   const openIssue = useUI((s) => s.openIssue);
   const selected = useUI((s) => s.selectedIssueKey === issue.key);
   const today = todayStr();
@@ -43,7 +64,18 @@ export function IssueRow({ issue, fromFolder = null, showProject = false }: { is
       data-testid="issue-row"
       data-key={issue.key}
     >
-      <PriorityMark priority={issue.priority} />
+      {/* The folder's icon takes the priority bar's place; with icons in the list, the bars get the same width so titles line up. */}
+      {icon ? (
+        <span title={`${basename(folder!.path)} · Priority: ${issue.priority ?? "none"}`} className="flex shrink-0" data-testid="issue-folder-icon">
+          <FolderGlyph icon={icon} color={null} className="size-5" />
+        </span>
+      ) : iconSlot ? (
+        <span className="flex w-5 shrink-0 justify-center">
+          <PriorityMark priority={issue.priority} />
+        </span>
+      ) : (
+        <PriorityMark priority={issue.priority} />
+      )}
       <div className="min-w-0 flex-1">
         <div className={cn("truncate text-[13.5px] leading-5", done && "text-muted-foreground line-through")}>{issue.summary}</div>
         <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-muted-foreground">

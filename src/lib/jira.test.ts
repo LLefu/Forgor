@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { adfText, filterIssues, mediaAttachments, paths, sortIssues, toIssue, type JiraIssue } from "./jira";
+import { adfText, filterIssues, matchBoards, mediaAttachments, paths, sortIssues, toIssue, type JiraIssue } from "./jira";
 
 const issue = (key: string, patch: Partial<JiraIssue> = {}): JiraIssue => ({
   key,
@@ -55,7 +55,15 @@ describe("jira", () => {
 
   it("encodes JQL into request paths", () => {
     expect(paths.search("assignee = currentUser()")).toContain("jql=assignee%20%3D%20currentUser()");
-    expect(paths.boards("web")).toBe("/rest/agile/1.0/board?maxResults=50&name=web");
+    expect(paths.boards(50)).toBe("/rest/agile/1.0/board?maxResults=50&startAt=50");
+  });
+
+  it("finds boards by board name, project name or key", () => {
+    const b = (id: number, name: string, projectName: string, projectKey: string) => ({ id, name, projectName, projectKey });
+    const boards = [b(1, "WEB board", "Website", "WEB"), b(2, "Sprint board", "Schadegarant", "SG"), b(3, "SG kanban", "Schadegarant", "SG")];
+    expect(matchBoards(boards, "schadegarant").map((x) => x.id)).toEqual([3, 2]);
+    expect(matchBoards(boards, "sg sprint").map((x) => x.id)).toEqual([2]);
+    expect(matchBoards(boards, "").map((x) => x.id)).toEqual([3, 2, 1]);
   });
 
   it("finds the attachment of each image: by file name, else in order", () => {

@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { X, FileText, Inbox, Sun, ListTodo, Search, Archive, Trash2, Settings, AudioLines, Ticket, SquareKanban } from "lucide-react";
 import { useUI, type PageKind, type Tab } from "./store";
-import { useNotes } from "./queries";
+import { useFolders, useNotes } from "./queries";
+import { basename } from "@/lib/paths";
 import { cn } from "@/lib/utils";
 import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuSeparator, ContextMenuTrigger } from "@/components/ui/menu";
 import { ItemMenuItems, noteItem } from "@/features/explorer/ItemMenu";
@@ -107,9 +108,12 @@ function TabButton({
   const closeAllTabs = useUI((s) => s.closeAllTabs);
   const count = useUI((s) => s.tabs.length);
   const { data: notes = [] } = useNotes();
+  const { data: folders = [] } = useFolders();
 
   const note = tab.view.kind === "note" ? notes.find((n) => n.id === (tab.view as { id: string }).id) : null;
-  const page = tab.view.kind === "jira-board" ? { label: tab.view.name, icon: SquareKanban } : tab.view.kind !== "note" ? PAGES[tab.view.kind] : null;
+  const jiraFolder = tab.view.kind === "jira-folder" ? folders.find((f) => f.id === (tab.view as { folderId: string }).folderId) : null;
+  const page =
+    tab.view.kind === "jira-folder" ? { label: `Jira · ${jiraFolder ? basename(jiraFolder.path) : "folder"}`, icon: SquareKanban } : tab.view.kind !== "note" ? PAGES[tab.view.kind] : null;
   const title = page ? page.label : (note?.title ?? "Missing note");
   const Icon = page ? page.icon : FileText;
 

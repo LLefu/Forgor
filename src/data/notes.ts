@@ -43,14 +43,16 @@ const toMeta = (r: NoteRow): NoteMeta => ({
 
 export async function listFolders(): Promise<Folder[]> {
   const rows = await ctx().sql.select<Folder & { jira_board: string | null }>(`SELECT id, path, color, jira_board, icon FROM folders ORDER BY path COLLATE NOCASE`);
-  return rows.map(({ jira_board, ...f }) => ({ ...f, jiraBoard: parseBoard(jira_board) }));
+  return rows.map(({ jira_board, ...f }) => ({ ...f, jiraBoards: parseBoards(jira_board) }));
 }
 
-function parseBoard(json: string | null): JiraBoardRef | null {
+/** `jira_board` holds a list of boards; 0.5.0 stored a single one (an object). */
+function parseBoards(json: string | null): JiraBoardRef[] {
   try {
-    return json ? (JSON.parse(json) as JiraBoardRef) : null;
+    const v = json ? (JSON.parse(json) as JiraBoardRef | JiraBoardRef[] | null) : null;
+    return Array.isArray(v) ? v : v ? [v] : [];
   } catch {
-    return null;
+    return [];
   }
 }
 
@@ -60,9 +62,9 @@ export async function setFolderIcon(id: string, icon: string | null): Promise<vo
   emitChange("folders");
 }
 
-/** Link a Jira board to a folder (null unlinks). */
-export async function setFolderJiraBoard(id: string, board: JiraBoardRef | null): Promise<void> {
-  await ctx().sql.execute(`UPDATE folders SET jira_board = ? WHERE id = ?`, [board ? JSON.stringify(board) : null, id]);
+/** The Jira boards linked to a folder (empty unlinks all). */
+export async function setFolderJiraBoards(id: string, boards: JiraBoardRef[]): Promise<void> {
+  await ctx().sql.execute(`UPDATE folders SET jira_board = ? WHERE id = ?`, [boards.length ? JSON.stringify(boards) : null, id]);
   emitChange("folders");
 }
 

@@ -1,9 +1,11 @@
 import { useMemo, useState } from "react";
 import { Loader2, RefreshCw, Search, Settings, SquareKanban, Ticket } from "lucide-react";
-import type { UseQueryResult } from "@tanstack/react-query";
 import { useUI } from "@/app/store";
-import { useBoardIssues, useJiraAccount, useMyIssues } from "@/app/jira";
-import { filterIssues, sortIssues, SORT_LABELS, type IssueSort, type JiraIssue, type StatusCategory } from "@/lib/jira";
+import { useBoardsIssues, useJiraAccount, useMyIssues, type IssuesResult } from "@/app/jira";
+import { FolderGlyph } from "@/features/folder/folderColors";
+import { basename } from "@/lib/paths";
+import { useFolders } from "@/app/queries";
+import { filterIssues, sortIssues, SORT_LABELS, type IssueSort, type StatusCategory } from "@/lib/jira";
 import { PageHeader } from "@/features/todos/TodosPage";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -61,14 +63,32 @@ export function JiraOverview() {
 }
 
 /** A folder's board → "View all": my tickets on that board. */
-export function JiraBoardPage({ boardId, name }: { boardId: number; name: string }) {
+export function JiraFolderPage({ folderId }: { folderId: string }) {
+  const { data: folders = [] } = useFolders();
+  const folder = folders.find((f) => f.id === folderId);
+  const boards = folder?.jiraBoards ?? [];
   const [status, setStatus] = useStored<StatusFilter>("forgor.jira.board.status", "open");
-  const query = useBoardIssues(boardId, status === "done" || status === "all");
-  return <IssueListPage title={name} icon={<SquareKanban className="size-5 text-muted-foreground" />} query={query} status={status} setStatus={setStatus} storageKey="forgor.jira.board" />;
+  const query = useBoardsIssues(
+    boards.map((b) => b.id),
+    status === "done" || status === "all",
+  );
+  return (
+    <IssueListPage
+      title={folder ? basename(folder.path) : "Jira"}
+      subtitle={boards.map((b) => b.name).join(" · ")}
+      icon={folder ? <FolderGlyph icon={folder.icon} color={null} className="size-5 text-muted-foreground" /> : <SquareKanban className="size-5 text-muted-foreground" />}
+      query={query}
+      status={status}
+      setStatus={setStatus}
+      storageKey="forgor.jira.board"
+      showProjects={new Set(boards.map((b) => b.projectKey)).size > 1}
+    />
+  );
 }
 
 function IssueListPage({
   title,
+  subtitle,
   icon,
   query,
   status,
@@ -78,7 +98,9 @@ function IssueListPage({
 }: {
   title: string;
   icon: React.ReactNode;
-  query: UseQueryResult<JiraIssue[]>;
+  query: IssuesResult;
+  /** Under the title (e.g. the folder's boards). */
+  subtitle?: string;
   status: StatusFilter;
   setStatus: (s: StatusFilter) => void;
   storageKey: string;
@@ -90,6 +112,12 @@ function IssueListPage({
   const [priority, setPriority] = useState("");
   const [text, setText] = useState("");
   const issues = useMemo(() => query.data ?? [], [query.data]);
+  const { data: folders = [] } = useFolders();
+  // Some tickets show their folder's icon: keep room on every row so the titles line up.
+  const iconSlot = useMemo(
+    () => showProjects && issues.some((i) => folders.some((f) => f.icon && f.jiraBoards?.some((b) => b.projectKey === i.project.key))),
+    [showProjects, issues, folders],
+  );
 
   const projects = useMemo(() => [...new Map(issues.map((i) => [i.project.key, i.project.name || i.project.key])).entries()].sort((a, b) => a[1].localeCompare(b[1])), [issues]);
   const priorities = useMemo(() => [...new Set(issues.map((i) => i.priority).filter((p): p is string => !!p))], [issues]);
@@ -102,7 +130,11 @@ function IssueListPage({
 
   return (
     <div className="mx-auto max-w-3xl pb-16" data-testid="jira-page">
-      <PageHeader title={title} icon={icon} subtitle={query.isSuccess ? `${shown.length} ${shown.length === 1 ? "ticket" : "tickets"} assigned to you` : undefined}>
+      <PageHeader
+        title={title}
+        icon={icon}
+        subtitle={[subtitle, query.isSuccess ? `${shown.length} ${shown.length === 1 ? "ticket" : "tickets"} assigned to you` : null].filter(Boolean).join(" · ") || undefined}
+      >
         <Tooltip content="Refresh">
           <Button size="icon" variant="ghost" onClick={() => void query.refetch()} disabled={query.isFetching} aria-label="Refresh">
             <RefreshCw className={query.isFetching ? "animate-spin" : undefined} />
@@ -141,7 +173,7 @@ function IssueListPage({
         ) : (
           <div data-testid="jira-list">
             {shown.map((i) => (
-              <IssueRow key={i.key} issue={i} showProject={showProjects} />
+              <IssueRow key={i.key} issue={i} showProject={showProjects} iconSlot={iconSlot} />
             ))}
           </div>
         )}

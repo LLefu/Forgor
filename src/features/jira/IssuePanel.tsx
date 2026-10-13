@@ -1,8 +1,7 @@
 import { ArrowLeft, ExternalLink, Loader2, RefreshCw, X } from "lucide-react";
 import { format } from "date-fns";
 import { useUI } from "@/app/store";
-import { useFolders } from "@/app/queries";
-import { useComments, useIssue, useJiraAccount } from "@/app/jira";
+import { useComments, useFolderForProject, useIssue, useJiraAccount } from "@/app/jira";
 import { issueUrl, type JiraIssue } from "@/lib/jira";
 import { Button } from "@/components/ui/button";
 import { Tooltip } from "@/components/ui/tooltip";
@@ -73,7 +72,7 @@ export function IssuePanel() {
 
 function IssueBody({ issue, url }: { issue: JiraIssue; url?: string }) {
   const { data: comments = [], isLoading } = useComments(issue.key);
-  const linkedFolder = useLinkedFolder(issue.project.key);
+  const linkedFolder = useFolderForProject(issue.project.key)?.id ?? null;
   const today = todayStr();
   return (
     <>
@@ -143,15 +142,4 @@ function Prop({ label, children }: { label: string; children: React.ReactNode })
       <dd className="min-w-0">{children}</dd>
     </>
   );
-}
-
-/** A folder whose linked board is on this project (to jump there). */
-function useLinkedFolder(projectKey: string): string | null {
-  const folders = useFoldersWithBoards();
-  return folders.find((f) => f.jiraBoard?.projectKey === projectKey)?.id ?? null;
-}
-
-function useFoldersWithBoards() {
-  const { data: folders = [] } = useFolders();
-  return folders.filter((f) => f.jiraBoard);
 }
