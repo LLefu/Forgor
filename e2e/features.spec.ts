@@ -271,6 +271,7 @@ test("Ctrl/⌘+Shift+F floating search finds notes, folders and todos", async ({
 test("resizable sidebar and custom colors", async ({ page }) => {
   await page.goto("/");
   const sidebar = page.locator("aside").first();
+  await expect(sidebar).toBeVisible(); // the app shows once plugins are loaded
   const before = (await sidebar.boundingBox())!.width;
   const handle = page.getByTestId("resize-sidebarWidth");
   const hb = (await handle.boundingBox())!;
@@ -342,7 +343,8 @@ test("attachments in the folder panel (trash + restore), video/audio players, li
   await page.getByTestId("confirm-dialog").getByRole("button", { name: "Move to trash" }).click();
   await expect(panel.getByTestId("attachment")).toHaveCount(1);
 
-  await page.getByTestId("nav-trash").click();
+  await page.getByTestId("nav-settings").click();
+  await page.getByTestId("open-trash").click();
   await page.getByTestId("trash-item").filter({ hasText: "memo.mp3" }).getByRole("button", { name: "Restore" }).click();
   await page.getByTestId("tree-folder-Internal").locator("span.truncate").click();
   await expect(page.getByTestId("folder-panel").getByTestId("attachment")).toHaveCount(2);

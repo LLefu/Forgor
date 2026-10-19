@@ -1,7 +1,7 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
-  "description": "Permissions for the main window and the quick popup",
+  "description": "Permissions for the main window and the quick popup. Files: only the installed plugins' folder here; the notes folder is granted at runtime (src-tauri/src/access.rs). Opening files goes through access::open_path. The database is preloaded (tauri.conf.json), so no sql:allow-load.",
   "windows": [
     "main",
     "popup"
@@ -18,18 +18,10 @@
     "opener:default",
     "opener:allow-reveal-item-in-dir",
     "opener:allow-open-url",
-    {
-      "identifier": "opener:allow-open-path",
-      "allow": [
-        {
-          "path": "**"
-        }
-      ]
-    },
-    "sql:default",
+    "sql:allow-select",
     "sql:allow-execute",
     "dialog:default",
-    "fs:default",
+    "fs:deny-default",
     "fs:allow-read-dir",
     "fs:allow-read-file",
     "fs:allow-read-text-file",
@@ -46,7 +38,48 @@
       "identifier": "fs:scope",
       "allow": [
         {
-          "path": "**"
+          "path": "$APPDATA/plugins"
+        },
+        {
+          "path": "$APPDATA/plugins/**"
+        }
+      ],
+      "deny": [
+        {
+          "path": "**/.git"
+        },
+        {
+          "path": "**/.git/**"
+        },
+        {
+          "path": "**/.obsidian"
+        },
+        {
+          "path": "**/.obsidian/**"
+        },
+        {
+          "path": "**/.vscode"
+        },
+        {
+          "path": "**/.vscode/**"
+        },
+        {
+          "path": "**/.idea"
+        },
+        {
+          "path": "**/.idea/**"
+        },
+        {
+          "path": "**/.github"
+        },
+        {
+          "path": "**/.github/**"
+        },
+        {
+          "path": "**/.husky"
+        },
+        {
+          "path": "**/.husky/**"
         }
       ]
     },

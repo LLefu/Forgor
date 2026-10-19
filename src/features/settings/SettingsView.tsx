@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { FolderOpen, RefreshCw, CheckCircle2, Loader2, Download, RotateCw, History } from "lucide-react";
+import { FolderOpen, RefreshCw, CheckCircle2, Loader2, Download, RotateCw, History, Trash2 } from "lucide-react";
 import { VersionHistoryDialog } from "./VersionHistoryDialog";
 import { ACCENTS } from "@/lib/accents";
 import { SwatchGrid, type Swatch } from "@/components/ColorPicker";
@@ -25,10 +25,9 @@ import { isMac } from "@/lib/keys";
 import { ZOOM_LEVELS, zoomLabel } from "@/lib/zoom";
 import { applyHotkey } from "@/app/hotkey";
 import { Row } from "./Row";
-import { MeetingsSettings } from "@/features/meetings/MeetingsSettings";
+import { ModelsSettings } from "@/features/models/ModelsSettings";
 import { StorageRow } from "./StorageRow";
-import { WritingSettings } from "./WritingSettings";
-import { JiraSettings } from "@/features/jira/JiraSettings";
+import { useTrash } from "@/app/queries";
 
 export function SettingsView({ platform }: { platform: Platform }) {
   const settings = useUI((s) => s.settings);
@@ -111,11 +110,9 @@ export function SettingsView({ platform }: { platform: Platform }) {
           />
         </Row>
 
-        <MeetingsSettings desktop={platform.kind === "tauri"} />
+        <TrashRow />
 
-        <WritingSettings desktop={platform.kind === "tauri"} />
-
-        <JiraSettings desktop={platform.kind === "tauri"} />
+        <ModelsSettings />
 
         <StorageRow desktop={platform.kind === "tauri"} />
 
@@ -217,6 +214,18 @@ function UpdatesRow({ desktop }: { desktop: boolean }) {
         </div>
         <VersionHistoryDialog open={historyOpen} onOpenChange={setHistoryOpen} />
       </div>
+    </Row>
+  );
+}
+
+/** Deleted notes, folders, todos and files: opened from here (no longer in the sidebar). */
+function TrashRow() {
+  const { data: items = [] } = useTrash();
+  return (
+    <Row label="Trash" hint="Deleted notes, folders, todos and files. Restore them, or delete them for good.">
+      <Button variant="outline" size="sm" onClick={() => useUI.getState().setView({ kind: "trash" })} data-testid="open-trash">
+        <Trash2 /> Open trash{items.length ? ` (${items.length})` : ""}
+      </Button>
     </Row>
   );
 }

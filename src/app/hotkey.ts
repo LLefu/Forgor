@@ -1,3 +1,4 @@
+import { onTauriEvent } from "@/platform/events";
 import { isTauri } from "@/platform/env";
 
 /**
@@ -34,18 +35,17 @@ export async function applyHotkey(combo: string) {
 }
 
 /** Main window: react to requests coming from the popup. */
-export async function listenForPopupRequests(handlers: {
+export function listenForPopupRequests(handlers: {
   openNote: (id: string) => void;
   openTodo: (id: string) => void;
   dataChanged: () => void;
 }) {
   if (!isTauri()) return () => {};
-  const { listen } = await import("@tauri-apps/api/event");
-  const offs = await Promise.all([
-    listen<string>(EVT.openNote, (e) => handlers.openNote(e.payload)),
-    listen<string>(EVT.openTodo, (e) => handlers.openTodo(e.payload)),
-    listen(EVT.dataChanged, () => handlers.dataChanged()),
-  ]);
+  const offs = [
+    onTauriEvent<string>(EVT.openNote, handlers.openNote),
+    onTauriEvent<string>(EVT.openTodo, handlers.openTodo),
+    onTauriEvent(EVT.dataChanged, () => handlers.dataChanged()),
+  ];
   return () => offs.forEach((off) => off());
 }
 

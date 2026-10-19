@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { ChevronRight, History, MoreHorizontal, Trash2, ExternalLink, Link2, FileText, ListTodo, LocateFixed, AudioLines, Users } from "lucide-react";
+import { ChevronRight, History, MoreHorizontal, Trash2, ExternalLink, Link2, FileText, ListTodo, LocateFixed } from "lucide-react";
 import { useUI } from "@/app/store";
 import { useBacklinks, useFolders, useNoteMeta, useTodosForNote } from "@/app/queries";
 import { onDataChange } from "@/data/context";
@@ -19,11 +19,9 @@ import { FindBar } from "./FindBar";
 import { format } from "date-fns";
 import { trashItem } from "@/features/explorer/ItemMenu";
 import { noteLinkProps } from "@/app/noteLink";
-import { useQuery } from "@tanstack/react-query";
-import { getMeetingByNote, hasSpeakers } from "@/data/meetings";
-import { useMeetingsStore } from "@/app/meetings";
-import { useWritingAvailable } from "@/app/writing";
-import { AskAIButton } from "./AskAIButton";
+import { useEditorWriter } from "@/plugins/registry";
+import { PluginNoteHeader } from "@/plugins/views";
+import type { NoteHeaderProps } from "@/plugins/types";
 
 const SAVE_DELAY = 600;
 
@@ -65,7 +63,8 @@ function LoadedNote({ id, initialBody }: { id: string; initialBody: string }) {
   const setView = useUI((s) => s.setView);
   const editor = useRef<NoteEditorHandle>(null);
   const [historyOpen, setHistoryOpen] = useState(false);
-  const ai = useWritingAvailable();
+  const writer = useEditorWriter();
+  const editorParts = { hasSelection: () => !!editor.current?.selectedText().trim(), runAI: (instruction: string) => editor.current?.runAI(instruction) };
 
   // ---- saving: debounce edits, flush on unmount; reload on external changes when clean
   const lastSaved = useRef(initialBody);
@@ -119,7 +118,7 @@ function LoadedNote({ id, initialBody }: { id: string; initialBody: string }) {
       <NoteToolbar
         meta={meta}
         onHistory={() => setHistoryOpen(true)}
-        ai={ai ? { hasSelection: () => !!editor.current?.selectedText().trim(), run: (instruction) => editor.current?.runAI(instruction) } : null}
+        editor={editorParts}
       />
       <FindBar editor={editor} />
       <div className="min-h-0 flex-1 overflow-y-auto" id="note-scroll">
@@ -140,7 +139,7 @@ function LoadedNote({ id, initialBody }: { id: string; initialBody: string }) {
             // New notes go next to this one; not into the hidden folder of unassigned recordings.
             onCreateNote={(title) => notes.createNote(isMeetingsPath(meta.path) ? "" : dirname(meta.path), title)}
             onOpenFile={(path) => void openVaultFile(path)}
-            ai={ai}
+            writer={writer}
             onBeforeAI={async () => {
               await flush();
               await snapshotNow(id);
@@ -208,27 +207,22 @@ function TitleInput({ id, title, onEnter }: { id: string; title: string; onEnter
 function NoteToolbar({
   meta,
   onHistory,
-  ai,
+  editor,
 }: {
   meta: { id: string; path: string; folderId: string | null };
   onHistory: () => void;
-  ai: { hasSelection: () => boolean; run: (instruction: string) => void } | null;
+  editor: NoteHeaderProps["editor"];
 }) {
   const { data: folders = [] } = useFolders();
   const { data: linked = [] } = useTodosForNote(meta.id);
-  const unassignedMeeting = isMeetingsPath(meta.path);
-  const { data: meeting } = useQuery({ queryKey: ["meetingByNote", meta.id], queryFn: () => getMeetingByNote(meta.id) });
-  const segments = dirname(meta.path) && !unassignedMeeting ? dirname(meta.path).split("/") : [];
+  // Unassigned meeting recordings live in a hidden folder: no folder path for them.
+  const segments = dirname(meta.path) && !isMeetingsPath(meta.path) ? dirname(meta.path).split("/") : [];
   const open = linked.filter((t) => t.status !== "done").length;
 
   return (
     <div className="flex h-11 shrink-0 items-center justify-between border-b px-4">
       <nav className="flex min-w-0 items-center gap-1 text-xs text-muted-foreground">
-        {unassignedMeeting && (
-          <button className="flex items-center gap-1 hover:text-foreground" onClick={() => useUI.getState().setView({ kind: "meetings" })}>
-            <AudioLines className="size-3.5" /> Meetings (unassigned)
-          </button>
-        )}
+        <PluginNoteHeader slot="breadcrumb" note={meta} editor={editor} />
         {segments.map((seg, i) => {
           const path = segments.slice(0, i + 1).join("/");
           const folder = folders.find((f) => f.path === path);
@@ -243,11 +237,7 @@ function NoteToolbar({
         })}
       </nav>
       <div className="flex items-center gap-1">
-        {meeting && hasSpeakers(meeting) && (
-          <Button variant="ghost" size="sm" onClick={() => useMeetingsStore.getState().setSpeakersOf(meeting.id)} data-testid="note-speakers">
-            <Users /> Speakers
-          </Button>
-        )}
+        <PluginNoteHeader slot="actions" note={meta} editor={editor} />
         {linked.length > 0 && (
           <Button
             variant="ghost"
@@ -258,7 +248,6 @@ function NoteToolbar({
             <ListTodo /> {open} open {open === 1 ? "todo" : "todos"}
           </Button>
         )}
-        {ai && <AskAIButton hasSelection={ai.hasSelection} onRun={ai.run} />}
         <Button variant="ghost" size="icon" onClick={onHistory} aria-label="Version history" title="Version history">
           <History />
         </Button>

@@ -77,7 +77,8 @@ test("trash and restore a note", async ({ page }) => {
   await page.getByTestId("confirm-dialog").getByRole("button", { name: "Move to trash" }).click();
   await expect(page.getByTestId("tree-note-1-on-1 notes")).toHaveCount(0);
 
-  await page.getByTestId("nav-trash").click();
+  await page.getByTestId("nav-settings").click();
+  await page.getByTestId("open-trash").click();
   await expect(page.getByTestId("trash-item")).toContainText("1-on-1 notes");
   await page.getByRole("button", { name: "Restore" }).click();
   await expect(page.getByTestId("tree-note-1-on-1 notes")).toBeVisible();

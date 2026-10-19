@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from "react";
-import { X, FileText, Inbox, Sun, ListTodo, Search, Archive, Trash2, Settings, AudioLines, Ticket, SquareKanban } from "lucide-react";
-import { useUI, type PageKind, type Tab } from "./store";
-import { useFolders, useNotes } from "./queries";
-import { basename } from "@/lib/paths";
+import { X, FileText, Inbox, Sun, ListTodo, Search, Archive, Trash2, Settings, Puzzle } from "lucide-react";
+import { useUI, type PageKind, type PluginView, type Tab } from "./store";
+import { useNotes } from "./queries";
+import { usePluginTab } from "@/plugins/views";
 import { cn } from "@/lib/utils";
 import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuSeparator, ContextMenuTrigger } from "@/components/ui/menu";
 import { ItemMenuItems, noteItem } from "@/features/explorer/ItemMenu";
@@ -11,13 +11,20 @@ const PAGES: Record<PageKind, { label: string; icon: React.ComponentType<{ class
   inbox: { label: "Inbox", icon: Inbox },
   today: { label: "Today", icon: Sun },
   all: { label: "All tasks", icon: ListTodo },
-  jira: { label: "Jira", icon: Ticket },
-  meetings: { label: "Meetings", icon: AudioLines },
   search: { label: "Search", icon: Search },
   archive: { label: "Archive", icon: Archive },
   trash: { label: "Trash", icon: Trash2 },
   settings: { label: "Settings", icon: Settings },
+  plugins: { label: "Plugins", icon: Puzzle },
 };
+
+type TabButtonProps = Parameters<typeof TabButton>[0];
+
+/** A plugin page's tab: its label comes from the plugin (keyed per page, so its hooks stay the same). */
+function PluginTabButton(props: TabButtonProps & { tab: { view: PluginView } }) {
+  const label = usePluginTab(props.tab.view);
+  return <TabButton {...props} label={label} />;
+}
 
 /**
  * Tabs across the top. Drag to reorder, middle-click or × to close,
@@ -61,22 +68,27 @@ export function TabBar() {
         setDropAt(null);
       }}
     >
-      {tabs.map((tab, i) => (
-        <TabButton
-          key={tab.id}
-          tab={tab}
-          index={i}
-          dragging={dragging === tab.id}
-          dropBefore={dropAt === i && !!dragging}
-          dropAfter={dropAt === tabs.length && i === tabs.length - 1 && !!dragging}
-          onDragStart={() => setDragging(tab.id)}
-          onDragEnd={() => {
+      {tabs.map((tab, i) => {
+        const props = {
+          tab,
+          index: i,
+          dragging: dragging === tab.id,
+          dropBefore: dropAt === i && !!dragging,
+          dropAfter: dropAt === tabs.length && i === tabs.length - 1 && !!dragging,
+          onDragStart: () => setDragging(tab.id),
+          onDragEnd: () => {
             setDragging(null);
             setDropAt(null);
-          }}
-          onDragOverTab={(before) => setDropAt(before ? i : i + 1)}
-        />
-      ))}
+          },
+          onDragOverTab: (before: boolean) => setDropAt(before ? i : i + 1),
+        };
+        const view = tab.view;
+        return view.kind === "plugin" ? (
+          <PluginTabButton key={`${tab.id}:${view.plugin}/${view.page}`} {...props} tab={{ ...tab, view }} />
+        ) : (
+          <TabButton key={tab.id} {...props} />
+        );
+      })}
       <div className="h-full min-w-4 flex-1" />
     </div>
   );
@@ -91,6 +103,7 @@ function TabButton({
   onDragStart,
   onDragEnd,
   onDragOverTab,
+  label,
 }: {
   tab: Tab;
   index: number;
@@ -100,6 +113,8 @@ function TabButton({
   onDragStart: () => void;
   onDragEnd: () => void;
   onDragOverTab: (before: boolean) => void;
+  /** Set for a plugin page (see PluginTabButton). */
+  label?: { label: string; icon: React.ComponentType<{ className?: string }> };
 }) {
   const active = useUI((s) => s.activeTab === tab.id);
   const activateTab = useUI((s) => s.activateTab);
@@ -108,12 +123,9 @@ function TabButton({
   const closeAllTabs = useUI((s) => s.closeAllTabs);
   const count = useUI((s) => s.tabs.length);
   const { data: notes = [] } = useNotes();
-  const { data: folders = [] } = useFolders();
 
   const note = tab.view.kind === "note" ? notes.find((n) => n.id === (tab.view as { id: string }).id) : null;
-  const jiraFolder = tab.view.kind === "jira-folder" ? folders.find((f) => f.id === (tab.view as { folderId: string }).folderId) : null;
-  const page =
-    tab.view.kind === "jira-folder" ? { label: `Jira · ${jiraFolder ? basename(jiraFolder.path) : "folder"}`, icon: SquareKanban } : tab.view.kind !== "note" ? PAGES[tab.view.kind] : null;
+  const page = label ?? (tab.view.kind !== "note" && tab.view.kind !== "plugin" ? PAGES[tab.view.kind] : null);
   const title = page ? page.label : (note?.title ?? "Missing note");
   const Icon = page ? page.icon : FileText;
 

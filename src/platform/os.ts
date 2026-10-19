@@ -30,8 +30,9 @@ export async function openVaultFile(vaultPath: string) {
     window.open(ctx().vault.fileUrl(vaultPath), "_blank", "noopener");
     return;
   }
-  const { openPath } = await import("@tauri-apps/plugin-opener");
+  const { invoke } = await import("@tauri-apps/api/core");
   const root = ctx().vault.rootLabel;
   const sep = root.includes("\\") ? "\\" : "/";
-  await openPath(root + sep + vaultPath.split("/").join(sep));
+  // Rust refuses programs and scripts, and files outside the notes folder (src-tauri/src/access.rs).
+  await invoke("open_path", { path: root + sep + vaultPath.split("/").join(sep) });
 }

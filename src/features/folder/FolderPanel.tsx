@@ -18,7 +18,7 @@ import { trashItem } from "@/features/explorer/ItemMenu";
 import { FolderColorButton, FolderGlyph, FolderIconButton, FolderLabel, useFolderColor } from "./folderColors";
 import { format } from "date-fns";
 import { noteLinkProps } from "@/app/noteLink";
-import { FolderJira } from "@/features/jira/FolderJira";
+import { PluginFolderSections } from "@/plugins/views";
 import type { Folder as FolderRow } from "@/data/types";
 
 /** A folder is a project: its todos, notes and subfolders in a panel on the right (like a todo's details). */
@@ -169,7 +169,7 @@ function FolderBody({ folder }: { folder: FolderRow }) {
             </Section>
           )}
 
-          <FolderJira folder={folder} />
+          <PluginFolderSections folder={folder} />
 
           <Attachments folderPath={folder.path} />
 

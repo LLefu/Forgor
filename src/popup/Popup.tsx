@@ -1,7 +1,7 @@
-import { useEffect, useRef, useState } from "react";
+import { Fragment, useEffect, useRef, useState } from "react";
 import { QueryClientProvider, useQuery } from "@tanstack/react-query";
 import { Command } from "cmdk";
-import { FilePlus, ListTodo, Search, FileText, Circle, CheckCircle2, ArrowLeft, Mic, Square } from "lucide-react";
+import { FilePlus, ListTodo, Search, FileText, Circle, CheckCircle2, ArrowLeft } from "lucide-react";
 import { bootPopup } from "@/app/boot";
 import { queryClient } from "@/app/queries";
 import { useUI } from "@/app/store";
@@ -17,8 +17,9 @@ import { ToastHost } from "@/components/Toasts";
 import { Snippet } from "@/features/search/SearchView";
 import { dirname } from "@/lib/paths";
 import { cn } from "@/lib/utils";
-import { meetings, type RecordingInfo } from "@/platform/meetings";
-import { RecordingStatus } from "@/features/meetings/RecordingStatus";
+import { usePluginQuickMenu, usePluginsVersion } from "@/plugins/registry";
+import { loadCommunityPluginsOnce } from "@/plugins/community";
+import { onTauriEvent } from "@/platform/events";
 
 type Mode = "menu" | "todo" | "search";
 
@@ -26,22 +27,32 @@ export function Popup() {
   const [ready, setReady] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const initSettings = useUI((s) => s.initSettings);
+  const pluginsVersion = usePluginsVersion((s) => s.version);
   useApplyTheme();
 
   useEffect(() => {
     bootPopup()
-      .then((s) => {
+      .then(async (s) => {
+        await loadCommunityPluginsOnce();
         initSettings(s);
         setReady(true);
       })
       .catch((e) => setError(String(e?.message ?? e)));
   }, [initSettings]);
 
+  // Plugins can be switched on or off in the main window while the popup stays loaded.
+  useEffect(() => {
+    if (!ready) return;
+    const refresh = () => void loadSettings(ctx().sql).then(initSettings, () => {});
+    window.addEventListener("focus", refresh);
+    return () => window.removeEventListener("focus", refresh);
+  }, [ready, initSettings]);
+
   if (error) return <div className="p-4 text-sm text-destructive">{error}</div>;
   if (!ready) return null;
   return (
     <QueryClientProvider client={queryClient}>
-      <PopupBody />
+      <PopupBody key={pluginsVersion} />
       <ToastHost />
     </QueryClientProvider>
   );
@@ -60,14 +71,10 @@ function PopupBody() {
   // Each time the popup is summoned: fresh data, back to the menu.
   useEffect(() => {
     if (!isTauri()) return;
-    let off = () => {};
-    import("@tauri-apps/api/event").then(({ listen }) =>
-      listen(EVT.popupShown, () => {
-        setMode("menu");
-        void queryClient.invalidateQueries();
-      }).then((o) => (off = o)),
-    );
-    return () => off();
+    return onTauriEvent(EVT.popupShown, () => {
+      setMode("menu");
+      void queryClient.invalidateQueries();
+    });
   }, []);
 
   useEffect(() => {
@@ -104,33 +111,8 @@ function Back({ onClick, title }: { onClick: () => void; title: string }) {
   );
 }
 
-/** Recording state for the quick menu: whether recording is set up, and the running recording. */
-function useRecording() {
-  const [state, setState] = useState<{ available: boolean; current: RecordingInfo | null }>({ available: false, current: null });
-  useEffect(() => {
-    let off = () => {};
-    // Settings can change in the main window while the popup stays loaded: re-read them each time.
-    const refresh = async () => {
-      const settings = await loadSettings(ctx().sql);
-      if (!settings.meetingsEnabled) return setState({ available: false, current: null });
-      const [models, current] = await Promise.all([meetings().models(), meetings().current()]);
-      setState({ available: models.some((m) => m.id === "speech" && m.downloaded), current });
-    };
-    void refresh();
-    void meetings()
-      .onRecording(({ current }) => setState((s) => ({ ...s, current })))
-      .then((o) => (off = o));
-    window.addEventListener("focus", refresh);
-    return () => {
-      off();
-      window.removeEventListener("focus", refresh);
-    };
-  }, []);
-  return state;
-}
-
 function Menu({ onPick }: { onPick: (m: Mode) => void }) {
-  const recording = useRecording();
+  const plugins = usePluginQuickMenu();
   const newNote = async () => {
     const n = await createNote("");
     await done(EVT.openNote, n.id);
@@ -139,17 +121,7 @@ function Menu({ onPick }: { onPick: (m: Mode) => void }) {
     { key: "1", icon: FilePlus, label: "New note", hint: "Creates an untitled note and opens it", action: newNote },
     { key: "2", icon: ListTodo, label: "New todo", hint: "Quick add a todo", action: () => onPick("todo") },
     { key: "3", icon: Search, label: "Search notes & todos", hint: "Find and open anything", action: () => onPick("search") },
-    ...(recording.current
-      ? [{ key: "4", icon: Square, label: "Stop recording", hint: "Opens Forgor to name the recording", action: async () => {
-          await hidePopup();
-          await meetings().stop(); // brings up the main window
-        } }]
-      : recording.available
-        ? [{ key: "4", icon: Mic, label: "Start recording", hint: "Records your mic and the computer's sound", action: async () => {
-            await meetings().start();
-            await hidePopup();
-          } }]
-        : []),
+    ...plugins.items.map((it, i) => ({ ...it, key: String(4 + i) })),
   ];
   const [index, setIndex] = useState(0);
 
@@ -168,8 +140,10 @@ function Menu({ onPick }: { onPick: (m: Mode) => void }) {
 
   return (
     <div className="p-2">
-      <p className="px-3 pb-2 pt-1 text-xs font-medium text-muted-foreground">{recording.current ? "Forgor · recording" : "Forgor"}</p>
-      <RecordingStatus recording={!!recording.current} className="mx-3 mb-2" />
+      <p className="px-3 pb-2 pt-1 text-xs font-medium text-muted-foreground">{plugins.title ?? "Forgor"}</p>
+      {plugins.status.map((s, i) => (
+        <Fragment key={i}>{s}</Fragment>
+      ))}
       {items.map((it, i) => (
         <button
           key={it.key}

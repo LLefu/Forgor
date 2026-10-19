@@ -42,7 +42,7 @@ import { codeTheme } from "./codeTheme";
 import { cleanMarkdown } from "@/lib/markdown";
 import { ACCEPT, fileKind } from "@/lib/files";
 import { showError } from "@/components/Toasts";
-import { writer } from "@/platform/writing";
+import type { WriteFn } from "@/platform/writing";
 
 export interface NoteEditorHandle {
   /** Replace content (external change). */
@@ -67,8 +67,8 @@ interface Props {
   /** Create a note for "@new title" and return it. */
   onCreateNote: (title: string) => Promise<{ id: string; title: string }>;
   onOpenFile: (vaultPath: string) => void;
-  /** Writing tools (the "Ask AI" button in the selection toolbar). */
-  ai?: boolean;
+  /** Writing tools (the "Ask AI" button in the selection toolbar), from a plugin; null: none. */
+  writer?: WriteFn | null;
   /** Before each AI request: save, and keep the current text in the version history. */
   onBeforeAI?: () => Promise<void>;
 }
@@ -94,7 +94,7 @@ function aiContext(state: EditorState, serialize: (doc: ProseNode) => string, in
 const isExternal = (url: string) => /^(https?:|data:|blob:|asset:|http:\/\/asset\.localhost)/.test(url);
 
 export const NoteEditor = forwardRef<NoteEditorHandle, Props>(function NoteEditor(
-  { noteId, notePath, initial, onChange, onOpenMention, onCreateNote, onOpenFile, ai = false, onBeforeAI },
+  { noteId, notePath, initial, onChange, onOpenMention, onCreateNote, onOpenFile, writer = null, onBeforeAI },
   ref,
 ) {
   const root = useRef<HTMLDivElement>(null);
@@ -108,8 +108,9 @@ export const NoteEditor = forwardRef<NoteEditorHandle, Props>(function NoteEdito
   const { data: folders = [] } = useFolders();
 
   // Latest values for use inside long-lived editor callbacks.
-  const live = useRef({ notes, todos, folders, notePath, onChange, onOpenMention, onOpenFile, onBeforeAI });
-  live.current = { notes, todos, folders, notePath, onChange, onOpenMention, onOpenFile, onBeforeAI };
+  const live = useRef({ notes, todos, folders, notePath, onChange, onOpenMention, onOpenFile, onBeforeAI, writer });
+  live.current = { notes, todos, folders, notePath, onChange, onOpenMention, onOpenFile, onBeforeAI, writer };
+  const ai = !!writer;
 
   const withView = <T,>(fn: (view: EditorView) => T): T | undefined => crepeRef.current?.editor.action((c) => fn(c.get(editorViewCtx)));
 
@@ -198,7 +199,9 @@ export const NoteEditor = forwardRef<NoteEditorHandle, Props>(function NoteEdito
           provider: async function* (c, signal) {
             await live.current.onBeforeAI?.(); // a restore point in the version history, whatever happens next
             let wrote = "";
-            for await (const piece of writer()({ instruction: c.instruction, selection: c.selection, document: c.document }, signal, (warnings) => {
+            const write = live.current.writer;
+            if (!write) throw new Error("The writing tools are off");
+            for await (const piece of write({ instruction: c.instruction, selection: c.selection, document: c.document }, signal, (warnings) => {
               if (warnings.length) showError(`Check before accepting: the AI's version ${warnings.join(" and ")}.`, "Writing tools");
             })) {
               wrote += piece;

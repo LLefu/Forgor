@@ -33,8 +33,8 @@ describe("meeting notes", () => {
     expect(composeMeetingBody(result, at, 125)).toBe(
       "_Opgenomen op 30 september 2026 om 14:05 · 2 min_\n\n## Samenvatting\nKort overleg.\n\n## Transcript\n\n**[00:00] Anderen:** Zullen we beginnen?\n\n**[00:04] Ik:** Ja, \\*prima\\*\n",
     );
-    const en = composeMeetingBody({ language: "en", segments: [seg(0, 1, "unknown", "Hi")], summary: null, summaryError: "The summary model isn't downloaded" }, at, 30);
-    expect(en).toContain("_No summary: The summary model isn't downloaded._");
+    const en = composeMeetingBody({ language: "en", segments: [seg(0, 1, "unknown", "Hi")], summary: null, summaryError: "The language model isn't downloaded" }, at, 30);
+    expect(en).toContain("_No summary: The language model isn't downloaded._");
     expect(en).toContain("**[00:00]:** Hi"); // in-person: no speaker label
   });
 

@@ -72,8 +72,8 @@ pub async fn storage_usage(app: AppHandle, vault: Option<String>) -> Result<Vec<
         let data = app.path().app_data_dir().map_err(|e| e.to_string())?;
         let db: u64 = ["forgor.db", "forgor.db-wal", "forgor.db-shm"].iter().map(|f| size_of(&data.join(f), &[])).sum();
         out.push(entry("database", &data.join("forgor.db"), db));
-        for model in crate::meetings::models::MODELS {
-            let dir = data.join("models").join(model.id);
+        for model in crate::models::MODELS {
+            let dir = crate::models::model_dir(&app, model.id)?;
             out.push(entry(format!("model:{}", model.id), &dir, size_of(&dir, &[])));
         }
         out.push(entry("recordings", &data.join("recordings"), size_of(&data.join("recordings"), &[])));

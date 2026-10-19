@@ -4,18 +4,30 @@ import type { TodoInput } from "@/data/todos";
 import { DEFAULT_SETTINGS, saveSetting } from "@/data/settings";
 import { ctx } from "@/data/context";
 import { newId } from "@/lib/utils";
+import { emitAppEvent } from "./events";
 
-export type PageKind = "inbox" | "today" | "all" | "jira" | "meetings" | "search" | "archive" | "trash" | "settings";
-/** `jira-folder`: all my tickets on a folder's Jira boards (its "View all"). */
-export type View = { kind: PageKind } | { kind: "note"; id: string } | { kind: "jira-folder"; folderId: string };
+export type PageKind = "inbox" | "today" | "all" | "search" | "archive" | "trash" | "settings" | "plugins";
+/** A page of a plugin (src/plugins): `page` is one of its `pages`, `param` e.g. a folder id. */
+export type PluginView = { kind: "plugin"; plugin: string; page: string; param?: string };
+export type View = { kind: PageKind } | { kind: "note"; id: string } | PluginView;
 
 export interface Tab {
   id: string;
   view: View;
 }
 
-const sameView = (a: View, b: View) =>
-  a.kind === b.kind && (a.kind !== "note" || (b.kind === "note" && a.id === b.id)) && (a.kind !== "jira-folder" || (b.kind === "jira-folder" && a.folderId === b.folderId));
+export const sameView = (a: View, b: View) =>
+  a.kind === b.kind &&
+  (a.kind !== "note" || (b.kind === "note" && a.id === b.id)) &&
+  (a.kind !== "plugin" || (b.kind === "plugin" && a.plugin === b.plugin && a.page === b.page && (a.param ?? null) === (b.param ?? null)));
+
+/** A right-hand panel of a plugin (e.g. a Jira ticket). `fromFolder`: opened from that folder's panel (back button). */
+export interface PluginPanel {
+  plugin: string;
+  panel: string;
+  param: string;
+  fromFolder?: string | null;
+}
 
 interface UIState {
   /** Tabs across the top. Every note gets its own tab; the pages (Today, Search…) share one. */
@@ -35,15 +47,16 @@ interface UIState {
   closeAllTabs: () => void;
   moveTab: (id: string, toIndex: number) => void;
 
-  /** The right-hand detail panel shows one thing at a time: a todo, a folder or a Jira ticket. */
+  /** The right-hand detail panel shows one thing at a time: a todo, a folder, a plugin's info or a plugin's own panel. */
   selectedTodoId: string | null;
   openTodo: (id: string | null) => void;
   selectedFolderId: string | null;
   openFolder: (id: string | null) => void;
-  /** Jira ticket key; `issueFromFolder` is the folder it was opened from (its panel's back button). */
-  selectedIssueKey: string | null;
-  issueFromFolder: string | null;
-  openIssue: (key: string | null, fromFolder?: string | null) => void;
+  /** The plugin whose info and settings are shown (Plugins page). */
+  selectedPluginId: string | null;
+  openPluginInfo: (id: string | null) => void;
+  pluginPanel: PluginPanel | null;
+  openPluginPanel: (panel: PluginPanel | null) => void;
   closePanel: () => void;
 
   /** Explorer item ("f:<id>" / "n:<id>") to put into rename mode once it appears in the tree. */
@@ -69,15 +82,39 @@ interface UIState {
 
 const TABS_KEY = "forgor.tabs";
 
-/** Pages that no longer exist: the calendar (removed in 0.5), one board's page (now per folder, 0.6). */
+/** Pages that no longer exist: the calendar (removed in 0.5), one board's page (now per folder, 0.5.1). */
 const REMOVED_PAGES: string[] = ["calendar", "jira-board"];
+
+/**
+ * A saved tab's view as it is now: up to 0.5.1 the Jira and Meetings pages
+ * were app pages ("jira", "jira-folder", "meetings"); now they are plugin
+ * pages. null: drop the tab (a removed page or a corrupt entry).
+ */
+export function migrateView(v: unknown): View | null {
+  if (!v || typeof v !== "object") return null;
+  const view = v as Record<string, unknown>;
+  const kind = view.kind;
+  if (typeof kind !== "string" || REMOVED_PAGES.includes(kind)) return null;
+  if (kind === "jira") return { kind: "plugin", plugin: "jira", page: "overview" };
+  if (kind === "jira-folder") return typeof view.folderId === "string" ? { kind: "plugin", plugin: "jira", page: "folder", param: view.folderId } : null;
+  if (kind === "meetings") return { kind: "plugin", plugin: "meetings", page: "list" };
+  if (kind === "note") return typeof view.id === "string" ? { kind: "note", id: view.id } : null;
+  if (kind === "plugin") {
+    if (typeof view.plugin !== "string" || typeof view.page !== "string") return null;
+    return { kind: "plugin", plugin: view.plugin, page: view.page, ...(typeof view.param === "string" ? { param: view.param } : {}) };
+  }
+  return { kind } as View;
+}
 
 function loadTabs(): { tabs: Tab[]; activeTab: string | null } {
   try {
     const raw = JSON.parse(localStorage.getItem(TABS_KEY) ?? "null") as { tabs: Tab[]; activeTab: string | null } | null;
     if (raw && Array.isArray(raw.tabs)) {
       // Drops tabs of pages that no longer exist (the calendar was removed in 0.5).
-      const tabs = raw.tabs.filter((t) => t && t.id && t.view && (t.view.kind !== "note" || typeof t.view.id === "string") && (t.view.kind !== "jira-folder" || typeof t.view.folderId === "string") && !REMOVED_PAGES.includes(t.view.kind));
+      const tabs = raw.tabs.flatMap((t) => {
+        const view = t && t.id ? migrateView(t.view) : null;
+        return view ? [{ id: t.id, view }] : [];
+      });
       return { tabs, activeTab: tabs.some((t) => t.id === raw.activeTab) ? raw.activeTab : (tabs[0]?.id ?? null) };
     }
   } catch {
@@ -179,13 +216,17 @@ export const useUI = create<UIState>((set, get) => {
     },
 
     selectedTodoId: null,
-    openTodo: (id) => set({ selectedTodoId: id, selectedFolderId: null, selectedIssueKey: null }),
+    openTodo: (id) => set({ selectedTodoId: id, selectedFolderId: null, selectedPluginId: null, pluginPanel: null }),
     selectedFolderId: null,
-    openFolder: (id) => set({ selectedFolderId: id, selectedTodoId: null, selectedIssueKey: null }),
-    selectedIssueKey: null,
-    issueFromFolder: null,
-    openIssue: (key, fromFolder = null) => set({ selectedIssueKey: key, issueFromFolder: key ? fromFolder : null, selectedTodoId: null, selectedFolderId: null }),
-    closePanel: () => set({ selectedFolderId: null, selectedTodoId: null, selectedIssueKey: null }),
+    openFolder: (id) => {
+      set({ selectedFolderId: id, selectedTodoId: null, selectedPluginId: null, pluginPanel: null });
+      if (id) emitAppEvent("folder-open", id);
+    },
+    selectedPluginId: null,
+    openPluginInfo: (id) => set({ selectedPluginId: id, selectedTodoId: null, selectedFolderId: null, pluginPanel: null }),
+    pluginPanel: null,
+    openPluginPanel: (panel) => set({ pluginPanel: panel, selectedTodoId: null, selectedFolderId: null, selectedPluginId: null }),
+    closePanel: () => set({ selectedFolderId: null, selectedTodoId: null, selectedPluginId: null, pluginPanel: null }),
 
     pendingRename: null,
     requestRename: (treeId) => set({ pendingRename: treeId }),

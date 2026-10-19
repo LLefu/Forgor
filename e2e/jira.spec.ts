@@ -1,11 +1,11 @@
 import { test, expect, type Page } from "@playwright/test";
+import { enablePlugin } from "./plugins";
 
 // The browser build talks to a fake Jira (src/platform/jira.ts): boards "WEB board" / "APP board",
 // tickets WEB-12, WEB-15, WEB-9 (open), WEB-3 (done), APP-41, APP-38; the token "wrong" is rejected.
 
 async function connect(page: Page) {
-  await page.getByTestId("nav-settings").click();
-  await page.getByTestId("jira-toggle").click();
+  await enablePlugin(page, "jira");
   await page.getByTestId("jira-connect").click();
   const dialog = page.getByTestId("jira-connect-dialog");
   await dialog.getByLabel("Jira address").fill("acme");

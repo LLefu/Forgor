@@ -1,5 +1,9 @@
+mod access;
 mod jira;
+mod language;
 mod meetings;
+mod models;
+mod secrets;
 mod writing;
 mod storage;
 
@@ -89,9 +93,13 @@ pub fn run() {
         .plugin(tauri_plugin_process::init())
         .plugin(tauri_plugin_notification::init())
         .manage(meetings::MeetingsState::default())
-        .manage(meetings::models::Downloads::default())
+        .manage(models::Downloads::default())
         .invoke_handler(tauri::generate_handler![
             set_hotkey,
+            access::vault_pick,
+            access::vault_open,
+            access::open_path,
+            access::plugin_project_create,
             meetings::meetings_start,
             meetings::meetings_stop,
             meetings::meetings_state,
@@ -102,19 +110,23 @@ pub fn run() {
             meetings::meetings_discard,
             meetings::meetings_process,
             meetings::meetings_summarize,
-            meetings::models::meetings_models,
-            meetings::models::meetings_download,
-            meetings::models::meetings_cancel_download,
-            meetings::models::meetings_delete_model,
+            models::models_list,
+            models::models_download,
+            models::models_cancel_download,
+            models::models_delete,
             writing::writing_run,
             jira::jira_connect,
             jira::jira_disconnect,
             jira::jira_get,
             jira::jira_attachment,
+            secrets::secret_get,
+            secrets::secret_set,
+            secrets::secret_delete,
             writing::writing_cancel,
             storage::storage_usage,
         ])
         .setup(|app| {
+            models::migrate_folders(app.handle());
             TrayIconBuilder::with_id("main-tray")
                 .icon(app.default_window_icon().unwrap().clone())
                 .tooltip("Forgor")
@@ -164,7 +176,7 @@ pub fn run() {
         if let tauri::RunEvent::Exit = event {
             meetings::finish_for_quit(app);
             // A language model still loaded at exit makes llama.cpp's Metal code abort ("quit unexpectedly").
-            meetings::process::unload_model();
+            models::llm::unload();
         }
         // macOS: clicking the dock icon re-opens the hidden main window.
         #[cfg(target_os = "macos")]

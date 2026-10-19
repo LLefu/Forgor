@@ -1,11 +1,11 @@
 //! Meeting recordings: record mic + system audio, then transcribe and
 //! summarize locally. The UI writes the resulting note; this module owns the
-//! audio, the models and the tray / dock indicators.
+//! audio and the tray / dock indicators. The models are shared (`crate::models`).
 
-pub mod models;
 pub(crate) mod process;
 mod recorder;
 
+use crate::models::{self, LANGUAGE, SPEAKERS, SPEECH};
 use recorder::Recorder;
 use serde::{Deserialize, Serialize};
 use std::{
@@ -298,21 +298,16 @@ pub async fn meetings_process(app: AppHandle, id: String, language: String, voic
             return Err("This recording is already being processed".into());
         }
     }
-    let speech = models::model_dir(&app, "speech")?;
-    let speakers_dir = models::model_dir(&app, "speakers")?;
-    let summary_dir = models::model_dir(&app, "summary")?;
     let app2 = app.clone();
     let id2 = id.clone();
     let result = tauri::async_runtime::spawn_blocking(move || -> Result<ProcessResult, String> {
-        if !models::is_downloaded(&speech, models::find("speech")?) {
-            return Err("Download the speech model first (Settings → Meeting recordings)".into());
-        }
+        let speech = models::ready_dir(&app2, SPEECH)?;
         let progress = |stage: &str, p: f32| {
             let _ = app2.emit("wn://meeting-progress", serde_json::json!({ "id": id2, "stage": stage, "progress": p }));
         };
         // Speaker separation is optional: without it the others are one "Anderen".
-        let speakers = models::is_downloaded(&speakers_dir, models::find("speakers")?).then_some(speakers_dir.as_path());
-        let process::Transcript { segments, prints } = process::transcribe(&dir, &speech, speakers, &progress)?;
+        let speakers = models::ready_dir(&app2, SPEAKERS).ok();
+        let process::Transcript { segments, prints } = process::transcribe(&dir, &speech, speakers.as_deref(), &progress)?;
         let recognized = process::match_voices(&prints, &voices);
         // Recognized people go into the summary by name.
         let names: HashMap<u32, String> = recognized.iter().filter(|(_, m)| m.similarity >= process::RECOGNIZE).map(|(id, m)| (*id, m.name.clone())).collect();
@@ -321,13 +316,10 @@ pub async fn meetings_process(app: AppHandle, id: String, language: String, voic
             "en" => "en",
             _ => process::detect_language(&segments),
         };
-        let summary_model = models::find("summary")?;
         let (summary, summary_error) = if segments.is_empty() {
             (None, None)
-        } else if !models::is_downloaded(&summary_dir, summary_model) {
-            (None, Some("The summary model isn't downloaded".to_string()))
         } else {
-            match process::summarize(&segments, lang, &names, &summary_dir.join(summary_model.files[0].name), &progress) {
+            match models::model_path(&app2, LANGUAGE).and_then(|model| process::summarize(&segments, lang, &names, &model, &progress)) {
                 Ok(s) => (Some(s), None),
                 Err(e) => (None, Some(e)),
             }
@@ -345,13 +337,9 @@ pub async fn meetings_process(app: AppHandle, id: String, language: String, voic
 /// speakers ("Spreker 2" → "Jeroen"). Only the summary step runs.
 #[tauri::command]
 pub async fn meetings_summarize(app: AppHandle, segments: Vec<process::Segment>, language: String, names: HashMap<u32, String>) -> Result<String, String> {
-    let dir = models::model_dir(&app, "summary")?;
-    let model = models::find("summary")?;
-    if !models::is_downloaded(&dir, model) {
-        return Err("The summary model isn't downloaded".into());
-    }
+    let model = models::model_path(&app, LANGUAGE)?;
     let lang = if language == "en" { "en" } else { "nl" };
-    tauri::async_runtime::spawn_blocking(move || process::summarize(&segments, lang, &names, &dir.join(model.files[0].name), &|_, _| {}))
+    tauri::async_runtime::spawn_blocking(move || process::summarize(&segments, lang, &names, &model, &|_, _| {}))
         .await
         .map_err(|e| format!("Summarizing crashed: {e}"))?
 }

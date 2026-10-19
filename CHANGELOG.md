@@ -5,6 +5,17 @@ All notable changes to Forgor. Add new entries under **Unreleased**;
 
 ## Unreleased
 
+### New
+- **Plugins** (bottom of the sidebar): Meeting recordings, Writing tools and Jira are now plugins you switch on and off, shown as cards with what they do, who made them, their version and what they need (other plugins, AI models). Click a card for its details and settings. Disabling a plugin hides it everywhere but keeps all its data (recordings, voices, linked Jira boards, your Jira account), for when you enable it again. What you had turned on before stays on.
+- **Community plugins**: install a plugin from a zip file (Plugins → Install from zip). Plugins can add pages, sidebar items, panels, settings and more; a plugin that fails shows why instead of breaking the app. Uninstalling keeps what it stored. A guide for writing one is in `packages/plugin-api/README.md`.
+- **Create plugin project** (Plugins → Installed): choose a name and a place, and Forgor writes a ready-to-build plugin project: a working example, the build, `npm run zip` to make the zip, and an `AGENTS.md` that explains everything about writing a plugin (also for AI assistants). Installed plugins can be updated from a zip in their panel.
+- **Plugin store** (Plugins → Store): browse everyone's plugins and install one with a click. Updates are offered on the plugin's card. Share your own from its panel: **Publish to store** (no account needed) or **Export as zip**, and **Install from zip** on the Installed tab. Plugins can be reported, and a plugin that is taken out of the store is turned off. Before installing a plugin that doesn't have the check mark (and any plugin from a zip), Forgor asks first and explains what plugins can do.
+
+### Changed
+- **Safer by design**: Forgor (and any plugin) can now only reach your notes folder and its own plugin files, not the rest of your computer. It no longer opens programs or scripts from your notes (other attachments open as before), and its window refuses scripts that aren't part of the app. Your notes folder keeps working after the update. If Forgor ever can't confirm a notes folder, it asks you to choose it again.
+- The settings of Meeting recordings and Jira moved from Settings to their plugin's panel.
+- **AI models** have their own place in Settings: download or delete each model once, whichever features use it. Meeting recordings and Writing tools show which models they need, with a download button for what's missing. The language model (Gemma) is stored once and shared by meeting summaries and the writing tools; an already downloaded model is kept and moved automatically.
+
 ## 0.5.1 (2026-10-13)
 
 ### New

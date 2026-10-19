@@ -1,0 +1,23 @@
+name: Plugin store keep-alive
+
+# Supabase pauses free projects after a week without activity; the plugin store
+# (Supabase project "Forgor") then stops answering until it is resumed in the
+# dashboard. This reads the store's plugin list every 3 days so that never happens.
+# The key is the publishable one the app also ships with (it can only read the list).
+on:
+  schedule:
+    - cron: "17 6 */3 * *" # 06:17 UTC on every third day of the month
+  workflow_dispatch:
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Read the plugin list
+        run: |
+          status=$(curl -s -o response.json -w "%{http_code}" \
+            "https://ltqtoxulavqwhsxywxej.supabase.co/rest/v1/store_plugins?select=id&limit=1" \
+            -H "apikey: sb_publishable_9jjI76AcEZ7AXTBAGrYkvA_pSnMtXjJ")
+          echo "Store answered $status: $(cat response.json)"
+          # Fails the run (and GitHub emails you) when the store is down or paused.
+          test "$status" = "200"

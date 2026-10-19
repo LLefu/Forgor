@@ -1,13 +1,11 @@
 import { useMemo, useRef } from "react";
 import type { TreeApi } from "react-arborist";
 import {
-  Ticket,
   Inbox,
   ListTodo,
   Sun,
   Search,
   Archive,
-  Trash2,
   Settings,
   FilePlus,
   FolderPlus,
@@ -16,10 +14,10 @@ import {
   Moon,
   Monitor,
   LocateFixed,
-  AudioLines,
+  Puzzle,
 } from "lucide-react";
 import { useResizableWidth } from "@/components/ResizeHandle";
-import { useUI, type View } from "./store";
+import { useUI } from "./store";
 import { useUpdates } from "./updates";
 import { Download, ArrowLeft, ArrowRight } from "lucide-react";
 import { useTodos } from "./queries";
@@ -31,9 +29,8 @@ import { Button } from "@/components/ui/button";
 import { Tooltip } from "@/components/ui/tooltip";
 import * as notes from "@/data/notes";
 import { shortcutLabel } from "@/lib/keys";
-import { useMeetingsStore } from "./meetings";
-import { useElapsed } from "@/features/meetings/RecordButton";
-import { formatTimestamp } from "@/lib/meetingNote";
+import { NavItem } from "@/components/NavItem";
+import { PluginSidebarItems } from "@/plugins/views";
 
 export function Sidebar() {
   const view = useUI((s) => s.view);
@@ -109,8 +106,7 @@ export function Sidebar() {
         <NavItem icon={Inbox} label="Inbox" count={counts.inbox} target={{ kind: "inbox" }} />
         <NavItem icon={Sun} label="Today" count={counts.today} alert={counts.overdue > 0} target={{ kind: "today" }} />
         <NavItem icon={ListTodo} label="All tasks" count={counts.all} target={{ kind: "all" }} />
-        {settings.jiraEnabled && <NavItem icon={Ticket} label="Jira" target={{ kind: "jira" }} />}
-        {settings.meetingsEnabled && <MeetingsNavItem />}
+        <PluginSidebarItems />
         <NavItem icon={Search} label="Search" hint={shortcutLabel("Mod+K")} target={{ kind: "search" }} />
         <NavItem icon={Archive} label="Archive" target={{ kind: "archive" }} />
       </nav>
@@ -167,7 +163,7 @@ export function Sidebar() {
 
       <div className="space-y-px border-t px-2 py-2">
         <UpdateNotice />
-        <NavItem icon={Trash2} label="Trash" target={{ kind: "trash" }} />
+        <NavItem icon={Puzzle} label="Plugins" target={{ kind: "plugins" }} />
         <div className="flex items-center">
           <div className="flex-1">
             <NavItem icon={Settings} label="Settings" target={{ kind: "settings" }} />
@@ -197,64 +193,6 @@ function UpdateNotice() {
     >
       <Download className="size-4" />
       {label}
-    </button>
-  );
-}
-
-/** "Meetings", with a red dot and the running time while recording. */
-function MeetingsNavItem() {
-  const startedAt = useMeetingsStore((s) => s.current?.startedAt ?? null);
-  const elapsed = useElapsed(startedAt);
-  return (
-    <NavItem
-      icon={AudioLines}
-      label="Meetings"
-      target={{ kind: "meetings" }}
-      badge={
-        elapsed !== null && (
-          <span className="flex items-center gap-1 text-xs tabular-nums text-destructive" data-testid="recording-indicator">
-            <span className="size-2 animate-pulse rounded-full bg-destructive" /> {formatTimestamp(elapsed)}
-          </span>
-        )
-      }
-    />
-  );
-}
-
-function NavItem({
-  icon: Icon,
-  label,
-  count,
-  alert,
-  hint,
-  badge,
-  target,
-}: {
-  icon: React.ComponentType<{ className?: string }>;
-  label: string;
-  count?: number;
-  alert?: boolean;
-  hint?: string;
-  badge?: React.ReactNode;
-  target: View;
-}) {
-  const view = useUI((s) => s.view);
-  const setView = useUI((s) => s.setView);
-  const active = view?.kind === target.kind;
-  return (
-    <button
-      onClick={() => setView(target)}
-      className={cn(
-        "flex h-7 w-full items-center gap-2 rounded px-2 text-[13px]",
-        active ? "bg-accent font-medium text-accent-foreground" : "text-foreground/85 hover:bg-muted",
-      )}
-      data-testid={`nav-${target.kind}`}
-    >
-      <Icon className={cn("size-4", active ? "text-accent-foreground" : "text-muted-foreground")} />
-      <span className="flex-1 text-left">{label}</span>
-      {hint && <span className="text-[11px] text-muted-foreground">{hint}</span>}
-      {badge}
-      {!!count && <span className={cn("text-xs tabular-nums", alert ? "text-destructive" : "text-muted-foreground")}>{count}</span>}
     </button>
   );
 }

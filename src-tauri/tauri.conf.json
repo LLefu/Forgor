@@ -39,13 +39,27 @@
       }
     ],
     "security": {
-      "csp": null,
+      "csp": {
+        "default-src": "'self'",
+        "script-src": "'self' 'unsafe-eval' 'wasm-unsafe-eval'",
+        "style-src": "'self' 'unsafe-inline'",
+        "img-src": "'self' asset: http://asset.localhost https: http: data: blob:",
+        "media-src": "'self' asset: http://asset.localhost https: http: data: blob:",
+        "font-src": "'self' data:",
+        "connect-src": "'self' ipc: http://ipc.localhost https: wss: http://localhost:* http://127.0.0.1:* ws://localhost:* ws://127.0.0.1:*",
+        "frame-src": "https:",
+        "worker-src": "'self' blob:",
+        "object-src": "'none'",
+        "base-uri": "'self'",
+        "form-action": "'none'"
+      },
       "assetProtocol": {
         "enable": true,
-        "scope": [
-          "**"
-        ]
-      }
+        "scope": []
+      },
+      "dangerousDisableAssetCspModification": [
+        "style-src"
+      ]
     }
   },
   "bundle": {
@@ -82,6 +96,11 @@
     },
     "fs": {
       "requireLiteralLeadingDot": false
+    },
+    "sql": {
+      "preload": [
+        "sqlite:forgor.db"
+      ]
     }
   }
 }

@@ -105,15 +105,17 @@ export interface Settings {
   panelWidth: number;
   /** Window zoom factor (1 = 100%), Ctrl/⌘ +/-. */
   zoom: number;
-  /** Meeting recordings (off until turned on in Settings). */
+  /** Which plugins are enabled (plugin id → on). Filled from the flags below the first time (up to 0.5.1). */
+  plugins: Record<string, boolean>;
+  /** @deprecated Up to 0.5.1: the meetings plugin's on/off. Still written, so going back to 0.5.1 keeps the choice. */
   meetingsEnabled: boolean;
   /** Microphone device name; null = system default. */
   meetingMic: string | null;
   /** Language of the summary; speech in Dutch and English is recognized either way. */
   meetingLanguage: "auto" | "nl" | "en";
-  /** Writing tools in the editor (off until turned on; uses the summary model). */
+  /** @deprecated Up to 0.5.1: the writing plugin's on/off (see `plugins`). */
   writingEnabled: boolean;
-  /** Jira integration (off until turned on). */
+  /** @deprecated Up to 0.5.1: the Jira plugin's on/off (see `plugins`). */
   jiraEnabled: boolean;
   /** The connected Jira account; the API token itself is in the OS keychain. */
   jiraAccount: JiraAccount | null;

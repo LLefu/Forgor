@@ -2,7 +2,7 @@
 //! user's instruction, with the same Gemma model as the meeting summaries.
 //! The text streams to the editor, which shows it as a diff to accept or reject.
 
-use crate::meetings::{models, process};
+use crate::{language, models::llm};
 use serde::{Deserialize, Serialize};
 use std::sync::atomic::{AtomicU64, Ordering};
 use tauri::{ipc::Channel, AppHandle};
@@ -61,27 +61,21 @@ fn prompt(r: &WriteRequest) -> String {
     } else {
         user += &format!("Text to rewrite (your reply replaces it):\n<text>\n{}\n</text>", r.selection.trim());
         // Said outright: with a Dutch note around it, the model answered English text in Dutch.
-        match process::text_language(&r.selection).filter(|_| !asks_for_language(&r.instruction)) {
+        match language::text_language(&r.selection).filter(|_| !asks_for_language(&r.instruction)) {
             // "verbeter" on an English note came back in Dutch.
             Some("en") => user += "\n\nThe text is in English, so reply in English. The instruction may be in another language; that doesn't mean translate, unless it asks for a translation.",
             Some(_) => user += "\n\nThe text is in Dutch, so reply in Dutch. The instruction may be in another language; that doesn't mean translate, unless it asks for a translation.",
             None => {}
         }
     }
-    process::gemma_prompt(SYSTEM, &user)
+    llm::chat(SYSTEM, &user)
 }
 
 /// Streams the reply to `on_piece`. Ends without error when cancelled.
 #[tauri::command]
 pub async fn writing_run(app: AppHandle, request: WriteRequest, on_piece: Channel<String>) -> Result<WriteOutcome, String> {
-    let dir = models::model_dir(&app, "summary")?;
-    let model = models::find("summary")?;
-    if !models::is_downloaded(&dir, model) {
-        return Err("Download the language model first (Settings → Writing tools)".into());
-    }
-    let path = dir.join(model.files[0].name);
     tauri::async_runtime::spawn_blocking(move || {
-        let llm = process::shared_model(&path)?;
+        let llm = llm::load(&app)?;
         let id = request.id;
         let outcome = rewrite(&llm, request, &mut |text| on_piece.send(text.to_string()).is_ok(), &|| CANCELLED.load(Ordering::SeqCst) >= id)?;
         Ok(outcome.map(|(_, warnings)| WriteOutcome { warnings }).unwrap_or_default())
@@ -94,7 +88,7 @@ pub async fn writing_run(app: AppHandle, request: WriteRequest, on_piece: Channe
 /// comes (returns false to stop). Returns the whole reply and its warnings, or
 /// None when cancelled.
 fn rewrite(
-    llm: &llama_cpp_2::model::LlamaModel,
+    llm: &llm::LlamaModel,
     request: WriteRequest,
     send: &mut dyn FnMut(&str) -> bool,
     cancelled: &dyn Fn() -> bool,
@@ -103,7 +97,7 @@ fn rewrite(
         return Ok(None);
     }
     let selection_tokens = request.selection.len() / 3; // rough: ~3-4 characters per token
-    let g = process::Generation {
+    let g = llm::Generation {
         max_output: (selection_tokens * 2 + 600).min(4096),
         temperature: 0.4,
         seed: request.id as u32, // "Retry" gives another version
@@ -120,7 +114,7 @@ fn rewrite(
         restored += &text;
         text.is_empty() || send(&text)
     };
-    process::generate_with(process::backend()?, llm, &prompt(&request), &g, &mut |piece| !cancelled() && forward(lines.push(&fences.push(piece))))?;
+    llm::generate(llm, &prompt(&request), &g, &mut |piece| !cancelled() && forward(lines.push(&fences.push(piece))))?;
     if cancelled() {
         return Ok(None);
     }
@@ -587,7 +581,7 @@ mod tests {
     }
 }
 
-/// Real model: `FORGOR_MODELS=<dir with summary/> cargo test --release --lib writing_eval -- --ignored --nocapture`.
+/// Real model: `FORGOR_MODELS=<dir with language/> cargo test --release --lib writing_eval -- --ignored --nocapture`.
 #[cfg(test)]
 mod eval {
     use super::*;
@@ -597,7 +591,7 @@ mod eval {
     #[ignore]
     fn writing_eval() {
         let dir = std::path::PathBuf::from(std::env::var("FORGOR_MODELS").expect("FORGOR_MODELS"));
-        let path = dir.join("summary").join(models::find("summary").unwrap().files[0].name);
+        let path = dir.join(crate::models::LANGUAGE).join(crate::models::find(crate::models::LANGUAGE).unwrap().files[0].name);
         let note = "# Overleg planning\n\nWe hebben besproken dat de oplevering naar volgende week gaat omdat de klant nog feedback moet geven op het ontwerp, en dat Jan de begroting nog moet nakijken voordat we het naar de directie sturen. Verder was er discussie over het nieuwe CRM.\n\n- [ ] Begroting nakijken ^t-a1b2c3\n- [ ] Klant bellen over feedback ^t-d4e5f6\n";
         let cases: [(&str, &str); 6] = [
             ("Maak dit korter", "We hebben besproken dat de oplevering naar volgende week gaat omdat de klant nog feedback moet geven op het ontwerp, en dat Jan de begroting nog moet nakijken voordat we het naar de directie sturen. Verder was er discussie over het nieuwe CRM."),
@@ -611,13 +605,12 @@ mod eval {
         for (instruction, selection) in cases.into_iter().filter(|_| !only_silly) {
             let t = Instant::now();
             let r = WriteRequest { id: 1, instruction: instruction.into(), selection: selection.into(), document: note.into() };
-            let backend = process::backend().unwrap();
-            let llm = process::shared_model(&path).unwrap();
+            let llm = llm::shared(&path).unwrap();
             let mut f = FenceStripper::default();
             let mut out = String::new();
             let mut first = None;
-            let g = process::Generation { max_output: (selection.len() / 3 * 2 + 600).min(4096), temperature: 0.4, seed: 1 };
-            process::generate_with(backend, &llm, &prompt(&r), &g, &mut |p| {
+            let g = llm::Generation { max_output: (selection.len() / 3 * 2 + 600).min(4096), temperature: 0.4, seed: 1 };
+            llm::generate(&llm, &prompt(&r), &g, &mut |p| {
                 first.get_or_insert(t.elapsed());
                 out += &f.push(p);
                 true
@@ -631,29 +624,29 @@ mod eval {
         for seed in 1..=4 {
             let r = WriteRequest { id: 1, instruction: "add the word yellow after every word that ends with an s".into(), selection: silly.into(), document: silly.into() };
             let (r, kept) = protect_request(r);
-            let llm = process::shared_model(&path).unwrap();
-            let out = process::generate_with(process::backend().unwrap(), &llm, &prompt(&r), &process::Generation { max_output: 600, temperature: 0.4, seed }, &mut |_| true).unwrap();
+            let llm = llm::shared(&path).unwrap();
+            let out = llm::generate(&llm, &prompt(&r), &llm::Generation { max_output: 600, temperature: 0.4, seed }, &mut |_| true).unwrap();
             let mut restore = Restorer::new(kept, &[silly]);
             let out = restore.push(&out) + &restore.finish();
             println!("=== yellow, seed {seed}\n{out}\n");
         }
         if std::env::var("FORGOR_ONLY_SILLY").is_ok() {
-            process::unload_model();
+            llm::unload();
             return;
         }
         // Whole note
         let t = Instant::now();
         let r = WriteRequest { id: 1, instruction: "Verbeter de structuur met kopjes".into(), selection: note.into(), document: note.into() };
-        let llm = process::shared_model(&path).unwrap();
-        let out = process::generate_with(process::backend().unwrap(), &llm, &prompt(&r), &process::Generation { max_output: 1500, temperature: 0.4, seed: 1 }, &mut |_| true).unwrap();
+        let llm = llm::shared(&path).unwrap();
+        let out = llm::generate(&llm, &prompt(&r), &llm::Generation { max_output: 1500, temperature: 0.4, seed: 1 }, &mut |_| true).unwrap();
         println!("=== whole note ({:.1}s)\n{out}", t.elapsed().as_secs_f32());
         drop(llm);
-        process::unload_model(); // Metal aborts when a model is still loaded at exit
+        llm::unload(); // Metal aborts when a model is still loaded at exit
     }
 }
 
 /// Many notes × many prompts through the real pipeline, checked automatically.
-/// `FORGOR_MODELS=<dir with summary/> FORGOR_REPORT=<file.md> cargo test --release --lib writing_stress -- --ignored --nocapture`
+/// `FORGOR_MODELS=<dir with language/> FORGOR_REPORT=<file.md> cargo test --release --lib writing_stress -- --ignored --nocapture`
 #[cfg(test)]
 mod stress {
     use super::*;
@@ -727,8 +720,8 @@ mod stress {
         }
         let translate = prompt.contains("translate") || prompt.contains("vertaal");
         if !translate && !selection.trim().is_empty() {
-            if let (Some(a), Some(b)) = (process::text_language(selection), process::text_language(out)) {
-                if a != b && process::language_votes_pub(out).0.max(process::language_votes_pub(out).1) >= 3 {
+            if let (Some(a), Some(b)) = (language::text_language(selection), language::text_language(out)) {
+                if a != b && language::votes(out).0.max(language::votes(out).1) >= 3 {
                     found.push(format!("language {a}→{b}"));
                 }
             }
@@ -747,8 +740,8 @@ mod stress {
     #[ignore]
     fn writing_language() {
         let dir = std::path::PathBuf::from(std::env::var("FORGOR_MODELS").expect("FORGOR_MODELS"));
-        let path = dir.join("summary").join(models::find("summary").unwrap().files[0].name);
-        let llm = process::shared_model(&path).unwrap();
+        let path = dir.join(crate::models::LANGUAGE).join(crate::models::find(crate::models::LANGUAGE).unwrap().files[0].name);
+        let llm = llm::shared(&path).unwrap();
         let cases: &[(&str, &[&str])] = &[
             ("code-en", &["verbeter", "schrijf dit als een mail aan de klant", "maak het formeler", "maak korter", "herschrijf in de jij-vorm", "zet het in een opsomming"]),
             ("mixed-en", &["verbeter", "schrijf dit als een mail aan de klant", "maak het formeler", "maak korter", "herschrijf in de jij-vorm", "zet het in een opsomming"]),
@@ -770,7 +763,7 @@ mod stress {
                 for seed in 1..=3 {
                     let r = WriteRequest { id: seed, instruction: prompt.to_string(), selection: note.into(), document: note.into() };
                     let (out, _) = rewrite(&llm, r, &mut |_| true, &|| false).unwrap().unwrap();
-                    let (want, got) = (process::text_language(note), process::text_language(&out));
+                    let (want, got) = (language::text_language(note), language::text_language(&out));
                     runs += 1;
                     let ok = want == got;
                     wrong += !ok as usize;
@@ -783,7 +776,7 @@ mod stress {
             for seed in 1..=3 {
                 let r = WriteRequest { id: seed, instruction: prompt.to_string(), selection: note.into(), document: note.into() };
                 let (out, _) = rewrite(&llm, r, &mut |_| true, &|| false).unwrap().unwrap();
-                let got = process::text_language(&out);
+                let got = language::text_language(&out);
                 runs += 1;
                 let ok = got == Some(*want);
                 wrong += !ok as usize;
@@ -792,15 +785,15 @@ mod stress {
         }
         println!("\n{wrong} of {runs} in the wrong language");
         drop(llm);
-        process::unload_model();
+        llm::unload();
     }
 
     #[test]
     #[ignore]
     fn writing_stress() {
         let dir = std::path::PathBuf::from(std::env::var("FORGOR_MODELS").expect("FORGOR_MODELS"));
-        let path = dir.join("summary").join(models::find("summary").unwrap().files[0].name);
-        let llm = process::shared_model(&path).unwrap();
+        let path = dir.join(crate::models::LANGUAGE).join(crate::models::find(crate::models::LANGUAGE).unwrap().files[0].name);
+        let llm = llm::shared(&path).unwrap();
         let mut report = String::new();
         let mut counts: BTreeMap<String, usize> = BTreeMap::new();
         let (mut runs, mut bad) = (0, 0);
@@ -850,6 +843,6 @@ mod stress {
             std::fs::write(file, summary + &report).unwrap();
         }
         drop(llm);
-        process::unload_model();
+        llm::unload();
     }
 }

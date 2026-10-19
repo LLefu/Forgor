@@ -1,9 +1,12 @@
 import { isTauri } from "./env";
+import { isDownloaded } from "./models";
+import { onTauriEvent } from "./events";
 
 /**
- * Meeting recordings: audio capture, the local models and processing live in
- * Rust (src-tauri/src/meetings). The browser build (dev, demo, e2e) gets a
- * fake with the same behaviour, so the whole flow can be tested there.
+ * Meeting recordings: audio capture and processing live in Rust
+ * (src-tauri/src/meetings); the models it uses are shared (platform/models.ts).
+ * The browser build (dev, demo, e2e) gets a fake with the same behaviour, so
+ * the whole flow can be tested there.
  */
 
 export interface RecordingInfo {
@@ -14,24 +17,6 @@ export interface RecordingInfo {
   durationSec: number | null;
   /** False when only the microphone could be recorded. */
   systemAudio: boolean;
-}
-
-export type ModelId = "speech" | "speakers" | "summary";
-
-export interface ModelStatus {
-  id: ModelId;
-  sizeBytes: number;
-  downloaded: boolean;
-  downloading: boolean;
-  path: string;
-}
-
-export interface DownloadProgress {
-  id: ModelId;
-  received: number;
-  total: number;
-  done: boolean;
-  error: string | null;
 }
 
 export interface Segment {
@@ -84,10 +69,6 @@ export interface KnownVoice {
 }
 
 export interface MeetingsBackend {
-  models(): Promise<ModelStatus[]>;
-  download(id: ModelId): Promise<void>;
-  cancelDownload(id: ModelId): Promise<void>;
-  deleteModel(id: ModelId): Promise<void>;
   inputDevices(): Promise<{ devices: string[]; default: string | null }>;
   /** Whether the tray offers "Start recording", and which mic to record. */
   configure(available: boolean, mic: string | null): Promise<void>;
@@ -108,7 +89,6 @@ export interface MeetingsBackend {
   summarize(segments: Segment[], language: "nl" | "en", names: Record<number, string>): Promise<string>;
   onRecording(cb: (e: { current: RecordingInfo | null; stopped: RecordingInfo | null }) => void): Promise<() => void>;
   onProgress(cb: (e: ProcessProgress) => void): Promise<() => void>;
-  onDownload(cb: (e: DownloadProgress) => void): Promise<() => void>;
   /** Errors from the tray menu (e.g. no microphone). */
   onError(cb: (message: string) => void): Promise<() => void>;
 }
@@ -124,12 +104,8 @@ export function meetings(): MeetingsBackend {
 
 function tauriBackend(): MeetingsBackend {
   const invoke = async <T>(cmd: string, args?: Record<string, unknown>) => (await import("@tauri-apps/api/core")).invoke<T>(cmd, args);
-  const listen = async <T>(event: string, cb: (payload: T) => void) => (await import("@tauri-apps/api/event")).listen<T>(event, (e) => cb(e.payload));
+  const listen = async <T>(event: string, cb: (payload: T) => void) => onTauriEvent<T>(event, cb);
   return {
-    models: () => invoke("meetings_models"),
-    download: (id) => invoke("meetings_download", { id }),
-    cancelDownload: (id) => invoke("meetings_cancel_download", { id }),
-    deleteModel: (id) => invoke("meetings_delete_model", { id }),
     inputDevices: () => invoke("meetings_input_devices"),
     configure: (available, mic) => invoke("meetings_configure", { available, mic }),
     start: () => invoke("meetings_start"),
@@ -142,23 +118,18 @@ function tauriBackend(): MeetingsBackend {
     summarize: (segments, language, names) => invoke("meetings_summarize", { segments, language, names }),
     onRecording: (cb) => listen("wn://recording", cb),
     onProgress: (cb) => listen("wn://meeting-progress", cb),
-    onDownload: (cb) => listen("wn://model-download", cb),
     onError: (cb) => listen("wn://meetings-error", cb),
   };
 }
 
 // ---------------------------------------------------------------- browser fake
 
-const FAKE_SIZES: Record<ModelId, number> = { speech: 671_122_626, speakers: 34_274_077, summary: 4_590_807_392 };
-
 /** Browser build only: behaves like the desktop backend, with a canned transcript. */
 export function memoryBackend(): MeetingsBackend {
-  const downloaded = new Set<ModelId>();
-  const downloading = new Set<ModelId>();
   const stored = new Map<string, RecordingInfo>();
   let current: RecordingInfo | null = null;
   let simulated: Partial<Levels> = {};
-  const listeners = { recording: new Set<(e: { current: RecordingInfo | null; stopped: RecordingInfo | null }) => void>(), progress: new Set<(e: ProcessProgress) => void>(), download: new Set<(e: DownloadProgress) => void>() };
+  const listeners = { recording: new Set<(e: { current: RecordingInfo | null; stopped: RecordingInfo | null }) => void>(), progress: new Set<(e: ProcessProgress) => void>() };
   const sub = <T>(set: Set<T>, cb: T) => {
     set.add(cb);
     return Promise.resolve(() => void set.delete(cb));
@@ -166,20 +137,6 @@ export function memoryBackend(): MeetingsBackend {
   const tick = () => new Promise((r) => setTimeout(r, 30));
 
   return {
-    models: async () =>
-      (["speech", "speakers", "summary"] as ModelId[]).map((id) => ({ id, sizeBytes: FAKE_SIZES[id], downloaded: downloaded.has(id), downloading: downloading.has(id), path: `memory://models/${id}` })),
-    download: async (id) => {
-      downloading.add(id);
-      const total = FAKE_SIZES[id];
-      for (let i = 1; i <= 5; i++) {
-        await tick();
-        listeners.download.forEach((l) => l({ id, received: (total * i) / 5, total, done: i === 5, error: null }));
-      }
-      downloading.delete(id);
-      downloaded.add(id);
-    },
-    cancelDownload: async () => {},
-    deleteModel: async (id) => void downloaded.delete(id),
     inputDevices: async () => ({ devices: ["Built-in Microphone", "USB Headset"], default: "Built-in Microphone" }),
     configure: async () => {},
     start: async () => {
@@ -208,7 +165,7 @@ export function memoryBackend(): MeetingsBackend {
     discard: async (id) => void stored.delete(id),
     process: async (id, _language, known) => {
       if (!stored.has(id)) throw new Error("The audio of this recording is gone");
-      const separated = downloaded.has("speakers");
+      const [speech, separated, language] = await Promise.all([isDownloaded("speech"), isDownloaded("speakers"), isDownloaded("language")]);
       // Two fixed "voices"; the same fake person sounds the same in every recording.
       const voices: Record<number, number[]> = separated ? { 1: [1, 0, 0], 2: [0, 1, 0] } : {};
       const recognized = Object.fromEntries(
@@ -217,7 +174,7 @@ export function memoryBackend(): MeetingsBackend {
           return best && best.similarity >= 0.5 ? [[sid, best]] : [];
         }),
       );
-      if (!downloaded.has("speech")) throw new Error("Download the speech model first (Settings → Meeting recordings)");
+      if (!speech) throw new Error("The speech recognition model isn't downloaded (Settings → AI models)");
       for (const stage of ["transcribing", "summarizing"] as const) {
         for (let i = 0; i <= 4; i++) {
           await tick();
@@ -233,18 +190,17 @@ export function memoryBackend(): MeetingsBackend {
         ],
         voices,
         recognized,
-        summary: downloaded.has("summary") ? fakeSummary(recognized[2]?.name ?? (separated ? "Spreker 2" : "Anderen")) : null,
-        summaryError: downloaded.has("summary") ? null : "The summary model isn't downloaded",
+        summary: language ? fakeSummary(recognized[2]?.name ?? (separated ? "Spreker 2" : "Anderen")) : null,
+        summaryError: language ? null : "The language model isn't downloaded (Settings → AI models)",
       };
     },
     summarize: async (_segments, _language, names) => {
-      if (!downloaded.has("summary")) throw new Error("The summary model isn't downloaded");
+      if (!(await isDownloaded("language"))) throw new Error("The language model isn't downloaded (Settings → AI models)");
       await tick();
       return fakeSummary(names[2] ?? "Spreker 2");
     },
     onRecording: (cb) => sub(listeners.recording, cb),
     onProgress: (cb) => sub(listeners.progress, cb),
-    onDownload: (cb) => sub(listeners.download, cb),
     onError: () => Promise.resolve(() => {}),
   };
 }

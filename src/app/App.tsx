@@ -8,17 +8,32 @@ import { useZoom } from "./zoom";
 import { Shell } from "./Shell";
 import { VaultSetup } from "./VaultSetup";
 import { loadSettings } from "@/data/settings";
+import { installPlugin, loadCommunityPluginsOnce } from "@/plugins/community";
+import { usePluginsVersion } from "@/plugins/registry";
+import { storeApi } from "@/platform/store";
+import type { PluginFiles } from "@/platform/plugins";
+import { zipPlugin } from "@/plugins/zip";
 
 export default function App() {
   const [state, setState] = useState<BootResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const initSettings = useUI((s) => s.initSettings);
+  // Installing or removing a plugin remounts the app (see usePluginsVersion).
+  const pluginsVersion = usePluginsVersion((s) => s.version);
   useApplyTheme();
   useZoom();
 
   useEffect(() => {
     boot()
-      .then((r) => {
+      .then(async (r) => {
+        await loadCommunityPluginsOnce();
+        // Browser/dev only: e2e tests install plugins without a folder dialog.
+        if (r.platform.kind === "memory") Object.assign((window as unknown as { __wn: object }).__wn, {
+            installPlugin,
+            store: storeApi(),
+            /** Publish plugin files to the fake store as someone else would. */
+            publishToStore: (files: PluginFiles, key: string | null) => storeApi().publish(zipPlugin(files), key),
+          });
         initSettings(r.settings);
         setState(r);
       })
@@ -54,7 +69,7 @@ export default function App() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <Shell platform={state.platform} />
+      <Shell key={pluginsVersion} platform={state.platform} />
     </QueryClientProvider>
   );
 }

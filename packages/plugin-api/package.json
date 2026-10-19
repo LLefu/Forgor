@@ -1,0 +1,11 @@
+{
+  "name": "@forgor/plugin-api",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Types and theme for Forgor plugins.",
+  "types": "./index.d.ts",
+  "exports": {
+    ".": { "types": "./index.d.ts" },
+    "./theme.css": "./theme.css"
+  }
+}

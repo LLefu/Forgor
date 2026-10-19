@@ -59,7 +59,14 @@ async function doBoot(): Promise<BootResult> {
     settings.vaultPath = __DEV_VAULT__;
   }
   if (!settings.vaultPath) return { platform, settings, needsVault: true };
-  const vault = await platform.openVault(settings.vaultPath);
+  let vault: VaultFs;
+  try {
+    vault = await platform.openVault(settings.vaultPath);
+  } catch (e) {
+    // The stored folder wasn't chosen in Forgor's own dialog (src-tauri/src/access.rs): ask again.
+    if (String(e).includes("untrusted-folder")) return { platform, settings, needsVault: true };
+    throw e;
+  }
   await activateVault(platform, vault, settings);
   return { platform, settings, needsVault: false };
 }

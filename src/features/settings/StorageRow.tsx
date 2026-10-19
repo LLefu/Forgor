@@ -17,7 +17,7 @@ const LABELS: Record<string, { label: string; hint?: string }> = {
   database: { label: "Database", hint: "Todos, settings, search index and version history" },
   "model:speech": { label: "Speech recognition model" },
   "model:speakers": { label: "Speaker separation model" },
-  "model:summary": { label: "Summary model" },
+  "model:language": { label: "Language model" },
   recordings: { label: "Recording audio", hint: "Audio waiting to be transcribed (or kept to try again)" },
   "app-other": { label: "Other app data" },
   cache: { label: "Cache", hint: "Kept by the system's web view; it can clear this itself" },

@@ -1,13 +1,13 @@
 import { test, expect, type Page } from "@playwright/test";
+import { enablePlugin, needs } from "./plugins";
 
 // The browser build's fake model answers "<selection> (herschreven: <instruction>)".
 
 async function turnOn(page: Page) {
-  await page.getByTestId("nav-settings").click();
-  await page.getByTestId("writing-toggle").click();
-  await expect(page.getByTestId("writing-model")).toContainText("not downloaded");
-  await page.getByTestId("writing-model").getByRole("button", { name: "Download" }).click();
-  await expect(page.getByTestId("writing-model").getByLabel("Downloaded")).toBeVisible();
+  await enablePlugin(page, "writing");
+  await expect(needs(page, "language")).toContainText("not downloaded");
+  await page.getByTestId("plugin-models-download").click();
+  await expect(needs(page, "language").getByLabel("Downloaded")).toBeVisible();
 }
 
 /** The note's file as saved. */

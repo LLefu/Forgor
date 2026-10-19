@@ -15,6 +15,7 @@ export const DEFAULT_SETTINGS: Settings = {
   sidebarWidth: 260,
   panelWidth: 400,
   zoom: 1,
+  plugins: {},
   meetingsEnabled: false,
   meetingMic: null,
   meetingLanguage: "auto",
@@ -40,7 +41,16 @@ export async function loadSettings(sql: SqlDriver): Promise<Settings> {
       }
     }
   }
+  // Up to 0.5.1 each feature had its own flag; they are plugins now.
+  if (!rows.some((r) => r.key === "plugins")) out.plugins = legacyPlugins(out);
   return out;
+}
+
+/** The pre-plugin on/off flag of each built-in plugin (kept in step, see `plugins` in types.ts). */
+export const LEGACY_FLAGS = { meetings: "meetingsEnabled", writing: "writingEnabled", jira: "jiraEnabled" } as const;
+
+function legacyPlugins(s: Settings): Record<string, boolean> {
+  return Object.fromEntries(Object.entries(LEGACY_FLAGS).map(([id, key]) => [id, s[key]]));
 }
 
 export async function saveSetting<K extends keyof Settings>(sql: SqlDriver, key: K, value: Settings[K]) {

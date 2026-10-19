@@ -1,7 +1,6 @@
 import Database from "@tauri-apps/plugin-sql";
 import * as fs from "@tauri-apps/plugin-fs";
-import { open } from "@tauri-apps/plugin-dialog";
-import { convertFileSrc } from "@tauri-apps/api/core";
+import { convertFileSrc, invoke } from "@tauri-apps/api/core";
 import { documentDir, join, sep } from "@tauri-apps/api/path";
 import type { FsEntry, Platform, SqlDriver, SqlValue, VaultFs } from "./types";
 import { MEETINGS_DIR, TRASH_DIR } from "@/lib/paths";
@@ -88,18 +87,17 @@ class TauriVault implements VaultFs {
 }
 
 export async function createTauriPlatform(): Promise<Platform> {
-  const db = await Database.load("sqlite:forgor.db");
+  // Preloaded by Rust (tauri.conf.json plugins.sql.preload): the webview can't open other database files.
+  const db = Database.get("sqlite:forgor.db");
   const separator = sep();
   return {
     kind: "tauri",
     sql: new TauriSqlDriver(db),
     vault: null,
-    pickVaultFolder: async () => {
-      const picked = await open({ directory: true, multiple: false, title: "Choose your notes folder" });
-      return typeof picked === "string" ? picked : null;
-    },
+    // In Rust (src-tauri/src/access.rs): only folders chosen there (or the default) can be opened.
+    pickVaultFolder: () => invoke<string | null>("vault_pick"),
     openVault: async (absPath: string) => {
-      await fs.mkdir(absPath, { recursive: true });
+      await invoke("vault_open", { path: absPath });
       return new TauriVault(absPath.replace(/[\\/]+$/, ""), separator);
     },
     defaultVaultPath: async () => join(await documentDir(), "Forgor"),

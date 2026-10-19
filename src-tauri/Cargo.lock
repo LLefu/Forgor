@@ -1500,6 +1500,7 @@ name = "forgor"
 version = "0.5.1"
 dependencies = [
  "cpal",
+ "dunce",
  "encoding_rs",
  "futures-util",
  "hound",

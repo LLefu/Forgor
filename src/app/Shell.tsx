@@ -26,12 +26,12 @@ import { startUpdateChecks } from "./updates";
 import { ConfirmDialogHost } from "@/components/ConfirmDialog";
 import { ToastHost } from "@/components/Toasts";
 import { ZoomIndicator } from "./zoom";
-import { startMeetings } from "./meetings";
-import { MeetingsPage } from "@/features/meetings/MeetingsPage";
-import { JiraFolderPage, JiraOverview } from "@/features/jira/JiraPages";
-import { IssuePanel } from "@/features/jira/IssuePanel";
-import { NameRecordingDialogHost } from "@/features/meetings/NameRecordingDialog";
-import { SpeakersDialogHost } from "@/features/meetings/SpeakersDialog";
+import { startModels } from "./models";
+import { PluginRuntime } from "@/plugins/registry";
+import { startStoreChecks } from "@/plugins/store";
+import { PluginPageView, PluginPanelView } from "@/plugins/views";
+import { PluginsPage } from "@/features/plugins/PluginsPage";
+import { PluginInfoPanel } from "@/features/plugins/PluginInfoPanel";
 
 export function Shell({ platform }: { platform: Platform }) {
   const setView = useUI((s) => s.setView);
@@ -111,23 +111,24 @@ export function Shell({ platform }: { platform: Platform }) {
   // Desktop: look for updates in the background (installing is always manual)
   useEffect(() => startUpdateChecks(), []);
 
-  // Meeting recordings: recording state from the native side, unfinished recordings
-  useEffect(() => startMeetings(), []);
+  // Plugin store: updates and plugins taken out of the store (shortly after start, then every 6 hours)
+  useEffect(() => startStoreChecks(), []);
+
+  // AI models: download progress (shared by meetings, writing tools…)
+  useEffect(() => startModels(), []);
 
   // Desktop: global shortcut + requests from the popup window
   useEffect(() => {
     if (platform.kind !== "tauri") return;
     applyHotkey(hotkey).catch((err) => console.warn("Could not register global shortcut", err));
-    let off = () => {};
-    void listenForPopupRequests({
+    return listenForPopupRequests({
       openNote: (id) => setView({ kind: "note", id }),
       openTodo: (id) => openTodo(id),
       dataChanged: () => {
         void syncVault();
         emitChange("todos", "notes", "folders");
       },
-    }).then((o) => (off = o));
-    return () => off();
+    });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [platform.kind]);
 
@@ -150,8 +151,8 @@ export function Shell({ platform }: { platform: Platform }) {
       <AttachmentPickerHost />
       <ToastHost />
       <ZoomIndicator />
-      <NameRecordingDialogHost />
-      <SpeakersDialogHost />
+      {/* Enabled plugins: their startup work and dialogs */}
+      <PluginRuntime />
     </TooltipProvider>
   );
 }
@@ -165,12 +166,10 @@ function MainView({ platform }: { platform: Platform }) {
       return <TodosPage kind={view.kind} />;
     case "all":
       return <AllTasks />;
-    case "jira":
-      return <JiraOverview />;
-    case "jira-folder":
-      return <JiraFolderPage key={view.folderId} folderId={view.folderId} />;
-    case "meetings":
-      return <MeetingsPage />;
+    case "plugins":
+      return <PluginsPage />;
+    case "plugin":
+      return <PluginPageView key={`${view.plugin}/${view.page}/${view.param ?? ""}`} view={view} />;
     case "search":
       return <SearchView />;
     case "archive":
@@ -184,13 +183,15 @@ function MainView({ platform }: { platform: Platform }) {
   }
 }
 
-/** Todo details, a Jira ticket, or (underneath) the open folder. */
+/** Todo details, a plugin's info, a plugin's own panel (e.g. a Jira ticket), or the open folder. */
 function RightPanel() {
   const todoId = useUI((s) => s.selectedTodoId);
   const folderId = useUI((s) => s.selectedFolderId);
-  const issueKey = useUI((s) => s.selectedIssueKey);
+  const pluginId = useUI((s) => s.selectedPluginId);
+  const pluginPanel = useUI((s) => !!s.pluginPanel);
   if (todoId) return <TodoDetail />;
-  if (issueKey) return <IssuePanel />;
+  if (pluginId) return <PluginInfoPanel key={pluginId} id={pluginId} />;
+  if (pluginPanel) return <PluginPanelView />;
   if (folderId) return <FolderPanel id={folderId} />;
   return null;
 }

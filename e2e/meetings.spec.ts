@@ -1,17 +1,17 @@
 import { test, expect } from "@playwright/test";
+import { enablePlugin, needs } from "./plugins";
 
 test("meeting recordings: set up, record, name + folder, transcript in the note", async ({ page }) => {
   await page.goto("/");
   await expect(page.getByTestId("nav-meetings")).toHaveCount(0); // off by default
 
-  // Settings: turn it on, download the models (fake in the browser build)
-  await page.getByTestId("nav-settings").click();
-  await page.getByTestId("meetings-toggle").click();
-  await expect(page.getByTestId("model-speech")).toContainText("not downloaded");
-  await page.getByTestId("download-models").click();
-  await expect(page.getByTestId("model-speech").getByLabel("Downloaded")).toBeVisible();
-  await expect(page.getByTestId("model-summary").getByLabel("Downloaded")).toBeVisible();
-  await expect(page.getByTestId("download-models")).toHaveCount(0);
+  // Plugins: turn it on, download the models (fake in the browser build)
+  await enablePlugin(page, "meetings");
+  await expect(needs(page, "speech")).toContainText("not downloaded");
+  await page.getByTestId("plugin-models-download").click();
+  await expect(needs(page, "speech").getByLabel("Downloaded")).toBeVisible();
+  await expect(needs(page, "language").getByLabel("Downloaded")).toBeVisible();
+  await expect(page.getByTestId("plugin-models-download")).toHaveCount(0);
   await expect(page.getByLabel("Microphone")).toBeVisible();
 
   // Record from the Meetings page
@@ -52,10 +52,9 @@ test("meeting recordings: set up, record, name + folder, transcript in the note"
 
 test("closing the name dialog keeps the recording unassigned under its default name", async ({ page }) => {
   await page.goto("/?empty");
-  await page.getByTestId("nav-settings").click();
-  await page.getByTestId("meetings-toggle").click();
-  await page.getByTestId("download-models").click();
-  await expect(page.getByTestId("model-speech").getByLabel("Downloaded")).toBeVisible();
+  await enablePlugin(page, "meetings");
+  await page.getByTestId("plugin-models-download").click();
+  await expect(needs(page, "speech").getByLabel("Downloaded")).toBeVisible();
   await page.getByTestId("nav-meetings").click();
   await expect(page.getByTestId("speakers-missing")).toHaveCount(0); // all models were downloaded
   await page.getByTestId("start-recording").click();
@@ -70,11 +69,10 @@ test("closing the name dialog keeps the recording unassigned under its default n
 
 test("naming the speakers rebuilds the transcript and the summary", async ({ page }) => {
   await page.goto("/?empty");
-  await page.getByTestId("nav-settings").click();
-  await page.getByTestId("meetings-toggle").click();
-  await page.getByTestId("download-models").click();
-  await expect(page.getByTestId("model-speakers").getByLabel("Downloaded")).toBeVisible();
-  await expect(page.getByTestId("model-summary").getByLabel("Downloaded")).toBeVisible();
+  await enablePlugin(page, "meetings");
+  await page.getByTestId("plugin-models-download").click();
+  await expect(needs(page, "speakers").getByLabel("Downloaded")).toBeVisible();
+  await expect(needs(page, "language").getByLabel("Downloaded")).toBeVisible();
   await page.getByTestId("nav-meetings").click();
   await page.getByTestId("start-recording").click();
   await page.getByTestId("stop-recording").click();
@@ -102,8 +100,8 @@ test("naming the speakers rebuilds the transcript and the summary", async ({ pag
 
 test("the Meetings page offers speaker separation when it isn't downloaded", async ({ page }) => {
   await page.goto("/?empty");
+  await enablePlugin(page, "meetings");
   await page.getByTestId("nav-settings").click();
-  await page.getByTestId("meetings-toggle").click();
   await page.getByTestId("model-speech").getByRole("button", { name: "Download" }).click();
   await expect(page.getByTestId("model-speech").getByLabel("Downloaded")).toBeVisible();
   await page.getByTestId("nav-meetings").click();
@@ -115,10 +113,9 @@ test("the Meetings page offers speaker separation when it isn't downloaded", asy
 
 test("a named voice is recognized in the next meeting, and can be forgotten", async ({ page }) => {
   await page.goto("/?empty");
-  await page.getByTestId("nav-settings").click();
-  await page.getByTestId("meetings-toggle").click();
-  await page.getByTestId("download-models").click();
-  await expect(page.getByTestId("model-summary").getByLabel("Downloaded")).toBeVisible();
+  await enablePlugin(page, "meetings");
+  await page.getByTestId("plugin-models-download").click();
+  await expect(needs(page, "language").getByLabel("Downloaded")).toBeVisible();
   const record = async () => {
     await page.getByTestId("nav-meetings").click();
     await page.getByTestId("start-recording").click();
@@ -146,8 +143,9 @@ test("a named voice is recognized in the next meeting, and can be forgotten", as
   await expect(page.getByTestId("speakers-dialog")).toContainText("Recognized");
   await page.keyboard.press("Escape");
 
-  // Settings lists the voice; forgetting it works
-  await page.getByTestId("nav-settings").click();
+  // The plugin's panel lists the voice; forgetting it works
+  await page.getByTestId("nav-plugins").click();
+  await page.getByTestId("plugin-card-meetings").click();
   const known = page.getByTestId("known-voices");
   await expect(known).toContainText("Jeroen");
   await known.getByLabel("Forget Jeroen's voice").click();
@@ -157,8 +155,8 @@ test("a named voice is recognized in the next meeting, and can be forgotten", as
 
 test("while recording: level meters, and warnings for a silent mic, no computer sound and 10 minutes of silence", async ({ page }) => {
   await page.goto("/?empty");
+  await enablePlugin(page, "meetings");
   await page.getByTestId("nav-settings").click();
-  await page.getByTestId("meetings-toggle").click();
   await page.getByTestId("model-speech").getByRole("button", { name: "Download" }).click();
   await expect(page.getByTestId("model-speech").getByLabel("Downloaded")).toBeVisible();
   await page.getByTestId("nav-meetings").click();

@@ -3,13 +3,18 @@ import { onDataChange } from "@/data/context";
 import * as notes from "@/data/notes";
 import * as todos from "@/data/todos";
 import * as history from "@/data/history";
-import * as meetings from "@/data/meetings";
 
 export const queryClient = new QueryClient({
   defaultOptions: {
     queries: { staleTime: Infinity, refetchOnWindowFocus: false, retry: false },
   },
 });
+
+/** First parts of query keys that are remote (plugins add theirs, see plugins/types.ts `remoteQueries`). */
+const remoteQueries = new Set<string>();
+export function addRemoteQueries(roots: string[]) {
+  roots.forEach((r) => remoteQueries.add(r));
+}
 
 // All data is local and cheap to query, so any mutation simply refreshes
 // every active query. Bursts of change events are coalesced per frame.
@@ -19,8 +24,8 @@ onDataChange(() => {
   pending = true;
   queueMicrotask(() => {
     pending = false;
-    // Not the storage overview (it walks the whole notes folder) or Jira (remote; it refreshes on its own schedule).
-    void queryClient.invalidateQueries({ predicate: (q) => q.queryKey[0] !== "storage" && q.queryKey[0] !== "jira" });
+    // Not the storage overview (it walks the whole notes folder) or remote data (e.g. Jira; it refreshes on its own schedule).
+    void queryClient.invalidateQueries({ predicate: (q) => q.queryKey[0] !== "storage" && !remoteQueries.has(String(q.queryKey[0])) });
   });
 });
 
@@ -42,4 +47,3 @@ export const useAttachments = (folderPath: string) => useQuery({ queryKey: ["att
 export const useTrash = () => useQuery({ queryKey: ["trash"], queryFn: history.listTrash });
 export const useVersions = (noteId: string) => useQuery({ queryKey: ["versions", noteId], queryFn: () => history.listVersions(noteId) });
 
-export const useMeetings = () => useQuery({ queryKey: ["meetings"], queryFn: meetings.listMeetings });

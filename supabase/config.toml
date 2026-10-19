@@ -1,0 +1,13 @@
+# Only what the Supabase CLI needs to deploy the plugin store's functions:
+#   supabase functions deploy --project-ref ltqtoxulavqwhsxywxej
+# The functions check requests themselves (rate limits, publish keys); the app calls them with the publishable key.
+project_id = "ltqtoxulavqwhsxywxej"
+
+[functions.plugin-publish]
+verify_jwt = false
+
+[functions.plugin-install]
+verify_jwt = false
+
+[functions.plugin-report]
+verify_jwt = false
