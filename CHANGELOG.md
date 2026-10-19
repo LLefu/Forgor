@@ -5,6 +5,8 @@ All notable changes to Forgor. Add new entries under **Unreleased**;
 
 ## Unreleased
 
+## 1.0.0 (2026-10-19)
+
 ### New
 - **Plugins** (bottom of the sidebar): Meeting recordings, Writing tools and Jira are now plugins you switch on and off, shown as cards with what they do, who made them, their version and what they need (other plugins, AI models). Click a card for its details and settings. Disabling a plugin hides it everywhere but keeps all its data (recordings, voices, linked Jira boards, your Jira account), for when you enable it again. What you had turned on before stays on.
 - **Community plugins**: install a plugin from a zip file (Plugins → Install from zip). Plugins can add pages, sidebar items, panels, settings and more; a plugin that fails shows why instead of breaking the app. Uninstalling keeps what it stored. A guide for writing one is in `packages/plugin-api/README.md`.
