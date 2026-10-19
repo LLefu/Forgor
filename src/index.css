@@ -54,6 +54,29 @@
   --p4: #71717a;
 }
 
+/* Theme "Light (soft)" / "Dark (soft)": light mode less bright, dark mode less dark. */
+.soft:not(.dark) {
+  --background: #e4e4e8;
+  --foreground: #212125;
+  --sidebar: #dadade;
+  --muted: #d6d6db;
+  --muted-foreground: #62626b;
+  --border: #c6c6cd;
+  --input: #c6c6cd;
+  --popover: #ebebee;
+}
+
+.dark.soft {
+  --background: #222227;
+  --foreground: #e6e6ea;
+  --sidebar: #28282e;
+  --muted: #313138;
+  --muted-foreground: #a3a3ad;
+  --border: #3a3a42;
+  --input: #44444d;
+  --popover: #2b2b31;
+}
+
 
 @layer base {
   * {

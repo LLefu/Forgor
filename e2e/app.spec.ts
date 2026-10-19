@@ -84,12 +84,23 @@ test("trash and restore a note", async ({ page }) => {
   await expect(page.getByTestId("tree-note-1-on-1 notes")).toBeVisible();
 });
 
-test("theme toggle switches to dark mode", async ({ page }) => {
+test("theme (incl. the soft variants) is set in Settings", async ({ page }) => {
   await page.goto("/?empty");
   const html = page.locator("html");
-  await page.getByRole("button", { name: "Toggle theme" }).click(); // system → light
-  await page.getByRole("button", { name: "Toggle theme" }).click(); // light → dark
+  await expect(page.getByRole("button", { name: "Toggle theme" })).toHaveCount(0); // only in Settings now
+  await page.getByTestId("nav-settings").click();
+  await page.getByLabel("Theme", { exact: true }).selectOption("dark");
   await expect(html).toHaveClass(/dark/);
+  const bg = () => html.evaluate(() => getComputedStyle(document.body).backgroundColor);
+  const dark = await bg();
+  await page.getByLabel("Theme", { exact: true }).selectOption("dark-soft");
+  await expect(html).toHaveClass(/soft/);
+  expect(await bg()).not.toBe(dark); // a lighter dark
+  await page.getByLabel("Theme", { exact: true }).selectOption("light-soft");
+  await expect(html).not.toHaveClass(/dark/);
+  await expect(html).toHaveClass(/soft/); // a darker light
+  await page.getByLabel("Theme", { exact: true }).selectOption("system");
+  await expect(html).not.toHaveClass(/soft/);
 });
 
 test("date & time pickers, folder colors and All tasks", async ({ page }) => {

@@ -11,8 +11,6 @@ import {
   FolderPlus,
   ChevronsDownUp,
   Plus,
-  Moon,
-  Monitor,
   LocateFixed,
   Puzzle,
 } from "lucide-react";
@@ -37,7 +35,6 @@ export function Sidebar() {
   const setView = useUI((s) => s.setView);
   const openQuickAdd = useUI((s) => s.openQuickAdd);
   const settings = useUI((s) => s.settings);
-  const updateSetting = useUI((s) => s.updateSetting);
   const goBack = useUI((s) => s.goBack);
   const goForward = useUI((s) => s.goForward);
   const canBack = useUI((s) => s.back.length > 0);
@@ -74,9 +71,6 @@ export function Sidebar() {
     const f = await notes.createFolder(await currentFolderPath());
     useUI.getState().requestRename(`f:${f.id}`);
   };
-
-  const nextTheme = { system: "light", light: "dark", dark: "system" } as const;
-  const ThemeIcon = { system: Monitor, light: Sun, dark: Moon }[settings.theme];
 
   return (
     <aside className="relative flex h-full shrink-0 flex-col border-r bg-sidebar" style={{ width }}>
@@ -164,16 +158,7 @@ export function Sidebar() {
       <div className="space-y-px border-t px-2 py-2">
         <UpdateNotice />
         <NavItem icon={Puzzle} label="Plugins" target={{ kind: "plugins" }} />
-        <div className="flex items-center">
-          <div className="flex-1">
-            <NavItem icon={Settings} label="Settings" target={{ kind: "settings" }} />
-          </div>
-          <Tooltip content={`Theme: ${settings.theme}`}>
-            <Button size="icon" variant="ghost" onClick={() => updateSetting("theme", nextTheme[settings.theme])} aria-label="Toggle theme">
-              <ThemeIcon />
-            </Button>
-          </Tooltip>
-        </div>
+        <NavItem icon={Settings} label="Settings" target={{ kind: "settings" }} />
       </div>
     </aside>
   );

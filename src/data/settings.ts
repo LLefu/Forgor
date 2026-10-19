@@ -4,6 +4,7 @@ import type { Settings } from "./types";
 
 export const DEFAULT_SETTINGS: Settings = {
   theme: "system",
+  themeSoft: false,
   archiveAfterDays: 7,
   hotkey: navigatorIsMac() ? "CommandOrControl+Shift+Space" : "Control+Alt+Space",
   vaultPath: null,

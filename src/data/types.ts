@@ -90,6 +90,8 @@ export interface TrashItem {
 
 export interface Settings {
   theme: "system" | "light" | "dark";
+  /** The soft variant of the light/dark theme ("Light (soft)", "Dark (soft)"; the `soft` class on <html>). */
+  themeSoft: boolean;
   archiveAfterDays: number;
   hotkey: string;
   vaultPath: string | null;

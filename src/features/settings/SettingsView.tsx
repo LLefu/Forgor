@@ -20,6 +20,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ctx } from "@/data/context";
 import type { Platform } from "@/platform/types";
+import type { Settings } from "@/data/types";
 import { chooseVault } from "@/app/boot";
 import { isMac } from "@/lib/keys";
 import { ZOOM_LEVELS, zoomLabel } from "@/lib/zoom";
@@ -70,13 +71,20 @@ export function SettingsView({ platform }: { platform: Platform }) {
         </Row>
 
         <Row label="Theme">
+          {/* Stored as theme + themeSoft (an older version then still knows the theme). */}
           <Select
-            value={settings.theme}
-            onChange={(v) => update("theme", v)}
+            aria-label="Theme"
+            value={settings.theme === "system" ? "system" : `${settings.theme}${settings.themeSoft ? "-soft" : ""}`}
+            onChange={async (v) => {
+              await update("themeSoft", v.endsWith("-soft"));
+              await update("theme", v.replace("-soft", "") as Settings["theme"]);
+            }}
             options={[
               { value: "system", label: "Follow system" },
               { value: "light", label: "Light" },
+              { value: "light-soft", label: "Light (soft)" },
               { value: "dark", label: "Dark" },
+              { value: "dark-soft", label: "Dark (soft)" },
             ]}
           />
         </Row>
