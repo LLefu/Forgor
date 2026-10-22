@@ -14,7 +14,6 @@ import {
   Plus,
   ArrowLeft,
   ListTree,
-  ArchiveRestore,
   PlayCircle,
 } from "lucide-react";
 import { useUI } from "@/app/store";
@@ -81,13 +80,6 @@ function DetailBody({ todo }: { todo: Todo }) {
           )}
         </div>
         <div className="flex items-center">
-          {todo.archivedAt && (
-            <Tooltip content="Restore from archive">
-              <Button size="icon" variant="ghost" onClick={() => todos.unarchive(todo.id)} aria-label="Unarchive">
-                <ArchiveRestore />
-              </Button>
-            </Tooltip>
-          )}
           <Tooltip content="Delete">
             <Button
               size="icon"

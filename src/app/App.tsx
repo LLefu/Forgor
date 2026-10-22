@@ -9,6 +9,8 @@ import { Shell } from "./Shell";
 import { VaultSetup } from "./VaultSetup";
 import { loadSettings } from "@/data/settings";
 import { installPlugin, loadCommunityPluginsOnce } from "@/plugins/community";
+import { beginStartup } from "./startup";
+import { AppBoundary } from "./AppBoundary";
 import { usePluginsVersion } from "@/plugins/registry";
 import { storeApi } from "@/platform/store";
 import type { PluginFiles } from "@/platform/plugins";
@@ -30,10 +32,14 @@ export default function App() {
   useEffect(() => {
     boot()
       .then(async (r) => {
-        await loadCommunityPluginsOnce();
+        // Settings first: which plugins were switched off (after an error) decides which are loaded at all.
+        initSettings(r.settings);
+        await loadCommunityPluginsOnce({ safeMode: beginStartup() });
         // Browser/dev only: e2e tests install plugins without a folder dialog.
         if (r.platform.kind === "memory") Object.assign((window as unknown as { __wn: object }).__wn, {
             installPlugin,
+            /** The UI store, for tests that put the app in a state it crashes on. */
+            ui: useUI,
             store: storeApi(),
             /** Publish plugin files to the fake store as someone else would. */
             publishToStore: (files: PluginFiles, key: string | null) => storeApi().publish(zipPlugin(files), key),
@@ -50,8 +56,7 @@ export default function App() {
               },
             },
           });
-        initSettings(r.settings);
-        setState(r);
+        setState(r); // (settings are in the store already: loading the plugins may have changed them)
       })
       .catch((e) => {
         console.error(e);
@@ -84,8 +89,10 @@ export default function App() {
   }
 
   return (
-    <QueryClientProvider client={queryClient}>
-      <Shell key={pluginsVersion} platform={state.platform} />
-    </QueryClientProvider>
+    <AppBoundary>
+      <QueryClientProvider client={queryClient}>
+        <Shell key={pluginsVersion} platform={state.platform} />
+      </QueryClientProvider>
+    </AppBoundary>
   );
 }

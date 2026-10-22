@@ -46,6 +46,10 @@ test("folder → note → inline todo → Today and Search", async ({ page }) =>
   await page.getByTestId("date-picker").getByRole("button", { name: "Today", exact: true }).click();
   await expect(detail.getByTestId("due-date")).toContainText("Today");
 
+  // The Todos card on Today: how many are due, and how many open todos there are in total
+  await page.getByTestId("nav-today").click();
+  await expect(page.getByTestId("today-card-todos")).toContainText(/(due today|overdue) · \d+ total/);
+
   // It shows up in Today, with the note badge
   await page.getByTestId("nav-today").click();
   const row = page.locator('[data-testid="todo-row"][data-title="Draft the proposal"]');
@@ -78,6 +82,7 @@ test("trash and restore a note", async ({ page }) => {
   await expect(page.getByTestId("tree-note-1-on-1 notes")).toHaveCount(0);
 
   await page.getByTestId("nav-settings").click();
+  await page.getByTestId("settings-tab-general").click();
   await page.getByTestId("open-trash").click();
   await expect(page.getByTestId("trash-item")).toContainText("1-on-1 notes");
   await page.getByRole("button", { name: "Restore" }).click();
@@ -89,6 +94,7 @@ test("theme (incl. the soft variants) is set in Settings", async ({ page }) => {
   const html = page.locator("html");
   await expect(page.getByRole("button", { name: "Toggle theme" })).toHaveCount(0); // only in Settings now
   await page.getByTestId("nav-settings").click();
+  await page.getByTestId("settings-tab-appearance").click();
   await page.getByLabel("Theme", { exact: true }).selectOption("dark");
   await expect(html).toHaveClass(/dark/);
   const bg = () => html.evaluate(() => getComputedStyle(document.body).backgroundColor);
@@ -103,10 +109,10 @@ test("theme (incl. the soft variants) is set in Settings", async ({ page }) => {
   await expect(html).not.toHaveClass(/soft/);
 });
 
-test("date & time pickers, folder colors and All tasks", async ({ page }) => {
+test("date & time pickers, folder colors and Todos", async ({ page }) => {
   await page.goto("/");
   // Custom date picker: opens, closes on an outside click, sets and clears a date.
-  await page.getByTestId("nav-inbox").click();
+  await page.getByTestId("nav-all").click();
   await page.locator('[data-testid="todo-row"][data-title="Read architecture RFC"]').click();
   const detail = page.getByTestId("todo-detail");
   await detail.getByTestId("due-date").click();
@@ -145,9 +151,9 @@ test("date & time pickers, folder colors and All tasks", async ({ page }) => {
   await expect(page.getByRole("menu")).toHaveCount(0);
   await expect(page.getByTestId("tree-folder-Internal").locator("svg").nth(1)).toHaveCSS("color", "rgb(249, 115, 22)");
 
-  // All tasks: sort by folder groups the list per folder
+  // Todos page: sort by folder groups the list per folder
   await page.getByTestId("nav-all").click();
   await page.getByRole("radio", { name: "Folder" }).click();
-  await expect(page.getByRole("main")).toContainText("Inbox (no folder)");
+  await expect(page.getByRole("main")).toContainText("No folder");
   await expect(page.getByRole("main")).toContainText("Acme migration");
 });

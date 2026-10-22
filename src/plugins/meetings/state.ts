@@ -5,7 +5,7 @@ import { isPluginEnabled, usePluginEnabled } from "../host";
 import * as data from "@/data/meetings";
 import { knownVoices } from "@/data/voices";
 import { renameInSummary, type SpeakerNames } from "@/lib/meetingNote";
-import { showError } from "@/components/Toasts";
+import { showError, showNotice } from "@/components/Toasts";
 import { isTauri } from "@/platform/env";
 import { meetings, type ProcessProgress, type RecordingInfo } from "@/platform/meetings";
 import { modelReady, refreshModels, useModelReady, useModelsStore } from "@/app/models";
@@ -57,6 +57,16 @@ export async function startRecording() {
 
 export async function stopRecording() {
   await meetings().stop(); // the "stopped" event does the rest
+}
+
+/** The plugin's shortcut: stop the recording, or start one when the speech model is there. */
+export async function toggleRecording() {
+  if (useMeetingsStore.getState().current) return stopRecording();
+  if (!modelReady("speech")) {
+    showNotice("Can't record yet", "Download the speech recognition model first: Settings → AI models.");
+    return;
+  }
+  await startRecording();
 }
 
 // ---------------------------------------------------------------- processing

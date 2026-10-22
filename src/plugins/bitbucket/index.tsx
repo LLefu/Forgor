@@ -7,10 +7,12 @@ import { pluginView } from "../host";
 import { PullRequestsFolderPage, PullRequestsOverview } from "./PullRequestPages";
 import { PullRequestPanel } from "./PullRequestPanel";
 import { FolderBitbucket } from "./FolderBitbucket";
+import { BitbucketTodayCards, BitbucketTodaySection } from "./Today";
 import { BitbucketSettings } from "./BitbucketSettings";
 import { myReview } from "@/lib/bitbucket";
 import { useBitbucketAccount, useLinkedRepos, usePullRequests } from "./state";
 import { BITBUCKET_NOTIFICATIONS, startBitbucketNotifications } from "./notify";
+import { bitbucketChat } from "./chat";
 
 /** Sidebar: Pull requests, with how many review requests still wait for me (not yet approved or changes requested). Same queries as the overview. */
 function PullRequestsNav() {
@@ -26,7 +28,7 @@ export const bitbucketPlugin: Plugin = {
   name: "Bitbucket",
   description:
     "See your open pull requests and the ones waiting for your review: per folder (link repositories in the folder's panel) and all together. Read-only: Forgor never changes anything in Bitbucket.",
-  version: "1.0.0",
+  version: "1.0.1",
   author: "Forgor",
   icon: GitPullRequest,
   builtIn: true,
@@ -45,7 +47,9 @@ export const bitbucketPlugin: Plugin = {
   },
   panels: { pr: PullRequestPanel },
   folderSection: FolderBitbucket,
+  today: { cards: BitbucketTodayCards, section: BitbucketTodaySection },
   remoteQueries: ["bitbucket"],
   notifications: BITBUCKET_NOTIFICATIONS,
   start: startBitbucketNotifications,
+  chat: bitbucketChat,
 };

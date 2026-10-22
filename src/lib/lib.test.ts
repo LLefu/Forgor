@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { bucketTodos, friendlyDate, shouldArchive, formatEstimate } from "./dates";
+import { bucketTodos, friendlyDate, shouldTrash, formatEstimate } from "./dates";
 import { nextOccurrence, presetToRRule, customRRule, describeRRule } from "./recurrence";
 import { parseNote, stringifyNote } from "./frontmatter";
 import { assignTaskIds, parseTasks, setTaskChecked, setTaskText } from "./inlineTodos";
@@ -26,7 +26,6 @@ function todo(p: Partial<Todo>): Todo {
     createdAt: "",
     updatedAt: "",
     completedAt: null,
-    archivedAt: null,
     deletedAt: null,
     sourceNoteId: null,
     noteCount: 0,
@@ -86,11 +85,12 @@ describe("dates helpers", () => {
     expect(friendlyDate("2026-11-02", "2026-09-24")).toBe("2 Nov");
     expect(friendlyDate("2027-01-02", "2026-09-24")).toBe("2 Jan 2027");
   });
-  it("shouldArchive after N days only for completed todos", () => {
+  it("shouldTrash N days after completing, or after restoring from the Trash", () => {
     const now = new Date("2026-09-24T12:00:00Z");
-    expect(shouldArchive(todo({ status: "done", completedAt: "2026-09-16T12:00:00Z" }), now, 7)).toBe(true);
-    expect(shouldArchive(todo({ status: "done", completedAt: "2026-09-20T12:00:00Z" }), now, 7)).toBe(false);
-    expect(shouldArchive(todo({ status: "todo", completedAt: "2026-09-01T12:00:00Z" }), now, 7)).toBe(false);
+    expect(shouldTrash("2026-09-16T12:00:00Z", null, now, 7)).toBe(true);
+    expect(shouldTrash("2026-09-20T12:00:00Z", null, now, 7)).toBe(false);
+    expect(shouldTrash("2026-09-01T12:00:00Z", "2026-09-22T12:00:00Z", now, 7)).toBe(false); // restored 2 days ago
+    expect(shouldTrash(null, null, now, 7)).toBe(false);
   });
   it("formatEstimate", () => {
     expect(formatEstimate(30)).toBe("30m");

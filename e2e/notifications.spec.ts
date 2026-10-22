@@ -110,6 +110,7 @@ test("the notification sound: chosen in Settings (it plays as a preview), or non
   await setUp(page);
   await check(page);
   await page.getByTestId("nav-settings").click();
+  await page.getByTestId("settings-tab-notifications").click();
   await page.getByLabel("Notification sound").selectOption("ping");
   expect(await played(page)).toEqual(["ping"]); // the preview
   await page.getByTestId("notifications-play-sound").click();
@@ -153,6 +154,7 @@ test("a kind can be switched off in the plugin's panel, and all of them in Setti
 
   // Everything off in Settings
   await page.getByTestId("nav-settings").click();
+  await page.getByTestId("settings-tab-notifications").click();
   await page.getByTestId("notifications-enabled").click();
   await page.evaluate(() => (window as unknown as Wn).__wn.fakeJira.assign("WEB-22", "Silent"));
   await check(page);
@@ -162,4 +164,33 @@ test("a kind can be switched off in the plugin's panel, and all of them in Setti
   await page.getByTestId("nav-plugins").click();
   await page.getByTestId("plugin-card-jira").click();
   await expect(page.getByTestId("plugin-notifications")).toContainText("Notifications are off for all of Forgor");
+});
+
+test("Jira comments: all of them, or only the ones that mention you", async ({ page }) => {
+  await setUp(page);
+  await check(page);
+
+  // The option sits under the comment switch, and goes away while that switch is off
+  await page.getByTestId("nav-plugins").click();
+  await page.getByTestId("plugin-card-jira").click();
+  const panel = page.getByTestId("plugin-notifications");
+  await expect(panel.getByLabel("Which comments")).toHaveValue("all");
+  await panel.getByTestId("notify-jira-comment").click();
+  await expect(panel.getByLabel("Which comments")).toHaveCount(0);
+  await panel.getByTestId("notify-jira-comment").click();
+  await panel.getByLabel("Which comments").selectOption("mentions");
+
+  await page.evaluate(() => {
+    const w = (window as unknown as Wn).__wn;
+    w.fakeJira.comment("WEB-12", "Sanne de Vries", "Just an update");
+    w.fakeJira.comment("WEB-15", "Sanne de Vries", "@Demo User can you take a look?");
+  });
+  await check(page);
+  expect(await sent(page)).toEqual(["Sanne de Vries mentioned you on WEB-15"]);
+
+  // Back to all: a plain comment notifies again
+  await panel.getByLabel("Which comments").selectOption("all");
+  await page.evaluate(() => (window as unknown as Wn).__wn.fakeJira.comment("WEB-12", "Sanne de Vries", "Another update"));
+  await check(page);
+  expect(await sent(page)).toEqual(["Sanne de Vries mentioned you on WEB-15", "Sanne de Vries commented on WEB-12"]);
 });

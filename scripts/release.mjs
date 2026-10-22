@@ -1,5 +1,5 @@
 // Usage: npm run release 0.2.0
-// Bumps the version in package.json, tauri.conf.json and Cargo.toml, commits,
+// Bumps the version in package.json, tauri.conf.json, Cargo.toml and the plugin API package, commits,
 // tags v<version> and pushes. The Release workflow on GitHub does the rest.
 import { execFileSync } from "node:child_process";
 import { readFileSync, writeFileSync } from "node:fs";
@@ -53,6 +53,12 @@ writeFileSync(confPath, JSON.stringify(conf, null, 2) + "\n");
 const cargoPath = "src-tauri/Cargo.toml";
 writeFileSync(cargoPath, readFileSync(cargoPath, "utf8").replace(/^version = ".*"$/m, `version = "${version}"`));
 
+// The plugin API has the app's version: a plugin's `minAppVersion` is also the API version it needs.
+const apiPath = "packages/plugin-api/package.json";
+const api = JSON.parse(readFileSync(apiPath, "utf8"));
+api.version = version;
+writeFileSync(apiPath, JSON.stringify(api, null, 2) + "\n");
+
 // Keep the lockfiles in step so CI's `npm ci` doesn't complain.
 const lockPath = "package-lock.json";
 const lock = JSON.parse(readFileSync(lockPath, "utf8"));
@@ -65,7 +71,7 @@ writeFileSync(
   readFileSync(cargoLockPath, "utf8").replace(/(\[\[package\]\]\nname = "forgor"\nversion = )".*"/, `$1"${version}"`),
 );
 
-git("add", "package.json", lockPath, confPath, cargoPath, cargoLockPath, changelogPath);
+git("add", "package.json", lockPath, confPath, cargoPath, cargoLockPath, changelogPath, apiPath);
 git("commit", "-m", `Release v${version}`);
 git("tag", `v${version}`);
 console.log(`Committed and tagged v${version}. Pushing…`);

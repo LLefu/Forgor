@@ -8,6 +8,8 @@ import { Tooltip } from "@/components/ui/tooltip";
 import { showError } from "@/components/Toasts";
 import { localPlugins } from "@/platform/plugins";
 import { installPluginFromZip, loadCommunityPlugins } from "@/plugins/community";
+import { SafeIcon } from "@/plugins/SafeIcon";
+import { FaultLabel, PluginNotes } from "./PluginNotes";
 import { refreshStore } from "@/plugins/store";
 import { PluginUpdate, StoreBrowser } from "./StoreBrowser";
 import { CreateProjectDialog } from "./CreateProjectDialog";
@@ -143,7 +145,6 @@ function PluginCard({ plugin: p }: { plugin: Plugin }) {
   const on = useUI((s) => s.settings.plugins[p.id] === true);
   const [checked, toggle] = useAnimatedToggle(p.id, on);
   const selected = useUI((s) => s.selectedPluginId === p.id);
-  const Icon = p.icon;
   const open = () => useUI.getState().openPluginInfo(p.id);
   return (
     <div
@@ -165,10 +166,13 @@ function PluginCard({ plugin: p }: { plugin: Plugin }) {
     >
       <div className="flex items-start gap-3">
         <div className={cn("flex size-10 shrink-0 items-center justify-center rounded-lg", on ? "bg-accent text-accent-foreground" : "bg-muted text-muted-foreground")}>
-          <Icon className="size-5" />
+          <SafeIcon plugin={p} className="size-5" />
         </div>
         <div className="min-w-0 flex-1">
-          <div className={cn("truncate text-sm font-semibold", !on && "text-foreground/80")}>{p.name}</div>
+          <div className={cn("flex items-center text-sm font-semibold", !on && "text-foreground/80")}>
+            <span className="truncate">{p.name}</span>
+            <FaultLabel plugin={p} />
+          </div>
           <div className="truncate text-xs text-muted-foreground">
             {p.author} · v{p.version}
             {" · "}
@@ -187,6 +191,7 @@ function PluginCard({ plugin: p }: { plugin: Plugin }) {
       ) : (
         <p className="line-clamp-3 text-xs text-muted-foreground">{p.description}</p>
       )}
+      <PluginNotes plugin={p} compact />
       <Requirements plugin={p} />
       <PluginUpdate plugin={p} />
     </div>

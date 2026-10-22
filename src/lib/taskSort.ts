@@ -29,7 +29,7 @@ const byDue = (a: Todo, b: Todo) => {
   return compareTodos(a, b);
 };
 
-/** Group + sort the "All tasks" list. Only top-level todos (subtasks show inside their parent). */
+/** Group + sort the Todos page. Only top-level todos (subtasks show inside their parent). */
 export function groupTasks(todos: Todo[], sort: TaskSort, folders: Folder[], today: string): TaskGroup[] {
   const list = todos.filter((t) => !t.parentId);
   switch (sort) {
@@ -66,7 +66,7 @@ export function groupTasks(todos: Todo[], sort: TaskSort, folders: Folder[], tod
       for (const t of list) {
         const p = t.folderId ? path(t.folderId) : null;
         const key = p ?? "";
-        if (!groups.has(key)) groups.set(key, { key: key || "inbox", title: p ?? "Inbox (no folder)", folderId: p ? t.folderId : null, todos: [] });
+        if (!groups.has(key)) groups.set(key, { key: key || "none", title: p ?? "No folder", folderId: p ? t.folderId : null, todos: [] });
         groups.get(key)!.todos.push(t);
       }
       return [...groups.entries()]

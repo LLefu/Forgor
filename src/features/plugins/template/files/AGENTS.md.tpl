@@ -4,9 +4,9 @@ Read this before changing anything. It covers what you need to build this plugin
 
 ## What Forgor is
 
-Forgor is a desktop notes and tasks app (Tauri: a native window running a web page; React 19, TypeScript, Tailwind v4). Notes are plain markdown files in a folder the user picks. Todos, settings and an index live in a local SQLite database. It runs on macOS and Windows. There's also a browser build for development.
+Forgor is a desktop notes and todos app (Tauri: a native window running a web page; React 19, TypeScript, Tailwind v4). Notes are plain markdown files in a folder the user picks. Todos, settings and an index live in a local SQLite database. It runs on macOS and Windows. There's also a browser build for development.
 
-A **plugin** adds things to Forgor: sidebar items (with a count), pages, right-hand panels, a section in a folder's panel, buttons in a note's top bar, settings, quick-menu entries, desktop notifications and background work. Forgor's own features are built the same way: the built-in plugins Meeting recordings, Writing tools, Jira and Bitbucket. Plugins run inside the app's web page, with the same access as the app: the user's notes, todos, settings and the app's UI (see "What the page allows" for the limits). Users install them from a zip file or from the in-app store, then turn them on and off on the Plugins page. Before installing a plugin that Forgor hasn't checked (no check mark in the store, or any zip), Forgor shows a warning that says what plugins can do.
+A **plugin** adds things to Forgor: sidebar items (with a count), pages, right-hand panels, a section in a folder's panel, numbers and lists on the Today page, keyboard shortcuts, buttons in a note's top bar, settings, quick-menu entries, desktop notifications and background work. Forgor's own features are built the same way: the built-in plugins Meeting recordings, Writing tools, Jira and Bitbucket. Plugins run inside the app's web page, with the same access as the app: the user's notes, todos, settings and the app's UI (see "What the page allows" for the limits). Users install them from a zip file or from the in-app store, then turn them on and off on the Plugins page. Before installing a plugin that Forgor hasn't checked (no check mark in the store, or any zip), Forgor shows a warning that says what plugins can do.
 
 ## This project
 
@@ -66,10 +66,10 @@ Forgor limits what its page (and so every plugin) can do, so a mistake or a bad 
 }
 ```
 
-- **`id`** is lowercase letters, digits and dashes, and unique in the store. The built-in plugins' ids (`meetings`, `writing`, `jira`, `bitbucket`) and `forgor` are taken. Never change it after publishing: it's how Forgor recognises the plugin, its updates and its stored data.
+- **`id`** is lowercase letters, digits and dashes, and unique in the store. The built-in plugins' ids (`meetings`, `writing`, `jira`, `bitbucket`, `chat`) and `forgor` are taken. Never change it after publishing: it's how Forgor recognises the plugin, its updates and its stored data.
 - **`version`** is `x.y.z`. Raise it for every version you hand out or publish; the store refuses the same or a lower version.
 - **`requires`** lists ids of other plugins it needs; they're turned on along with it.
-- **`models`** lists the local AI models it uses: `[{ "id": "language", "for": "summaries", "optional": true }]`. The ids are `speech`, `speakers`, `language`. They're shown in the plugin's panel with a download button.
+- **`models`** lists the local AI models it uses: `[{ "id": "language", "for": "summaries", "optional": true }]`. The ids are `speech`, `speakers`, `language`, `search` (finds text by meaning). They're shown in the plugin's panel with a download button.
 
 ## What a plugin can add (contribution points)
 
@@ -79,18 +79,21 @@ All optional. The exact types are in `PluginDefinition` in `types/forgor-plugin-
 |---|---|
 | `icon` | Component for its card (lucide-react icons work: `import { X } from "lucide-react"`) |
 | `settings` | Component shown in its panel on the Plugins page. Stack `api.ui.Setting` blocks; the panel is narrow (~400 px) |
-| `sidebar` | Component rendered in the sidebar below All tasks. Use `api.ui.NavItem`; its `count` shows a number on the right (like Jira's open tickets), `alert` makes it red. Only count what needs the user's attention |
+| `sidebar` | Component rendered in the sidebar below Todos. Use `api.ui.NavItem`; its `count` shows a number on the right (like Jira's open tickets), `alert` makes it red. Only count what needs the user's attention |
 | `pages` | `{ [name]: { useTab(param) → { label, icon }, component({ param }) } }`. Open with `api.app.openPage(name, param)` or a `NavItem` with `target={{ kind: "plugin", plugin: api.id, page: name }}`. Pages share the page tab; `param` is a string (e.g. a folder id) |
 | `panels` | Right-hand panels: `{ [name]: ({ param, fromFolder }) => … }`. One panel shows at a time (todo, folder, plugin info, or yours) |
 | `folderSection` | `({ folder }) => …`, a section in a folder's panel (use `api.ui.Section`) |
+| `today` | `{ cards, section }`: on the Today page, the overview of the user's day. `cards` renders one or more `api.ui.TodayCard` (a number with a label, e.g. open tickets; click opens your page) in the row on top; `section` renders `api.ui.TodayList`s (short lists of what needs attention now; empty ones hide). Use the same queries as your page and sidebar count, and render nothing while the plugin isn't set up (no account) |
 | `noteHeader` | `{ breadcrumb, actions }`: components in a note's top bar, given `{ note, editor }` |
 | `hosts` | Components always mounted while enabled, for dialogs you open from anywhere |
 | `start` | `() => stop`. Runs while enabled: listeners, timers, polling. **Return a function that undoes everything** |
-| `useQuickMenu` | `(enabled) => ({ items, status?, title? })`. Entries in the quick menu (global shortcut popup). It's a hook and is called even while disabled: return `{ items: [] }` when `enabled` is false |
+| `useQuickMenu` | `(enabled) => ({ items, status?, title? })`. Entries in the quick menu (global shortcut popup). It's a hook, called while the plugin is enabled (`enabled` is always true) |
 | `useWriter` | A hook returning a writing function for the editor's AI tools, or null |
 | `disableBlocked` | `() => reason or null`, e.g. "Stop the recording first." |
 | `remoteQueries` | First parts of TanStack query keys you fetch from the internet, so they aren't refreshed on every local change |
-| `notifications` | The kinds of desktop notifications it sends: `[{ kind: "mention", label: "New mentions", hint: "When someone mentions you." }]`. Its panel gets a switch for each (see `api.notifications`) |
+| `shortcuts` | `[{ id, label, keys?, run }]`: keyboard shortcuts while enabled. `keys` are default combos like `["Mod+Shift+H"]` (`Mod` = ⌘ on macOS, Ctrl elsewhere; also `Ctrl`, `Alt`, `Shift`; then one key: `A`–`Z`, `0`–`9`, `F1`–`F12`, `ArrowLeft`, `Enter`, `/`…). They need Mod, Ctrl or Alt, or an F-key. A default the app or another plugin already uses is skipped; leave `keys` out to let the user pick. Users see and change them in Settings → Shortcuts (under your plugin's name) and the ⌘/ overview. Inside a note, keys the editor uses (⌘B, ⌘I…) stay the editor's |
+| `chat` | `{ kind, items }`: things the AI chat (built-in plugin) may search and the user may attach with "@". `items()` is called for every question: return cached data (`api.app.queryClient.fetchQuery` with a `staleTime`), each `{ id, title, text, folderId?, open, detail? }`. Keep `text` short (status, dates, a summary); `detail()` can fetch the full description when the user attaches the item |
+| `notifications` | The kinds of desktop notifications it sends: `[{ kind: "mention", label: "New mentions", hint: "When someone mentions you." }]`. Its panel gets a switch for each (see `api.notifications`). A kind's `settings` component is shown under its switch while it's on, for its own options (keep them in `api.storage` and read them in your check) |
 
 `useTab`, `useQuickMenu` and `useWriter` are hooks: call them the same way every time (no conditions or loops around hooks).
 
@@ -255,6 +258,8 @@ export default (pluginApi: PluginApi): PluginDefinition => {
 
 - **Never `window.confirm`, `alert` or `prompt`:** they don't work in the macOS app. Use `api.ui.confirmDialog`, and `api.ui.Dialog` for input.
 - **Never fail silently:** catch errors from actions and show them with `api.ui.showError(e, "What failed")`.
+- **An error nobody catches switches your plugin off.** If it crashes what it shows, or throws from a click handler, a timer or `start`, Forgor switches it off at once, tells the user and puts an "Error" label with the message on its card. It isn't loaded again until the user switches it on by hand. A promise that rejects without a `catch` first shows a notice naming your plugin; five of them within a minute also switch it off. So catch what can fail (network calls above all) and show it with `api.ui.showError`.
+- **What you return is checked when the plugin loads.** A part with the wrong shape (`shortcuts` that isn't a list, a page without `useTab` or `component`…) is ignored and listed as a warning on the plugin's card; the rest keeps working.
 - **No native `<input type="date">` or `"time"`:** they behave differently on macOS. Use a text input or your own picker.
 - **Clean up:** everything `start` sets up (listeners from `api.app.on`, `setInterval`, event listeners) must be undone by the function it returns.
 - **No direct writes to the notes folder or the database;** use `api.data`. Don't touch Tauri internals (`window.__TAURI__…`); they're not part of the API and can change.

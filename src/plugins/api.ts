@@ -19,6 +19,7 @@ import { confirmDialog } from "@/components/ConfirmDialog";
 import { showError } from "@/components/Toasts";
 import { FolderGlyph, FolderLabel, useFolderColor } from "@/features/folder/folderColors";
 import { PageHeader, Section } from "@/features/todos/TodosPage";
+import { TodayCard, TodayList } from "@/features/today/TodayCard";
 import { effectiveFolderColor, colorHex } from "@/lib/folderColors";
 import { basename, dirname, joinPath } from "@/lib/paths";
 import { cn } from "@/lib/utils";
@@ -96,6 +97,8 @@ export function createPluginApi(id: string) {
       Tooltip,
       PageHeader,
       Section,
+      TodayCard,
+      TodayList,
       FolderGlyph,
       FolderLabel,
       useFolderColor,

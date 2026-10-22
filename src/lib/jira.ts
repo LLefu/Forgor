@@ -223,6 +223,13 @@ export function filterIssues(issues: JiraIssue[], f: IssueFilter): JiraIssue[] {
   );
 }
 
+/** True if the ADF document @-mentions this account. */
+export function mentions(node: AdfNode | null | undefined, accountId: string): boolean {
+  if (!node) return false;
+  if (node.type === "mention" && node.attrs?.id === accountId) return true;
+  return (node.content ?? []).some((n) => mentions(n, accountId));
+}
+
 /** Plain text of an ADF document (search, previews). */
 export function adfText(node: AdfNode | null | undefined): string {
   if (!node) return "";

@@ -7,7 +7,7 @@ import { Section } from "@/features/todos/TodosPage";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tooltip } from "@/components/ui/tooltip";
-import { matchRepos, prRef, sameRepo, type BitbucketRepoRef } from "@/lib/bitbucket";
+import { approvedByMe, matchRepos, prRef, sameRepo, type BitbucketRepoRef } from "@/lib/bitbucket";
 import { openPluginSettings, pluginView } from "../host";
 import { useAllRepos, useBitbucketAccount, usePullRequests } from "./state";
 import { PullRequestRow } from "./PullRequestRow";
@@ -34,7 +34,10 @@ export function FolderBitbucket({ folder }: { folder: Folder }) {
 const PREVIEW = 8;
 
 function FolderRepos({ folder, repos }: { folder: Folder; repos: BitbucketRepoRef[] }) {
-  const { data: prs = [], isLoading, error } = usePullRequests(repos);
+  const me = useBitbucketAccount()?.uuid ?? "";
+  // Review requests I approved need nothing from me.
+  const { data = [], isLoading, error } = usePullRequests(repos);
+  const prs = data.filter((p) => !approvedByMe(p, me));
   // Inline like the Jira board picker (a popover from a menu closed right away).
   const [adding, setAdding] = useState(false);
   const linked = repos.length > 0;

@@ -5,6 +5,25 @@ All notable changes to Forgor. Add new entries under **Unreleased**;
 
 ## Unreleased
 
+### New
+- **Keyboard shortcuts** for nearly everything, and you can change them all in **Settings → Shortcuts**: click one and press the new keys, add a second one, remove it, or reset it. Keys that are already taken (or that copy/paste and your system need) are refused, with what uses them. Press **⌘/** (Ctrl+/) to see them all. New: **⌘N** new note, **⇧⌘N** new folder, **⌘P / ⌘O** quick open, **⇧⌘D** Today, **⇧⌘L** Todos, **⌘,** Settings, **⌘1–⌘9** go to a tab, **⇧⌘T** reopen a closed tab, **⌘\\** hide or show the sidebar, **F2** rename the open note, **⇧⌘E** show it in the explorer. Meeting recordings adds **⇧⌘R** to start or stop a recording. On Windows, ⌘ is Ctrl.
+- **Plugins can add keyboard shortcuts** (`shortcuts`), listed under the plugin's name in Settings → Shortcuts.
+- **Settings has tabs**: General, Appearance, Todos, Notifications, AI models and Shortcuts.
+- **AI chat plugin** (Plugins → AI chat): ask about your own notes and todos ("what did we decide about the hosting again?", "do I have todos for Fietsdepot this week?") and get a short answer with numbered links to the notes, todos, tickets and pull requests it used. It finds things by meaning, so other words or another language work too ("cloud" finds "hosting goes to AWS"), and when sources disagree the newest wins. Type **@** to attach a note, todo, ticket or pull request to your question. Follow-up questions work; **New chat** starts over. Open it with **⌘J** (Ctrl+J). It needs the language model and a new, small **search model** (334 MB), and runs entirely on your computer. With Jira and Bitbucket on, your tickets and pull requests are included (plugins can add their own with `chat`).
+
+### Changed
+- **Today is now an overview of your day**: numbers on top for your todos (due today, and overdue ones in red), and with the Jira and Bitbucket plugins your open tickets, your open pull requests and the reviews waiting for you. Click one to go to its page. Below them: review requests waiting for you, your pull requests with a failed build, and your tickets that are in progress or due. Then today's todos as before. Plugins can add their own numbers and lists (`today`, `api.ui.TodayCard` / `api.ui.TodayList`).
+- **A plugin that causes a problem is switched off at once and labelled.** If a community plugin crashes what it shows, throws an error nobody catches, keeps failing, or can't load, Forgor switches it off, tells you why, and gives its card an **Error** label with the message. It isn't loaded again until you switch it on yourself (which also clears the label), so one broken plugin can no longer take the whole app down or keep it from starting. If Forgor didn't start properly twice in a row, all community plugins are switched off so it opens again. What a plugin declares is checked when it loads: parts with the wrong shape are ignored, with a warning on its card.
+- **Plugins made for a newer Forgor** are no longer refused: they install and load with a warning, and every plugin shows the Forgor version it was made for.
+- **"All tasks" is now simply "Todos"**, and the app says todo instead of task everywhere. The Today card for todos also shows how many open todos there are in total.
+- **Inbox is gone**: todos without a folder are in Todos (sort by Folder to see them together under "No folder"), and Today shows how many there are. An open Inbox tab becomes Todos.
+- **Archive is gone**: completed todos now move to the **Trash** after a while (7 days unless you change it: Settings → "Move completed todos to the Trash after"). Until then they stay where they are and you can untick them; after that, restore them from the Trash (they then stay another few days before moving again). Todos that were in the Archive are in the Trash now. An open Archive tab becomes the Trash.
+- The sidebar no longer shows a count next to Today.
+- **Next/previous tab** is now **⌃Tab / ⌃⇧Tab** on macOS (⌘Tab is the system's app switcher, so it never reached Forgor). Ctrl+Tab on Windows as before.
+- **Bitbucket**: pull requests you already approved no longer show in the lists (the overview, a folder's page and panel), since there's nothing left for you to do.
+- **Jira**: comment notifications can be limited to **comments that mention you** (Plugins → Jira, under the comment switch). A mention is shown as "… mentioned you on WEB-12".
+- Plugin API: `{ kind: "inbox" }` and `{ kind: "archive" }` are no longer pages, and todos no longer have `archivedAt`.
+
 ## 1.1.0 (2026-10-22)
 
 ### New

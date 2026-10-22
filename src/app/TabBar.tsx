@@ -1,18 +1,20 @@
 import { useEffect, useRef, useState } from "react";
-import { X, FileText, Inbox, Sun, ListTodo, Search, Archive, Trash2, Settings, Puzzle } from "lucide-react";
+import { X, FileText, Sun, ListTodo, Search, Trash2, Settings, Puzzle, PanelLeftOpen } from "lucide-react";
+import { Tooltip } from "@/components/ui/tooltip";
+import { useShortcutLabel } from "./shortcuts";
 import { useUI, type PageKind, type PluginView, type Tab } from "./store";
 import { useNotes } from "./queries";
 import { usePluginTab } from "@/plugins/views";
+import { PluginBoundary } from "@/plugins/Boundary";
+import { getPlugin } from "@/plugins/registry";
 import { cn } from "@/lib/utils";
 import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuSeparator, ContextMenuTrigger } from "@/components/ui/menu";
 import { ItemMenuItems, noteItem } from "@/features/explorer/ItemMenu";
 
 const PAGES: Record<PageKind, { label: string; icon: React.ComponentType<{ className?: string }> }> = {
-  inbox: { label: "Inbox", icon: Inbox },
   today: { label: "Today", icon: Sun },
-  all: { label: "All tasks", icon: ListTodo },
+  all: { label: "Todos", icon: ListTodo },
   search: { label: "Search", icon: Search },
-  archive: { label: "Archive", icon: Archive },
   trash: { label: "Trash", icon: Trash2 },
   settings: { label: "Settings", icon: Settings },
   plugins: { label: "Plugins", icon: Puzzle },
@@ -21,9 +23,20 @@ const PAGES: Record<PageKind, { label: string; icon: React.ComponentType<{ class
 type TabButtonProps = Parameters<typeof TabButton>[0];
 
 /** A plugin page's tab: its label comes from the plugin (keyed per page, so its hooks stay the same). */
-function PluginTabButton(props: TabButtonProps & { tab: { view: PluginView } }) {
+function PluginTabLabel(props: TabButtonProps & { tab: { view: PluginView } }) {
   const label = usePluginTab(props.tab.view);
   return <TabButton {...props} label={label} />;
+}
+
+/** The label comes from the plugin: if its code throws, the tab stands in with the plugin's name and the plugin is switched off. */
+function PluginTabButton(props: TabButtonProps & { tab: { view: PluginView } }) {
+  const plugin = getPlugin(props.tab.view.plugin);
+  const fallback = <TabButton {...props} label={{ label: plugin?.name ?? "Plugin", icon: Puzzle }} />;
+  return (
+    <PluginBoundary id={plugin?.builtIn ? undefined : props.tab.view.plugin} plugin={plugin?.name ?? props.tab.view.plugin} quiet fallback={fallback}>
+      <PluginTabLabel {...props} />
+    </PluginBoundary>
+  );
 }
 
 /**
@@ -45,7 +58,10 @@ export function TabBar() {
     const ids = new Set(notes.map((n) => n.id));
     const ui = useUI.getState();
     for (const t of ui.tabs) if (t.view.kind === "note" && !ids.has(t.view.id)) useUI.getState().closeTab(t.id);
+    useUI.setState({ closedTabs: [] }); // not something to reopen
   }, [isFetched, notes]);
+  const sidebarHidden = useUI((s) => s.settings.sidebarHidden);
+  const toggleLabel = useShortcutLabel("toggle-sidebar");
 
   return (
     <div
@@ -68,6 +84,18 @@ export function TabBar() {
         setDropAt(null);
       }}
     >
+      {sidebarHidden && (
+        <Tooltip content={`Show sidebar${toggleLabel ? ` (${toggleLabel})` : ""}`}>
+          <button
+            onClick={() => void useUI.getState().updateSetting("sidebarHidden", false)}
+            className="flex h-9 w-9 shrink-0 items-center justify-center text-muted-foreground hover:text-foreground"
+            aria-label="Show sidebar"
+            data-testid="show-sidebar"
+          >
+            <PanelLeftOpen className="size-4" />
+          </button>
+        </Tooltip>
+      )}
       {tabs.map((tab, i) => {
         const props = {
           tab,

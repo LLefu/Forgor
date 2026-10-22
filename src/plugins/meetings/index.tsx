@@ -12,7 +12,7 @@ import { meetings, type RecordingInfo } from "@/platform/meetings";
 import { isDownloaded } from "@/platform/models";
 import type { NoteHeaderProps, Plugin } from "../types";
 import { pluginView } from "../host";
-import { startMeetings, useMeetingsStore } from "./state";
+import { startMeetings, toggleRecording, useMeetingsStore } from "./state";
 import { MeetingsPage } from "./MeetingsPage";
 import { MeetingsSettings } from "./MeetingsSettings";
 import { NameRecordingDialogHost } from "./NameRecordingDialog";
@@ -25,7 +25,7 @@ export const meetingsPlugin: Plugin = {
   id: "meetings",
   name: "Meeting recordings",
   description: "Record meetings and get a transcript and summary in a note, made on this computer: nothing is uploaded.",
-  version: "1.0.0",
+  version: "1.0.1",
   author: "Forgor",
   icon: AudioLines,
   builtIn: true,
@@ -42,6 +42,7 @@ export const meetingsPlugin: Plugin = {
   start: startMeetings,
   disableBlocked: () => (useMeetingsStore.getState().current ? "Stop the recording first." : null),
   useQuickMenu: useRecordingMenu,
+  shortcuts: [{ id: "record", label: "Start or stop recording", keys: ["Mod+Shift+R"], run: toggleRecording }],
 };
 
 /** "Meetings", with a red dot and the running time while recording. */

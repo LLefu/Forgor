@@ -7,7 +7,7 @@ test("plugins page: built-in plugins as cards, enabled ones apart from disabled 
   const disabled = page.getByTestId("plugins-disabled");
   await expect(page.getByTestId("plugins-enabled")).toContainText("No plugins enabled yet");
   for (const id of ["meetings", "writing", "jira"]) await expect(disabled.getByTestId(`plugin-card-${id}`)).toBeVisible();
-  await expect(page.getByTestId("plugin-card-jira")).toContainText("Forgor · v1.1.0 · Built-in");
+  await expect(page.getByTestId("plugin-card-jira")).toContainText("Forgor · v1.1.1 · Built-in");
   await expect(page.getByTestId("plugin-needs-meetings")).toContainText("Speech recognition");
   await expect(page.getByTestId("plugin-needs-meetings")).toContainText("Language model (optional)");
   await expect(page.getByTestId("plugin-needs-jira")).toContainText("nothing else");
@@ -26,6 +26,7 @@ test("plugins page: built-in plugins as cards, enabled ones apart from disabled 
 
   // Settings has no feature sections anymore, only the shared AI models
   await page.getByTestId("nav-settings").click();
+  await page.getByTestId("settings-tab-models").click();
   await expect(page.getByTestId("ai-models")).toBeVisible();
   await expect(page.getByTestId("main")).not.toContainText("Meeting recordings");
 });

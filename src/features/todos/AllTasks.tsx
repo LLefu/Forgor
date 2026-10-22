@@ -24,13 +24,13 @@ export function AllTasks() {
 
   return (
     <div className="mx-auto max-w-3xl pb-16">
-      <PageHeader title="All tasks" subtitle={`${count} ${count === 1 ? "task" : "tasks"}`}>
-        <div className="flex items-center gap-3 text-sm" data-testid="all-tasks-controls">
-          <label className="flex cursor-pointer items-center gap-1.5 text-xs text-muted-foreground">
+      <PageHeader title="Todos" subtitle={`${count} ${count === 1 ? "todo" : "todos"}`}>
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-2 text-sm" data-testid="all-tasks-controls">
+          <label className="flex cursor-pointer items-center gap-1.5 whitespace-nowrap text-xs text-muted-foreground">
             <input type="checkbox" checked={showDone} onChange={(e) => update("allTasksShowDone", e.target.checked)} />
             Show completed
           </label>
-          <div className="flex rounded border p-0.5" role="radiogroup" aria-label="Sort by">
+          <div className="flex flex-wrap rounded border p-0.5" role="radiogroup" aria-label="Sort by">
             {TASK_SORTS.map((s) => (
               <button
                 key={s.value}
@@ -38,7 +38,7 @@ export function AllTasks() {
                 aria-checked={sort === s.value}
                 onClick={() => update("allTasksSort", s.value as TaskSort)}
                 className={cn(
-                  "rounded-sm px-2 py-1 text-xs",
+                  "whitespace-nowrap rounded-sm px-2 py-1 text-xs",
                   sort === s.value ? "bg-accent font-medium text-accent-foreground" : "text-muted-foreground hover:bg-muted hover:text-foreground",
                 )}
               >
@@ -50,7 +50,7 @@ export function AllTasks() {
       </PageHeader>
       <div className="px-6">
         <InlineAdd defaults={{}} />
-        {groups.length === 0 && <p className="px-2 py-6 text-center text-sm text-muted-foreground">No tasks. Enjoy the quiet.</p>}
+        {groups.length === 0 && <p className="px-2 py-6 text-center text-sm text-muted-foreground">No todos. Enjoy the quiet.</p>}
         {groups.map((g) =>
           g.title === null ? (
             <div key={g.key} className="mt-2">

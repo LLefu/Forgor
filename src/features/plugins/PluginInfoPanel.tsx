@@ -14,6 +14,9 @@ import { showError } from "@/components/Toasts";
 import { exportPlugin, installPlugin, pickUpdateZip, uninstallPlugin } from "@/plugins/community";
 import { newerVersion, useStoreEntry, usePluginStore } from "@/plugins/store";
 import type { Plugin } from "@/plugins/types";
+import { PluginBoundary } from "@/plugins/Boundary";
+import { SafeIcon } from "@/plugins/SafeIcon";
+import { FaultLabel, PluginNotes } from "./PluginNotes";
 import { PublishDialog } from "./PublishDialog";
 
 /** A plugin in the right-hand panel: what it is, what it needs, and its settings. */
@@ -23,7 +26,6 @@ export function PluginInfoPanel({ id }: { id: string }) {
   const plugins = useUI((s) => s.settings.plugins);
   const { width, handle } = useResizableWidth("panelWidth", { min: 300, max: 720, edge: "left" });
   if (!plugin) return null;
-  const Icon = plugin.icon;
   const Settings = plugin.settings;
 
   return (
@@ -38,10 +40,13 @@ export function PluginInfoPanel({ id }: { id: string }) {
       <div className="flex-1 space-y-6 overflow-y-auto px-4 pb-8 pt-4">
         <header className="flex items-start gap-3">
           <div className="flex size-11 shrink-0 items-center justify-center rounded-lg bg-accent text-accent-foreground">
-            <Icon className="size-5" />
+            <SafeIcon plugin={plugin} className="size-5" />
           </div>
           <div className="min-w-0 flex-1">
-            <h2 className="text-base font-semibold">{plugin.name}</h2>
+            <h2 className="flex items-center text-base font-semibold">
+              {plugin.name}
+              <FaultLabel plugin={plugin} />
+            </h2>
             <p className="text-xs text-muted-foreground">
               by {plugin.author} · v{plugin.version}
               {" · "}
@@ -61,6 +66,7 @@ export function PluginInfoPanel({ id }: { id: string }) {
           </p>
         )}
         <p className="text-sm text-foreground/85">{plugin.description}</p>
+        <PluginNotes plugin={plugin} />
 
         <PanelSection title="Requires">
           <div className="space-y-3">
@@ -96,7 +102,9 @@ export function PluginInfoPanel({ id }: { id: string }) {
           <PanelSection title="Settings">
             {on ? (
               <div className="space-y-5" data-testid="plugin-settings">
-                <Settings />
+                <PluginBoundary id={plugin.builtIn ? undefined : plugin.id} plugin={plugin.name}>
+                  <Settings />
+                </PluginBoundary>
               </div>
             ) : (
               <p className="text-[13px] text-muted-foreground">Enable the plugin to change its settings.</p>
@@ -226,20 +234,28 @@ function NotificationSwitches({ plugin }: { plugin: Plugin }) {
           .
         </p>
       )}
-      {plugin.notifications!.map((n) => (
-        <label key={n.kind} className="flex items-start gap-3">
-          <span className="min-w-0 flex-1">
-            <span className="block text-[13px]">{n.label}</span>
-            {n.hint && <span className="block text-xs text-muted-foreground">{n.hint}</span>}
-          </span>
-          <Switch
-            checked={!muted.includes(`${plugin.id}:${n.kind}`)}
-            onCheckedChange={(v) => void setNotificationOn(plugin.id, n.kind, v)}
-            aria-label={n.label}
-            data-testid={`notify-${plugin.id}-${n.kind}`}
-          />
-        </label>
-      ))}
+      {plugin.notifications!.map((n) => {
+        const on = !muted.includes(`${plugin.id}:${n.kind}`);
+        const Options = n.settings;
+        return (
+          <div key={n.kind}>
+            <label className="flex items-start gap-3">
+              <span className="min-w-0 flex-1">
+                <span className="block text-[13px]">{n.label}</span>
+                {n.hint && <span className="block text-xs text-muted-foreground">{n.hint}</span>}
+              </span>
+              <Switch checked={on} onCheckedChange={(v) => void setNotificationOn(plugin.id, n.kind, v)} aria-label={n.label} data-testid={`notify-${plugin.id}-${n.kind}`} />
+            </label>
+            {on && Options && (
+              <div className="mt-1.5">
+                <PluginBoundary id={plugin.id} plugin={plugin.name}>
+                  <Options />
+                </PluginBoundary>
+              </div>
+            )}
+          </div>
+        );
+      })}
     </div>
   );
 }

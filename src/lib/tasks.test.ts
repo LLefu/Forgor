@@ -11,7 +11,7 @@ function todo(p: Partial<Todo>): Todo {
   return {
     id: `t${n}`, title: `Task ${n}`, description: "", status: "todo", priority: 4, dueDate: null, dueTime: null, startDate: null,
     estimateMin: null, rrule: null, recurFromCompletion: false, parentId: null, folderId: null, sortOrder: n,
-    createdAt: `2026-09-${String(n).padStart(2, "0")}T00:00:00Z`, updatedAt: "", completedAt: null, archivedAt: null,
+    createdAt: `2026-09-${String(n).padStart(2, "0")}T00:00:00Z`, updatedAt: "", completedAt: null,
     deletedAt: null, sourceNoteId: null, noteCount: 0, subtaskCount: 0, subtaskDone: 0, ...p,
   };
 }
@@ -54,9 +54,9 @@ describe("groupTasks", () => {
       ["P4 · None", ["tmrw", "week"]],
     ]);
   });
-  it("by folder: inbox first, then folder paths", () => {
+  it("by folder: no folder first, then folder paths", () => {
     expect(view("folder")).toEqual([
-      ["Inbox (no folder)", ["late", "week", "someday"]],
+      ["No folder", ["late", "week", "someday"]],
       ["Acme", ["now"]],
       ["Acme/Meetings", ["far"]],
       ["Beta", ["tmrw"]],

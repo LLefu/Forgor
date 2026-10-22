@@ -26,7 +26,7 @@ export function friendlyDate(date: string, today: string = todayStr()): string {
 }
 
 export function isOpen(t: Todo): boolean {
-  return t.status !== "done" && !t.deletedAt && !t.archivedAt;
+  return t.status !== "done" && !t.deletedAt;
 }
 
 /**
@@ -89,11 +89,11 @@ export function bucketTodos(todos: Todo[], today: string, upcomingDays: number):
   };
 }
 
-/** True if a completed todo should be auto-archived now. */
-export function shouldArchive(t: Todo, now: Date, archiveAfterDays: number): boolean {
-  if (t.status !== "done" || !t.completedAt || t.archivedAt || t.deletedAt) return false;
-  const ageMs = now.getTime() - new Date(t.completedAt).getTime();
-  return ageMs >= archiveAfterDays * 24 * 60 * 60 * 1000;
+/** True if a todo completed at `completedAt` (and maybe restored from the Trash since) should go to the Trash now. */
+export function shouldTrash(completedAt: string | null, restoredAt: string | null, now: Date, days: number): boolean {
+  if (!completedAt) return false;
+  const since = restoredAt && restoredAt > completedAt ? restoredAt : completedAt;
+  return now.getTime() - new Date(since).getTime() >= days * 24 * 60 * 60 * 1000;
 }
 
 export function formatEstimate(min: number | null): string {

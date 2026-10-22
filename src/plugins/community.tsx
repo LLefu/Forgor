@@ -7,7 +7,10 @@ import { deletePluginValues } from "@/data/pluginStorage";
 import { confirmDialog } from "@/components/ConfirmDialog";
 import { bundleFiles, localPlugins, type PluginBundle, type PluginFiles } from "@/platform/plugins";
 import { unzipPlugin, zipPlugin } from "./zip";
-import { version as APP_VERSION } from "../../package.json";
+import { needsNewerApp, newerAppWarning } from "./compat";
+import { sanitizeDefinition } from "./validate";
+import { setPluginReloader } from "./host";
+import { showNotice } from "@/components/Toasts";
 import { createPluginApi, type PluginFactory, type PluginManifest } from "./api";
 import { PLUGINS, setCommunityPlugins } from "./registry";
 import type { Plugin } from "./types";
@@ -53,13 +56,13 @@ export async function exportPlugin(id: string) {
  * At startup, once per window (React StrictMode runs the startup effect twice;
  * a second load would remount the app while it is already in use).
  */
-export function loadCommunityPluginsOnce(): Promise<void> {
-  startup ??= loadCommunityPlugins();
+export function loadCommunityPluginsOnce(opts: { safeMode?: boolean } = {}): Promise<void> {
+  startup ??= loadCommunityPlugins(opts);
   return startup;
 }
 
 /** (Re)load every community plugin; the app remounts with the new list. */
-export async function loadCommunityPlugins(): Promise<void> {
+export async function loadCommunityPlugins(opts: { safeMode?: boolean } = {}): Promise<void> {
   let bundles: PluginBundle[] = [];
   try {
     bundles = await localPlugins().list();
@@ -67,6 +70,7 @@ export async function loadCommunityPlugins(): Promise<void> {
     console.error("Could not list plugins", e);
   }
   const builtIn = new Set(PLUGINS.filter((p) => p.builtIn).map((p) => p.id));
+  if (opts.safeMode) await switchOffForSafeMode(bundles, builtIn);
   const byId = new Map<string, Plugin>();
   loaded.clear();
   for (const bundle of bundles) {
@@ -88,9 +92,10 @@ function evaluate(bundle: PluginBundle): Plugin {
   }
   const id = String(manifest.id ?? "");
   if (!ID.test(id)) return broken(bundle, bundle.dir, `"${id}" isn't a valid plugin id (lowercase letters, digits and dashes).`, manifest);
-  if (manifest.minAppVersion && newer(manifest.minAppVersion, APP_VERSION))
-    return broken(bundle, id, `Needs Forgor ${manifest.minAppVersion} or newer (this is ${APP_VERSION}).`, manifest);
   if (!bundle.main) return broken(bundle, id, "main.js is missing.", manifest);
+  // Switched off after an error: not even loaded (its code is what crashed or froze Forgor). It is loaded again when the user switches it on.
+  const { plugins, pluginFaults } = useUI.getState().settings;
+  if (pluginFaults[id] && plugins[id] !== true) return { ...meta(bundle, id, manifest), icon: iconOf(bundle), deferred: true };
   try {
     const module = { exports: {} as Record<string, unknown> };
     const require = (name: string) => {
@@ -100,9 +105,12 @@ function evaluate(bundle: PluginBundle): Plugin {
     new Function("module", "exports", "require", `${bundle.main}\n//# sourceURL=forgor-plugin://${id}/main.js`)(module, module.exports, require);
     const exported = (module.exports.default ?? module.exports) as unknown;
     if (typeof exported !== "function") throw new Error("main.js must export a function: export default (api) => ({ … })");
-    const definition = (exported as PluginFactory)(createPluginApi(id));
+    const { definition, warnings } = sanitizeDefinition((exported as PluginFactory)(createPluginApi(id)));
+    // Made for a newer Forgor: it still loads, with a warning (a plugin that then misbehaves is switched off like any other).
+    if (manifest.minAppVersion && needsNewerApp(manifest.minAppVersion)) warnings.unshift(newerAppWarning(manifest.minAppVersion));
     return {
       ...definition,
+      warnings: warnings.length ? warnings : undefined,
       ...meta(bundle, id, manifest),
       icon: definition.icon ?? iconOf(bundle),
       styles: bundle.styles,
@@ -122,6 +130,7 @@ function meta(bundle: PluginBundle, id: string, m: Partial<PluginManifest>) {
     description: m.description || "",
     requires: m.requires,
     models: m.models,
+    minAppVersion: m.minAppVersion,
     source: bundle.source,
   };
 }
@@ -139,14 +148,36 @@ function iconOf(bundle: PluginBundle): Plugin["icon"] {
 }
 
 /** a > b for "x.y.z" versions. */
-function newer(a: string, b: string) {
-  const pa = a.split(".").map(Number);
-  const pb = b.split(".").map(Number);
-  for (let i = 0; i < 3; i++) {
-    if ((pa[i] || 0) !== (pb[i] || 0)) return (pa[i] || 0) > (pb[i] || 0);
+/**
+ * Forgor didn't start properly the last times (it froze or crashed before it
+ * got going): switch off every community plugin and label it, so Forgor opens
+ * and the user switches them back on one by one. Switched-off plugins aren't
+ * loaded (evaluate), so a plugin that hangs when it loads can't hang this start.
+ */
+async function switchOffForSafeMode(bundles: PluginBundle[], builtIn: Set<string>) {
+  const ui = useUI.getState();
+  const plugins = { ...ui.settings.plugins };
+  const faults = { ...ui.settings.pluginFaults };
+  const names: string[] = [];
+  for (const bundle of bundles) {
+    let id: string;
+    try {
+      id = String((JSON.parse(bundle.manifest) as { id?: unknown }).id ?? "");
+    } catch {
+      continue;
+    }
+    if (!ID.test(id) || builtIn.has(id) || plugins[id] !== true) continue;
+    plugins[id] = false;
+    faults[id] = { message: "Forgor didn't start properly the last times, so this plugin was switched off to be safe. If it isn't the cause you can switch it on again.", where: "starting Forgor", at: new Date().toISOString() };
+    names.push(id);
   }
-  return false;
+  if (!names.length) return;
+  await ui.updateSetting("plugins", plugins);
+  await ui.updateSetting("pluginFaults", faults);
+  showNotice("Plugins switched off", "Forgor didn't start properly the last times, so community plugins were switched off. Switch them on again one by one on the Plugins page.");
 }
+
+setPluginReloader(() => loadCommunityPlugins());
 
 // ---------------------------------------------------------------- install / remove
 
@@ -155,7 +186,7 @@ function newer(a: string, b: string) {
  * any zip): plugins run with the app's own access, and the author is just what
  * the uploader typed (anyone can write "Forgor"). Updates don't ask again.
  */
-export function confirmUnverifiedInstall(p: { name: string; author: string; fromZip?: boolean }): Promise<boolean> {
+export function confirmUnverifiedInstall(p: { name: string; author: string; fromZip?: boolean; minAppVersion?: string | null }): Promise<boolean> {
   const who = p.author ? `It says it's made by “${p.author}”, but anyone can type any name there.` : "It doesn't say who made it.";
   return confirmDialog({
     title: `Install ${p.name}?`,
@@ -163,6 +194,7 @@ export function confirmUnverifiedInstall(p: { name: string; author: string; from
       p.fromZip ? "This plugin comes from a zip file, so Forgor can't check it." : "Forgor hasn't checked this plugin.",
       who,
       "A plugin can read, change and delete your notes and todos, read your Jira tickets, and send what it reads over the internet. Only install it if you trust who made it.",
+      ...(needsNewerApp(p.minAppVersion) ? [newerAppWarning(p.minAppVersion!)] : []),
     ].join("\n\n"),
     confirmLabel: "Install",
   });
@@ -180,7 +212,7 @@ export async function installPluginFromZip(): Promise<Plugin | null> {
     // installPlugin explains what's wrong
   }
   if (typeof files["manifest.json"] === "string" && typeof manifest === "object" && manifest) {
-    const ok = await confirmUnverifiedInstall({ name: String(manifest.name || manifest.id || "this plugin"), author: String(manifest.author ?? ""), fromZip: true });
+    const ok = await confirmUnverifiedInstall({ name: String(manifest.name || manifest.id || "this plugin"), author: String(manifest.author ?? ""), fromZip: true, minAppVersion: manifest.minAppVersion });
     if (!ok) return null;
   }
   return installPlugin(files);

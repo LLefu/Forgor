@@ -1,26 +1,15 @@
 import { FilePlus, Search, Sun, ListTodo } from "lucide-react";
-import { useUI } from "./store";
-import * as notes from "@/data/notes";
-import { shortcutLabel } from "@/lib/keys";
+import { APP_SHORTCUTS, useShortcutLabel } from "./shortcuts";
 
 /** Shown when every tab is closed. */
 export function NothingOpen() {
-  const setView = useUI((s) => s.setView);
-  const openQuickAdd = useUI((s) => s.openQuickAdd);
-
+  // The same actions as their shortcuts, with their keys
+  const run = (id: string) => () => APP_SHORTCUTS.find((s) => s.id === id)!.run();
   const actions = [
-    {
-      icon: FilePlus,
-      label: "New note",
-      run: async () => {
-        const n = await notes.createNote("");
-        setView({ kind: "note", id: n.id });
-        useUI.getState().requestRename(`n:${n.id}`);
-      },
-    },
-    { icon: ListTodo, label: "New todo", hint: shortcutLabel("Mod+Shift+A"), run: () => openQuickAdd() },
-    { icon: Search, label: "Search", hint: shortcutLabel("Mod+Shift+F"), run: () => useUI.getState().setSearchOverlay(true) },
-    { icon: Sun, label: "Today", run: () => setView({ kind: "today" }) },
+    { icon: FilePlus, label: "New note", hint: useShortcutLabel("new-note"), run: run("new-note") },
+    { icon: ListTodo, label: "New todo", hint: useShortcutLabel("new-todo"), run: run("new-todo") },
+    { icon: Search, label: "Search", hint: useShortcutLabel("quick-open"), run: run("quick-open") },
+    { icon: Sun, label: "Today", hint: useShortcutLabel("go-today"), run: run("go-today") },
   ];
 
   return (

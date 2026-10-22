@@ -25,6 +25,12 @@ export interface Plugin {
   source?: "installed";
   /** Why it couldn't be loaded (it then contributes nothing). */
   error?: string;
+  /** Parts of its definition that were ignored because they had the wrong shape (plugins/validate.ts). */
+  warnings?: string[];
+  /** The Forgor version it was made for (its manifest's `minAppVersion`). */
+  minAppVersion?: string;
+  /** Switched off after an error and not loaded: only its manifest is known until the user switches it on again. */
+  deferred?: boolean;
   /** Its own CSS (styles.css), applied while it is enabled. */
   styles?: string;
   /** Other plugins that must be enabled for this one to work (by id). */
@@ -36,7 +42,7 @@ export interface Plugin {
 
   /** Its settings, shown in its panel on the Plugins page (stacked; use `Setting` from plugins/ui). */
   settings?: ComponentType;
-  /** Items in the sidebar, below All tasks (use `NavItem`). */
+  /** Items in the sidebar, below Todos (use `NavItem`). */
   sidebar?: ComponentType;
   /** Its pages, by name; opened with `{ kind: "plugin", plugin: id, page, param }`. */
   pages?: Record<string, PluginPage>;
@@ -44,6 +50,8 @@ export interface Plugin {
   panels?: Record<string, ComponentType<{ param: string; fromFolder: string | null }>>;
   /** A section in a folder's panel. */
   folderSection?: ComponentType<{ folder: Folder }>;
+  /** On the Today page: numbers in the row on top (`cards`, use `TodayCard`) and short lists of what needs attention (`section`, use `TodayList`). Show nothing while not set up. */
+  today?: { cards?: ComponentType; section?: ComponentType };
   /** In a note's top bar: before the folder path, and buttons on the right. */
   noteHeader?: { breadcrumb?: ComponentType<NoteHeaderProps>; actions?: ComponentType<NoteHeaderProps> };
   /** Gives the editor its AI writing tools (selection toolbar, "Ask AI"). null while not usable (e.g. no model). */
@@ -53,9 +61,8 @@ export interface Plugin {
   /** Runs in the main window while enabled; returns how to stop. */
   start?: () => () => void;
   /**
-   * Quick menu (popup window) entries and a status line. Called as a hook in
-   * every popup render, also while the plugin is disabled (`enabled` false):
-   * return nothing then.
+   * Quick menu (popup window) entries and a status line. A hook, called in a
+   * component of its own while the plugin is enabled (`enabled` is always true).
    */
   useQuickMenu?: (enabled: boolean) => { items: QuickMenuItem[]; status?: ReactNode; title?: string };
   /** Why it can't be disabled right now (e.g. "Stop the recording first"), or null. */
@@ -64,6 +71,42 @@ export interface Plugin {
   remoteQueries?: string[];
   /** The kinds of desktop notifications it sends (app/notifications.ts); its panel shows a switch for each. */
   notifications?: PluginNotificationKind[];
+  /** Keyboard shortcuts (main window, while enabled); listed in Settings → Shortcuts under its name, where the user can change them. */
+  shortcuts?: PluginShortcut[];
+  /** Things the AI chat may search and the user may attach to a question ("@"): tickets, pull requests… */
+  chat?: PluginChatSource;
+}
+
+export interface PluginChatSource {
+  /** What one item is, for the model and the "@" list: "Jira ticket". */
+  kind: string;
+  /** Everything it may use now (from cached queries: called for every question). Empty while not set up. */
+  items: () => Promise<PluginChatItem[]>;
+}
+
+export interface PluginChatItem {
+  /** Unique within the plugin ("NZP-41"). */
+  id: string;
+  /** "NZP-41 Dashboard load time" */
+  title: string;
+  /** What the model reads: status, description, dates… (plain text, keep it short). */
+  text: string;
+  /** The folder it belongs to (a linked board or repo), so "for project X" finds it. */
+  folderId?: string | null;
+  /** Shows it (a panel, a page). */
+  open: () => void;
+  /** More text when the user attaches it ("@"): the description, latest comments… (may fetch). */
+  detail?: () => Promise<string>;
+}
+
+export interface PluginShortcut {
+  /** Unique within the plugin ("start-recording"). */
+  id: string;
+  /** "Start or stop recording" */
+  label: string;
+  /** Default combos, e.g. ["Mod+Shift+R"] (Mod = ⌘ on macOS, Ctrl elsewhere). Leave empty to let the user pick. A combo the app already uses is skipped. */
+  keys?: string[];
+  run: () => void | Promise<void>;
 }
 
 export interface PluginNotificationKind {
@@ -73,6 +116,8 @@ export interface PluginNotificationKind {
   label: string;
   /** When it notifies, in one sentence. */
   hint?: string;
+  /** Its own options (e.g. which comments), shown under its switch while it's on. */
+  settings?: ComponentType;
 }
 
 export interface PluginPage {

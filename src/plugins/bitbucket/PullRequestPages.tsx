@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Tooltip } from "@/components/ui/tooltip";
 import { basename } from "@/lib/paths";
 import { cn } from "@/lib/utils";
-import type { PullRequest } from "@/lib/bitbucket";
+import { approvedByMe, type PullRequest } from "@/lib/bitbucket";
 import { openPluginSettings } from "../host";
 import { useBitbucketAccount, useLinkedRepos, usePullRequests, type PullRequestsResult } from "./state";
 import { PullRequestRow, Segmented } from "./PullRequestRow";
@@ -95,8 +95,11 @@ function PullRequestListPage({
     const q = text.trim().toLowerCase();
     return q ? prs.filter((p) => [p.title, p.repo.name, p.source, p.author.name, `#${p.id}`].some((s) => s.toLowerCase().includes(q))) : prs;
   }, [prs, text]);
-  const review = matching.filter((p) => p.role === "review");
+  const me = account?.uuid ?? "";
+  // Review requests I approved need nothing from me: not listed, not counted.
+  const review = matching.filter((p) => p.role === "review" && !approvedByMe(p, me));
   const mine = matching.filter((p) => p.role === "mine");
+  const open = prs.filter((p) => !approvedByMe(p, me)).length;
 
   if (!account) return <NotConnected />;
 
@@ -106,7 +109,7 @@ function PullRequestListPage({
       <PageHeader
         title={title}
         icon={icon}
-        subtitle={[subtitle, query.isSuccess ? `${prs.length} open` : null].filter(Boolean).join(" · ") || undefined}
+        subtitle={[subtitle, query.isSuccess ? `${open} open` : null].filter(Boolean).join(" · ") || undefined}
       >
         <Tooltip content="Refresh">
           <Button size="icon" variant="ghost" onClick={() => void query.refetch()} disabled={query.isFetching} aria-label="Refresh">
@@ -121,7 +124,7 @@ function PullRequestListPage({
             value={role}
             onChange={setRole}
             options={[
-              { value: "all", label: "All", count: counted(matching.length) },
+              { value: "all", label: "All", count: counted(review.length + mine.length) },
               { value: "review", label: "Review requested", count: counted(review.length) },
               { value: "mine", label: "Mine", count: counted(mine.length) },
             ]}

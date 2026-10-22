@@ -43,9 +43,9 @@ test("tabs: notes open in tabs, reorder, middle-click and × close, right-click 
   await expect(tabs.nth(1)).toHaveAttribute("aria-selected", "true");
 
   // Pages share one tab
-  await page.getByTestId("nav-archive").click();
+  await page.getByTestId("nav-all").click();
   await expect(tabs).toHaveCount(3);
-  await expect(tabs.nth(0)).toHaveAttribute("data-title", "Archive");
+  await expect(tabs.nth(0)).toHaveAttribute("data-title", "Todos");
 
   // Drag "1-on-1 notes" before "Project plan"
   await tabs.nth(2).dragTo(tabs.nth(1), { targetPosition: { x: 5, y: 10 } });
@@ -291,6 +291,7 @@ test("resizable sidebar and custom colors", async ({ page }) => {
   await dialog.getByTestId("add-color-confirm").click();
   await expect(page.getByTestId("tree-folder-Internal").locator("svg").nth(1)).toHaveCSS("color", "rgb(18, 58, 188)");
   await page.getByTestId("nav-settings").click();
+  await page.getByTestId("settings-tab-appearance").click();
   await page.getByTestId("accent-picker").getByRole("radio", { name: "#123abc" }).click();
   await expect(page.locator("html")).toHaveCSS("--primary", "#123abc");
 });
@@ -344,6 +345,7 @@ test("attachments in the folder panel (trash + restore), video/audio players, li
   await expect(panel.getByTestId("attachment")).toHaveCount(1);
 
   await page.getByTestId("nav-settings").click();
+  await page.getByTestId("settings-tab-general").click();
   await page.getByTestId("open-trash").click();
   await page.getByTestId("trash-item").filter({ hasText: "memo.mp3" }).getByRole("button", { name: "Restore" }).click();
   await page.getByTestId("tree-folder-Internal").locator("span.truncate").click();

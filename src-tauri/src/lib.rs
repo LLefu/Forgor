@@ -1,5 +1,8 @@
 mod access;
+#[cfg(test)]
+mod chat_eval;
 mod bitbucket;
+mod chat;
 mod jira;
 mod language;
 mod meetings;
@@ -116,6 +119,9 @@ pub fn run() {
             models::models_download,
             models::models_cancel_download,
             models::models_delete,
+            models::embed::search_embed,
+            chat::chat_run,
+            chat::chat_cancel,
             writing::writing_run,
             jira::jira_connect,
             jira::jira_disconnect,
@@ -183,6 +189,7 @@ pub fn run() {
             meetings::finish_for_quit(app);
             // A language model still loaded at exit makes llama.cpp's Metal code abort ("quit unexpectedly").
             models::llm::unload();
+            models::embed::unload();
         }
         // macOS: clicking the dock icon re-opens the hidden main window.
         #[cfg(target_os = "macos")]

@@ -29,7 +29,7 @@ export function writer(): WriteFn {
 }
 
 /** Turns callbacks (the native channel) into an async iterable. */
-function pieces(start: (push: (piece: string) => void) => Promise<void>, signal: AbortSignal): AsyncIterable<string> {
+export function pieces(start: (push: (piece: string) => void) => Promise<void>, signal: AbortSignal): AsyncIterable<string> {
   return {
     async *[Symbol.asyncIterator]() {
       const queue: string[] = [];

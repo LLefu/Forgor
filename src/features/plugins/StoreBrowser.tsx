@@ -9,8 +9,9 @@ import { showError } from "@/components/Toasts";
 import type { StorePlugin } from "@/platform/store";
 import { PLUGINS, usePluginsVersion } from "@/plugins/registry";
 import { confirmUnverifiedInstall } from "@/plugins/community";
-import { installFromStore, newerVersion, refreshStore, reportPlugin, updateFor, usePluginStore } from "@/plugins/store";
+import { confirmMadeForNewerApp, installFromStore, newerVersion, refreshStore, reportPlugin, updateFor, usePluginStore } from "@/plugins/store";
 import type { Plugin } from "@/plugins/types";
+import { needsNewerApp, newerAppWarning } from "@/plugins/compat";
 import { PluginFileIcon } from "@/plugins/ui";
 
 /** Plugins → Store: everyone's plugins, to install with one click. */
@@ -86,6 +87,11 @@ function StoreCard({ entry }: { entry: StorePlugin }) {
         </div>
       </div>
       <p className="line-clamp-3 text-xs text-muted-foreground">{entry.description}</p>
+      {entry.minAppVersion && (
+        <p className={needsNewerApp(entry.minAppVersion) ? "text-xs text-warning" : "text-xs text-muted-foreground"} data-testid="store-made-for">
+          {needsNewerApp(entry.minAppVersion) ? newerAppWarning(entry.minAppVersion) : `Made for Forgor ${entry.minAppVersion}`}
+        </p>
+      )}
       <div className="mt-auto flex items-center justify-between gap-2">
         <InstallButton entry={entry} installed={installed} />
         <Tooltip content="Report this plugin">
@@ -104,6 +110,7 @@ function InstallButton({ entry, installed }: { entry: StorePlugin; installed: Pl
   const install = async () => {
     // Plugins with the check mark (Forgor's own, or checked) and updates install without asking.
     if (!installed && !entry.verified && !(await confirmUnverifiedInstall(entry))) return;
+    if (!(await confirmMadeForNewerApp(entry))) return;
     setBusy(true);
     try {
       const plugin = await installFromStore(entry);
@@ -148,6 +155,7 @@ export function PluginUpdate({ plugin }: { plugin: Plugin }) {
         variant="outline"
         disabled={busy}
         onClick={async () => {
+          if (!(await confirmMadeForNewerApp(update))) return;
           setBusy(true);
           await installFromStore(update)
             .catch((e) => showError(e, `Couldn't update ${plugin.name}`))

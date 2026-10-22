@@ -19,7 +19,7 @@ use std::{
 };
 use tauri::AppHandle;
 
-fn backend() -> Result<&'static LlamaBackend, String> {
+pub(crate) fn backend() -> Result<&'static LlamaBackend, String> {
     // llama.cpp may only be initialised once per process.
     static BACKEND: OnceLock<Result<LlamaBackend, String>> = OnceLock::new();
     BACKEND

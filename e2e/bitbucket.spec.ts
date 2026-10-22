@@ -2,7 +2,7 @@ import { test, expect, type Page } from "@playwright/test";
 import { enablePlugin } from "./plugins";
 
 // The browser build talks to a fake Bitbucket (src/platform/bitbucket.ts). Workspaces acme and side-projects;
-// open PRs: website #42 and blog #7 (mine), mobile-app #17 and #18 (draft, already approved by me) to review;
+// open PRs: website #42 and blog #7 (mine), mobile-app #17 and #18 (draft, already approved by me, so never listed) to review;
 // website #43 (someone else's) and #40 (merged) must never show. The token "wrong" is rejected.
 
 async function connect(page: Page) {
@@ -57,12 +57,11 @@ test("overview: my open PRs everywhere; review requests from linked repositories
   const section = page.getByTestId("folder-bitbucket");
   await expect.poll(() => section.getByTestId("pr-row").evaluateAll((rows) => rows.map((r) => r.getAttribute("data-ref")))).toEqual([
     "acme/mobile-app/17",
-    "acme/mobile-app/18",
     "acme/website/42",
   ]);
 
   await page.getByTestId("nav-pull-requests").click();
-  await expect.poll(() => refs(page, "pr-group-review")).toEqual(["acme/mobile-app/17", "acme/mobile-app/18"]);
+  await expect.poll(() => refs(page, "pr-group-review")).toEqual(["acme/mobile-app/17"]); // not #18: I approved it
   await expect.poll(() => refs(page, "pr-group-mine")).toEqual(["acme/website/42", "side-projects/blog/7"]);
   await expect(page.getByTestId("pr-list")).not.toContainText("Cookie banner");
   await expect(page.getByTestId("pr-list")).not.toContainText("Analytics setup");
@@ -70,13 +69,11 @@ test("overview: my open PRs everywhere; review requests from linked repositories
   const review = list.locator('[data-ref="acme/mobile-app/17"]');
   await expect(review).toHaveAttribute("data-role", "review");
   await expect(review.getByTestId("pr-review-chip")).toHaveText("Review");
-  await expect(list.locator('[data-ref="acme/mobile-app/18"]').getByTestId("pr-review-chip")).toHaveText("Approved");
   await expect(list.locator('[data-ref="acme/website/42"]').getByTestId("pr-approvals")).toHaveText("1/2");
 
-  // Build status on the rows (summed up: a running build beats a passed one); none where the repo reports none
+  // Build status on the rows (summed up: a running build beats a passed one)
   await expect(list.locator('[data-ref="acme/website/42"]').getByTestId("pr-build")).toHaveAttribute("data-build", "running");
   await expect(review.getByTestId("pr-build")).toHaveAttribute("data-build", "failed");
-  await expect(list.locator('[data-ref="acme/mobile-app/18"]').getByTestId("pr-build")).toHaveCount(0);
 
   // The sidebar counts review requests still waiting for me (#17; #18 I already approved)
   await expect(page.getByTestId("nav-pull-requests")).toContainText("1");
@@ -98,6 +95,42 @@ test("overview: my open PRs everywhere; review requests from linked repositories
   await page.getByLabel("Search pull requests").fill("skip");
   await expect.poll(() => refs(page, "pr-group-review")).toEqual(["acme/mobile-app/17"]);
   await expect.poll(() => refs(page, "pr-group-mine")).toEqual([]);
+  expect(errors).toEqual([]);
+});
+
+test("Today: numbers and lists from Jira and Bitbucket, only while connected", async ({ page }) => {
+  const errors: string[] = [];
+  page.on("pageerror", (e) => errors.push(e.message));
+  await page.goto("/");
+  await page.getByTestId("nav-today").click();
+  const cards = page.getByTestId("today-cards");
+  await expect(cards.getByRole("button")).toHaveCount(1); // only todos
+  await expect(page.getByTestId("nav-today")).not.toContainText(/\d/); // no count in the sidebar
+  await expect(page.getByTestId("today-without-folder")).toBeVisible();
+
+  await enablePlugin(page, "jira");
+  await page.getByTestId("jira-connect").click();
+  const jira = page.getByTestId("jira-connect-dialog");
+  await jira.getByLabel("Jira address").fill("acme");
+  await jira.getByLabel("Email").fill("demo@example.com");
+  await jira.getByLabel("API token").fill("secret-token");
+  await jira.getByTestId("jira-connect-submit").click();
+  await expect(page.getByTestId("jira-account")).toContainText("Demo User");
+  await connect(page);
+  await page.getByTestId("tree-folder-Acme migration").locator("span.truncate").click();
+  await linkRepo(page, "Mobile app");
+
+  await page.getByTestId("nav-today").click();
+  await expect(page.getByTestId("today-card-jira").getByTestId("today-card-count")).toHaveText("5");
+  await expect(page.getByTestId("today-card-my-prs").getByTestId("today-card-count")).toHaveText("2");
+  await expect(page.getByTestId("today-card-reviews").getByTestId("today-card-count")).toHaveText("1"); // #18 is already approved
+  await expect.poll(() => refs(page, "today-reviews")).toEqual(["acme/mobile-app/17"]);
+  await expect(page.getByTestId("today-failed-builds")).toHaveCount(0); // mine: running / none
+  await expect(page.getByTestId("today-jira").getByTestId("issue-row").first()).toBeVisible();
+
+  // A card opens its page
+  await page.getByTestId("today-card-reviews").click();
+  await expect(page.getByTestId("pr-page")).toBeVisible();
   expect(errors).toEqual([]);
 });
 

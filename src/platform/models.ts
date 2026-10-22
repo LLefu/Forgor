@@ -8,7 +8,7 @@ import { onTauriEvent } from "./events";
  * The browser build (dev, demo, e2e) gets a fake that "downloads" instantly.
  */
 
-export type ModelId = "speech" | "speakers" | "language";
+export type ModelId = "speech" | "speakers" | "language" | "search";
 
 export interface ModelStatus {
   id: ModelId;
@@ -56,7 +56,7 @@ function tauriBackend(): ModelsBackend {
 
 // ---------------------------------------------------------------- browser fake
 
-const FAKE_SIZES: Record<ModelId, number> = { speech: 671_122_626, speakers: 34_274_077, language: 4_590_807_392 };
+const FAKE_SIZES: Record<ModelId, number> = { speech: 671_122_626, speakers: 34_274_077, language: 4_590_807_392, search: 333_590_944 };
 
 function memoryBackend(): ModelsBackend {
   const downloaded = new Set<ModelId>();

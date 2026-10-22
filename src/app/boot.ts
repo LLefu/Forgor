@@ -6,7 +6,7 @@ import { migrate, waitForSchema } from "@/data/schema";
 import { loadSettings, saveSetting } from "@/data/settings";
 import { emitChange, setCtx } from "@/data/context";
 import { syncVault } from "@/data/notes";
-import { archiveCompleted } from "@/data/todos";
+import { trashCompleted } from "@/data/todos";
 import type { Settings } from "@/data/types";
 import { seedDemo } from "./demo";
 import { meetings } from "@/platform/meetings";
@@ -105,7 +105,7 @@ async function doBootPopup(): Promise<Settings> {
 }
 
 let stopWatching: (() => void) | null = null;
-let archiveTimer: ReturnType<typeof setInterval> | null = null;
+let trashTimer: ReturnType<typeof setInterval> | null = null;
 
 async function activateVault(platform: Platform, vault: VaultFs, settings: Settings) {
   platform.vault = vault;
@@ -116,11 +116,11 @@ async function activateVault(platform: Platform, vault: VaultFs, settings: Setti
     void syncVault();
     emitChange("files"); // attachments added or removed outside the app
   });
-  await archiveCompleted(settings.archiveAfterDays);
-  if (archiveTimer) clearInterval(archiveTimer);
-  archiveTimer = setInterval(async () => {
+  await trashCompleted(settings.archiveAfterDays);
+  if (trashTimer) clearInterval(trashTimer);
+  trashTimer = setInterval(async () => {
     const s = await loadSettings(platform.sql);
-    await archiveCompleted(s.archiveAfterDays);
+    await trashCompleted(s.archiveAfterDays);
   }, 60 * 60 * 1000);
 }
 

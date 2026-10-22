@@ -17,8 +17,9 @@ import { ToastHost } from "@/components/Toasts";
 import { Snippet } from "@/features/search/SearchView";
 import { dirname } from "@/lib/paths";
 import { cn } from "@/lib/utils";
-import { usePluginQuickMenu, usePluginsVersion } from "@/plugins/registry";
+import { QuickMenuProbes, usePluginQuickMenu, usePluginsVersion } from "@/plugins/registry";
 import { loadCommunityPluginsOnce } from "@/plugins/community";
+import { installPluginErrorListeners } from "@/plugins/listeners";
 import { onTauriEvent } from "@/platform/events";
 
 type Mode = "menu" | "todo" | "search";
@@ -33,12 +34,14 @@ export function Popup() {
   useEffect(() => {
     bootPopup()
       .then(async (s) => {
+        initSettings(s); // first: plugins switched off after an error aren't loaded
         await loadCommunityPluginsOnce();
-        initSettings(s);
         setReady(true);
       })
       .catch((e) => setError(String(e?.message ?? e)));
   }, [initSettings]);
+
+  useEffect(() => installPluginErrorListeners(), []);
 
   // Plugins can be switched on or off in the main window while the popup stays loaded.
   useEffect(() => {
@@ -53,6 +56,7 @@ export function Popup() {
   return (
     <QueryClientProvider client={queryClient}>
       <PopupBody key={pluginsVersion} />
+      <QuickMenuProbes />
       <ToastHost />
     </QueryClientProvider>
   );

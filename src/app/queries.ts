@@ -30,7 +30,6 @@ onDataChange(() => {
 });
 
 export const useTodos = () => useQuery({ queryKey: ["todos"], queryFn: todos.listTodos });
-export const useArchived = () => useQuery({ queryKey: ["archived"], queryFn: todos.listArchived });
 export const useTodo = (id: string | null) =>
   useQuery({ queryKey: ["todo", id], queryFn: () => (id ? todos.getTodo(id) : null), enabled: !!id });
 export const useSubtasks = (id: string) => useQuery({ queryKey: ["subtasks", id], queryFn: () => todos.listSubtasks(id) });

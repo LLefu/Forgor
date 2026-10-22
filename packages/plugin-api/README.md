@@ -1,6 +1,6 @@
 # Writing a Forgor plugin
 
-A plugin adds things to Forgor: sidebar items, pages, panels, a section in a folder's panel, buttons in a note's top bar, settings, background work. It runs inside the app with the same access as the app itself: notes, todos, settings and the UI, but (like the app) nothing outside the notes folder and Forgor's plugin files. Users see a warning before installing one that Forgor hasn't checked.
+A plugin adds things to Forgor: sidebar items, pages, panels, a section in a folder's panel, numbers and lists on the Today page, keyboard shortcuts, buttons in a note's top bar, settings, background work. It runs inside the app with the same access as the app itself: notes, todos, settings and the UI, but (like the app) nothing outside the notes folder and Forgor's plugin files. Users see a warning before installing one that Forgor hasn't checked.
 
 **The quickest start:** Plugins → **Create plugin project** in Forgor. It writes a folder with a working example, the build, `npm run zip`, and an `AGENTS.md` that explains the whole API (so an AI assistant can help). The template is in [`src/features/plugins/template`](../../src/features/plugins/template); `node scripts/plugin-template.mjs` builds a project from it as a check (part of `npm run e2e`).
 
@@ -41,7 +41,26 @@ const plugin: PluginFactory = (api) => ({
 export default plugin;
 ```
 
-All contribution points are in [`src/plugins/types.ts`](../../src/plugins/types.ts): `sidebar`, `pages`, `panels`, `folderSection`, `noteHeader`, `settings`, `hosts`, `start`, `useWriter`, `useQuickMenu`, `remoteQueries`, `disableBlocked`. The app only shows a plugin's contributions while it is enabled. Errors inside them are caught and shown, and don't take the app down.
+All contribution points are in [`src/plugins/types.ts`](../../src/plugins/types.ts): `sidebar`, `pages`, `panels`, `folderSection`, `today`, `shortcuts`, `chat`, `noteHeader`, `settings`, `hosts`, `start`, `useWriter`, `useQuickMenu`, `remoteQueries`, `disableBlocked`. The app only shows a plugin's contributions while it is enabled. Errors inside them are caught and shown, and don't take the app down.
+
+## Versions
+
+The plugin API has Forgor's own version number (`@forgor/plugin-api` follows the app), so a plugin's `minAppVersion` is also the API version it needs. A new project gets the version it was created with. Set it as high as the newest thing you use: an older Forgor doesn't know a newer contribution point, ignores it and loads the plugin anyway, so it just does nothing.
+
+- **Additions** (a contribution point, an `api` function, a field) can come in any release. Using one means raising your `minAppVersion` to that release.
+- **Removals and changes that break plugins** only come in a major release (2.0, 3.0…) and are in the CHANGELOG one release earlier. Until then your plugin keeps working on every newer 1.x.
+
+## When a plugin misbehaves
+
+Forgor protects itself from community plugins:
+
+- What you return is checked when the plugin loads. A part with the wrong shape (a string where a list belongs, a page without a component) is ignored and shown as a warning on the plugin's card.
+- If the plugin crashes what it shows, throws from a click handler, a timer or `start`, or fails to load, Forgor **switches it off at once**, tells the user, and puts an **Error** label with the message on its card. It isn't loaded again until the user switches it on by hand (a plugin that crashed while loading can't crash the next start). Switching it on clears the label.
+- A promise that rejects without a `catch` first shows a notice naming the plugin (a failed request is usually not a bug); five within a minute switch it off.
+- If Forgor didn't start properly the last two times, all community plugins are switched off and labelled, so Forgor opens again.
+- A plugin made for a newer Forgor than the one it runs on (`minAppVersion`) is installed with a warning, not refused. The version it was made for is shown on its card.
+
+Catch your own errors and show them with `api.ui.showError`: an error you handle is yours, an error nobody catches is the end of your plugin's run.
 
 ## The API (`api`)
 

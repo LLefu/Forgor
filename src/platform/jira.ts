@@ -52,6 +52,21 @@ const doc = (...paragraphs: string[]) => ({
 const person = (name: string) => ({ accountId: name.toLowerCase(), displayName: name });
 const ME = person("Demo User");
 
+/** One paragraph where "@Demo User" is a real mention of me. */
+const docMentioningMe = (text: string) => ({
+  type: "doc",
+  version: 1,
+  content: [
+    {
+      type: "paragraph",
+      content: text
+        .split(/(@Demo User)/)
+        .filter(Boolean)
+        .map((part) => (part === "@Demo User" ? { type: "mention", attrs: { id: ME.accountId, text: "@Demo User" } } : { type: "text", text: part })),
+    },
+  ],
+});
+
 const STATUS = {
   todo: { name: "To Do", statusCategory: { key: "new", name: "To Do" } },
   progress: { name: "In Progress", statusCategory: { key: "indeterminate", name: "In Progress" } },
@@ -79,17 +94,18 @@ const FAKE_BOARDS = [
 ];
 
 /** Comments added while the fake runs (fakeJira.comment). */
-const EXTRA_COMMENTS = new Map<string, { id: string; author: ReturnType<typeof person>; created: string; updated: string; body: ReturnType<typeof doc> }[]>();
+const EXTRA_COMMENTS = new Map<string, { id: string; author: ReturnType<typeof person>; created: string; updated: string; body: unknown }[]>();
 
 /** Browser build / e2e: make things happen on the fake site (for notifications). */
 export const fakeJira = {
   assign(key: string, summary: string) {
     FAKE_ISSUES.push({ key, summary, status: STATUS.todo, priority: "Medium", type: "Task", project: PROJECTS.WEB, due: null, updated: new Date().toISOString() });
   },
+  /** "@Demo User" in `text` mentions me. */
   comment(key: string, author: string, text: string) {
     const now = new Date().toISOString();
     const list = EXTRA_COMMENTS.get(key) ?? [];
-    list.push({ id: `x${Date.now()}${list.length}`, author: author === ME.displayName ? ME : person(author), created: now, updated: now, body: doc(text) });
+    list.push({ id: `x${Date.now()}${list.length}`, author: author === ME.displayName ? ME : person(author), created: now, updated: now, body: docMentioningMe(text) });
     EXTRA_COMMENTS.set(key, list);
     const issue = FAKE_ISSUES.find((i) => i.key === key);
     if (issue) issue.updated = now;

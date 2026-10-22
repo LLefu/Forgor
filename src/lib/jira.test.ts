@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { adfText, filterIssues, matchBoards, mediaAttachments, paths, sortIssues, toIssue, type JiraIssue } from "./jira";
+import { adfText, filterIssues, mentions, matchBoards, mediaAttachments, paths, sortIssues, toIssue, type JiraIssue } from "./jira";
 
 const issue = (key: string, patch: Partial<JiraIssue> = {}): JiraIssue => ({
   key,
@@ -81,5 +81,12 @@ describe("jira", () => {
   it("gets plain text from a document", () => {
     const doc = { type: "doc", content: [{ type: "paragraph", content: [{ type: "text", text: "Hi " }, { type: "mention", attrs: { text: "@Tom" } }] }] };
     expect(adfText(doc)).toBe("Hi @Tom\n");
+  });
+
+  it("finds a mention of an account, also nested", () => {
+    const doc = { type: "doc", content: [{ type: "bulletList", content: [{ type: "listItem", content: [{ type: "paragraph", content: [{ type: "mention", attrs: { id: "me-1", text: "@Me" } }] }] }] }] };
+    expect(mentions(doc, "me-1")).toBe(true);
+    expect(mentions(doc, "other")).toBe(false);
+    expect(mentions(null, "me-1")).toBe(false);
   });
 });

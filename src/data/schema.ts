@@ -114,6 +114,24 @@ export const MIGRATIONS: string[][] = [
   [`ALTER TABLE folders ADD COLUMN icon TEXT`],
   // v9: the Bitbucket repositories linked to a folder (JSON: a list of lib/bitbucket.ts BitbucketRepoRef)
   [`ALTER TABLE folders ADD COLUMN bitbucket_repos TEXT`],
+  // v10: no more Archive (1.2): completed todos go to the Trash after N days. Archived ones move there now (one item per
+  // todo with its subtasks, dated when they were archived); archived_at stays unused. `restored_at`: restoring one from
+  // the Trash gives it another N days (trashCompleted).
+  [
+    `ALTER TABLE todos ADD COLUMN restored_at TEXT`,
+    `INSERT INTO trash (id, kind, title, payload, deleted_at)
+      SELECT lower(hex(randomblob(16))), 'todo', t.title,
+        '["' || t.id || '"' || COALESCE((SELECT ',' || group_concat('"' || s.id || '"', ',') FROM todos s WHERE s.parent_id = t.id AND s.deleted_at IS NULL), '') || ']',
+        t.archived_at
+      FROM todos t WHERE t.archived_at IS NOT NULL AND t.deleted_at IS NULL AND t.parent_id IS NULL`,
+    `UPDATE todos SET deleted_at = (SELECT p.archived_at FROM todos p WHERE p.id = todos.parent_id)
+      WHERE deleted_at IS NULL AND parent_id IN (SELECT id FROM todos WHERE archived_at IS NOT NULL AND deleted_at IS NULL AND parent_id IS NULL)`,
+    `UPDATE todos SET deleted_at = archived_at WHERE archived_at IS NOT NULL AND deleted_at IS NULL AND parent_id IS NULL`,
+    `UPDATE todos SET archived_at = NULL WHERE archived_at IS NOT NULL`,
+  ],
+  // v11: the AI chat's search index: a vector per note section / todo / plugin item (plugins/chat/indexer.ts).
+  // `hash` is of the text it was made from, so only changed text is embedded again.
+  [`CREATE TABLE IF NOT EXISTS chat_index (key TEXT PRIMARY KEY, hash TEXT NOT NULL, vec TEXT NOT NULL)`],
 ];
 
 export async function migrate(sql: SqlDriver): Promise<void> {

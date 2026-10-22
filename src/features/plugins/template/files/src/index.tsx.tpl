@@ -23,6 +23,8 @@ const plugin: PluginFactory = (forgor) => {
       },
     },
     settings: Settings,
+    // Listed in Settings → Shortcuts under the plugin's name, where the user can change it.
+    shortcuts: [{ id: "open", label: `Open ${NAME}`, keys: ["Mod+Alt+H"], run: () => api.app.openPage("main") }],
   };
 };
 

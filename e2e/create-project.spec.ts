@@ -59,4 +59,12 @@ test("a project made from the template builds into a plugin that works", async (
   await page.getByTestId("plugin-settings").getByLabel("Greeting").fill("Hoi");
   await page.getByRole("button", { name: "Template check" }).first().click();
   await expect(page.getByTestId("main")).toContainText("Hoi! You have");
+
+  // Its shortcut: listed under its name in Settings → Shortcuts, and it opens its page
+  await page.getByTestId("nav-settings").click();
+  await page.getByTestId("settings-tab-shortcuts").click();
+  await expect(page.getByTestId("shortcut-template-check:open")).toContainText("Open Template check");
+  await page.getByTestId("nav-today").click();
+  await page.keyboard.press("ControlOrMeta+Alt+h");
+  await expect(page.getByTestId("main")).toContainText("Hoi! You have");
 });

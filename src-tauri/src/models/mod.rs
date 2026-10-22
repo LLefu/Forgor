@@ -5,6 +5,7 @@
 //! data folder, never in the notes folder. Features ask for a model by id and
 //! say what they need it for; they don't download or delete models themselves.
 
+pub mod embed;
 pub mod llm;
 
 use futures_util::StreamExt;
@@ -46,6 +47,7 @@ macro_rules! gemma {
 pub const SPEECH: &str = "speech";
 pub const SPEAKERS: &str = "speakers";
 pub const LANGUAGE: &str = "language";
+pub const SEARCH: &str = "search";
 
 pub const MODELS: &[Model] = &[
     Model {
@@ -88,6 +90,16 @@ pub const MODELS: &[Model] = &[
             url: gemma!("gemma-4-E4B-it-Q4_0.gguf"),
             size: 4_590_807_392,
             sha256: "a555b900214b477d8880e7832e0b8925e139b0159640036b09fe472b6f2097f2",
+        }],
+    },
+    Model {
+        // Search by meaning (the AI chat finds notes about the same thing in other words): EmbeddingGemma 300M.
+        id: SEARCH,
+        files: &[ModelFile {
+            name: "embeddinggemma-300M-Q8_0.gguf",
+            url: "https://huggingface.co/ggml-org/embeddinggemma-300M-GGUF/resolve/0f741b5a6585bd53aeb15cd1372c56f2a0f65e12/embeddinggemma-300M-Q8_0.gguf",
+            size: 333_590_944,
+            sha256: "b5ce9d77a3fc4b3b39ccb5643c36777911cc4eb46a66962eadfa3f5f60490d63",
         }],
     },
 ];
@@ -136,6 +148,7 @@ fn label(id: &str) -> &str {
         SPEECH => "speech recognition",
         SPEAKERS => "speaker separation",
         LANGUAGE => "language",
+        SEARCH => "search",
         other => other,
     }
 }
@@ -296,6 +309,9 @@ pub fn models_delete(app: AppHandle, downloads: tauri::State<'_, Downloads>, id:
     let dir = model_dir(&app, &id)?;
     if id == LANGUAGE {
         llm::unload();
+    }
+    if id == SEARCH {
+        embed::unload();
     }
     if dir.exists() {
         std::fs::remove_dir_all(&dir).map_err(|e| format!("Could not delete {}: {e}", dir.display()))?;

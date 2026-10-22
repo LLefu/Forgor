@@ -12,7 +12,8 @@ import { cn } from "@/lib/utils";
 export const MODEL_INFO: Record<ModelId, { label: string; detail: string }> = {
   speech: { label: "Speech recognition", detail: "Parakeet v3 (NVIDIA): Dutch, English and 23 more languages. Used by meeting recordings" },
   speakers: { label: "Speaker separation", detail: "pyannote + CAM++: tells the other participants of a meeting apart (Spreker 1, 2…). Optional" },
-  language: { label: "Language model", detail: "Gemma 4 E4B (Google): meeting summaries and the writing tools" },
+  language: { label: "Language model", detail: "Gemma 4 E4B (Google): meeting summaries, the writing tools and the AI chat's answers" },
+  search: { label: "Search model", detail: "EmbeddingGemma 300M (Google): lets the AI chat find notes about the same thing in other words or another language" },
 };
 
 /** Settings → AI models: every model in one place, downloaded once and shared by the features that use it. */

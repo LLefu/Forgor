@@ -152,14 +152,29 @@ export function usePullRequest(ref: { workspace: string; slug: string; id: numbe
   });
 }
 
-/** The PR's builds (pipelines/CI). Also for list rows, so cached like the lists. */
-export function useBuilds(ref: { workspace: string; slug: string; id: number } | null) {
-  const account = useBitbucketAccount();
-  return useQuery({
+type PrId = { workspace: string; slug: string; id: number };
+
+function buildsQuery(account: BitbucketAccount | null, ref: PrId | null) {
+  return {
     queryKey: ["bitbucket", account?.uuid, "builds", ref?.workspace, ref?.slug, ref?.id],
     enabled: !!account && !!ref,
     ...REMOTE,
     queryFn: async (): Promise<Build[]> => toBuilds(await all(account!, paths.statuses(ref!.workspace, ref!.slug, ref!.id), 2)),
+  };
+}
+
+/** The PR's builds (pipelines/CI). Also for list rows, so cached like the lists. */
+export function useBuilds(ref: PrId | null) {
+  const account = useBitbucketAccount();
+  return useQuery(buildsQuery(account, ref));
+}
+
+/** The builds of several PRs (the rows' own queries), in the same order. */
+export function useBuildsOf(prs: PullRequest[]): (Build[] | undefined)[] {
+  const account = useBitbucketAccount();
+  return useQueries({
+    queries: prs.map((p) => buildsQuery(account, { workspace: p.repo.workspace, slug: p.repo.slug, id: p.id })),
+    combine: (results) => results.map((r) => r.data),
   });
 }
 

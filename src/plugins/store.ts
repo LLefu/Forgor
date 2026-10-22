@@ -4,8 +4,9 @@ import { showError } from "@/components/Toasts";
 import { isTauri } from "@/platform/env";
 import { secrets } from "@/platform/secrets";
 import { storeApi, type StorePlugin } from "@/platform/store";
-import { version as APP_VERSION } from "../../package.json";
 import { installPlugin, pluginZip } from "./community";
+import { needsNewerApp, newerAppWarning, newerVersion } from "./compat";
+import { confirmDialog } from "@/components/ConfirmDialog";
 import { PLUGINS } from "./registry";
 import type { Plugin } from "./types";
 import { unzipPlugin } from "./zip";
@@ -77,12 +78,16 @@ async function applyRemovals(store: StorePlugin[]) {
 
 // ---------------------------------------------------------------- install / update
 
-/** a > b for "x.y.z". */
-export function newerVersion(a: string, b: string) {
-  const pa = a.split(".").map(Number);
-  const pb = b.split(".").map(Number);
-  for (let i = 0; i < 3; i++) if ((pa[i] || 0) !== (pb[i] || 0)) return (pa[i] || 0) > (pb[i] || 0);
-  return false;
+export { newerVersion };
+
+/** A plugin made for a newer Forgor than this one is a warning, not a ban: ask first (true: go ahead). */
+export async function confirmMadeForNewerApp(p: { name: string; minAppVersion?: string | null }): Promise<boolean> {
+  if (!needsNewerApp(p.minAppVersion)) return true;
+  return confirmDialog({
+    title: `Install ${p.name}?`,
+    message: `${newerAppWarning(p.minAppVersion!)}\n\nUpdate Forgor first if you can. If the plugin causes an error, Forgor switches it off.`,
+    confirmLabel: "Install anyway",
+  });
 }
 
 /** The store has a newer version of this installed plugin. */
@@ -100,7 +105,6 @@ async function sha256(bytes: Uint8Array) {
 /** Download a plugin from the store, check it's the file the store lists, and install it (or update it). */
 export async function installFromStore(entry: StorePlugin): Promise<Plugin> {
   if (entry.removed) throw new Error(`${entry.name} was taken out of the store.`);
-  if (entry.minAppVersion && newerVersion(entry.minAppVersion, APP_VERSION)) throw new Error(`${entry.name} needs Forgor ${entry.minAppVersion} or newer (this is ${APP_VERSION}). Update Forgor first.`);
   const zip = await storeApi().download(entry);
   if ((await sha256(zip)) !== entry.sha256) throw new Error("The download doesn't match what the store lists (damaged or changed). Try again.");
   const plugin = await installPlugin(unzipPlugin(zip));

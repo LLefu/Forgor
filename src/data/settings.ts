@@ -5,6 +5,7 @@ import type { Settings } from "./types";
 export const DEFAULT_SETTINGS: Settings = {
   theme: "system",
   themeSoft: false,
+  /** Days a completed todo stays before it goes to the Trash (the name is from when it went to the Archive). */
   archiveAfterDays: 7,
   hotkey: navigatorIsMac() ? "CommandOrControl+Shift+Space" : "Control+Alt+Space",
   vaultPath: null,
@@ -27,6 +28,9 @@ export const DEFAULT_SETTINGS: Settings = {
   notificationsEnabled: true,
   notificationsMuted: [],
   notificationSound: "chime",
+  shortcuts: {},
+  sidebarHidden: false,
+  pluginFaults: {},
 };
 
 function navigatorIsMac() {

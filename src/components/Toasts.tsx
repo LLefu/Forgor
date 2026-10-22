@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { create } from "zustand";
 import { AlertCircle, Bell, X } from "lucide-react";
+import { pluginIdFromStack } from "@/plugins/faults";
 
 /**
  * Minimal toasts. Errors: any unhandled promise rejection (e.g. a failed file
@@ -43,7 +44,10 @@ export function ToastHost() {
   const toasts = useToasts((s) => s.toasts);
 
   useEffect(() => {
-    const onRejection = (e: PromiseRejectionEvent) => showError(e.reason, "Something went wrong");
+    // A plugin's own rejection is shown by plugins/listeners.ts, with its name.
+    const onRejection = (e: PromiseRejectionEvent) => {
+      if (!pluginIdFromStack((e.reason as Error | undefined)?.stack)) showError(e.reason, "Something went wrong");
+    };
     window.addEventListener("unhandledrejection", onRejection);
     return () => window.removeEventListener("unhandledrejection", onRejection);
   }, []);

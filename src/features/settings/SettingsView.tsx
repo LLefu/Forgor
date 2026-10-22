@@ -19,7 +19,6 @@ import { useUI } from "@/app/store";
 import { PageHeader } from "@/features/todos/TodosPage";
 import { Select } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { notifications } from "@/platform/notifications";
 import { sendTestNotification } from "@/app/notifications";
@@ -32,133 +31,141 @@ import type { NotificationSound, Settings } from "@/data/types";
 import { chooseVault } from "@/app/boot";
 import { isMac } from "@/lib/keys";
 import { ZOOM_LEVELS, zoomLabel } from "@/lib/zoom";
-import { applyHotkey } from "@/app/hotkey";
+import { ShortcutsSettings } from "@/features/shortcuts/ShortcutsSettings";
+import { cn } from "@/lib/utils";
 import { Row } from "./Row";
 import { ModelsSettings } from "@/features/models/ModelsSettings";
 import { StorageRow } from "./StorageRow";
 import { useTrash } from "@/app/queries";
 
+const TABS = [
+  { id: "general", label: "General" },
+  { id: "appearance", label: "Appearance" },
+  { id: "todos", label: "Todos" },
+  { id: "notifications", label: "Notifications" },
+  { id: "models", label: "AI models" },
+  { id: "shortcuts", label: "Shortcuts" },
+] as const;
+
 export function SettingsView({ platform }: { platform: Platform }) {
   const settings = useUI((s) => s.settings);
   const update = useUI((s) => s.updateSetting);
-  const [hotkey, setHotkey] = useState(settings.hotkey);
-  const [hotkeyError, setHotkeyError] = useState<string | null>(null);
+  const stored = useUI((s) => s.settingsTab);
+  const tab = TABS.some((t) => t.id === stored) ? stored : "general";
+  const desktop = platform.kind === "tauri";
 
   return (
     <div className="mx-auto max-w-2xl pb-16">
       <PageHeader title="Settings" />
-      <div className="space-y-6 px-8">
-        <UpdatesRow desktop={platform.kind === "tauri"} />
-
-        <Row label="Notes folder" hint="Your notes are plain .md files in this folder. You can open them in any editor.">
-          <div className="flex items-center gap-2">
-            <code className="min-w-0 flex-1 truncate rounded bg-muted px-2 py-1.5 text-xs">{ctx().vault.rootLabel}</code>
-            {platform.kind === "tauri" && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={async () => {
-                  const picked = await platform.pickVaultFolder();
-                  const ok =
-                    !!picked &&
-                    (await confirmDialog({
-                      title: "Switch notes folder?",
-                      message: `New folder:\n${picked}\n\nYour todos stay. Links to notes in the old folder are hidden until you switch back.`,
-                      confirmLabel: "Switch folder",
-                    }));
-                  if (picked && ok) {
-                    await chooseVault(platform, picked);
-                    await update("vaultPath", picked);
-                  }
-                }}
-              >
-                <FolderOpen /> Change…
-              </Button>
+      <div className="mb-6 flex gap-1 overflow-x-auto border-b px-8 [scrollbar-width:none]" role="tablist" aria-label="Settings" data-testid="settings-tabs">
+        {TABS.map((t) => (
+          <button
+            key={t.id}
+            role="tab"
+            aria-selected={tab === t.id}
+            onClick={() => useUI.setState({ settingsTab: t.id })}
+            className={cn(
+              "-mb-px shrink-0 border-b-2 px-2.5 pb-2 pt-1 text-[13px]",
+              tab === t.id ? "border-primary font-medium text-foreground" : "border-transparent text-muted-foreground hover:text-foreground",
             )}
-          </div>
-        </Row>
+            data-testid={`settings-tab-${t.id}`}
+          >
+            {t.label}
+          </button>
+        ))}
+      </div>
+      <div className="space-y-6 px-8" role="tabpanel">
+        {tab === "general" && (
+          <>
+            <UpdatesRow desktop={desktop} />
+            <Row label="Notes folder" hint="Your notes are plain .md files in this folder. You can open them in any editor.">
+              <div className="flex items-center gap-2">
+                <code className="min-w-0 flex-1 truncate rounded bg-muted px-2 py-1.5 text-xs">{ctx().vault.rootLabel}</code>
+                {desktop && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={async () => {
+                      const picked = await platform.pickVaultFolder();
+                      const ok =
+                        !!picked &&
+                        (await confirmDialog({
+                          title: "Switch notes folder?",
+                          message: `New folder:\n${picked}\n\nYour todos stay. Links to notes in the old folder are hidden until you switch back.`,
+                          confirmLabel: "Switch folder",
+                        }));
+                      if (picked && ok) {
+                        await chooseVault(platform, picked);
+                        await update("vaultPath", picked);
+                      }
+                    }}
+                  >
+                    <FolderOpen /> Change…
+                  </Button>
+                )}
+              </div>
+            </Row>
+            <TrashRow />
+            <StorageRow desktop={desktop} />
+          </>
+        )}
+        {tab === "appearance" && (
+          <>
+            <Row label="Theme">
+              {/* Stored as theme + themeSoft (an older version then still knows the theme). */}
+              <Select
+                aria-label="Theme"
+                value={settings.theme === "system" ? "system" : `${settings.theme}${settings.themeSoft ? "-soft" : ""}`}
+                onChange={async (v) => {
+                  await update("themeSoft", v.endsWith("-soft"));
+                  await update("theme", v.replace("-soft", "") as Settings["theme"]);
+                }}
+                options={[
+                  { value: "system", label: "Follow system" },
+                  { value: "light", label: "Light" },
+                  { value: "light-soft", label: "Light (soft)" },
+                  { value: "dark", label: "Dark" },
+                  { value: "dark-soft", label: "Dark (soft)" },
+                ]}
+              />
+            </Row>
 
-        <Row label="Theme">
-          {/* Stored as theme + themeSoft (an older version then still knows the theme). */}
-          <Select
-            aria-label="Theme"
-            value={settings.theme === "system" ? "system" : `${settings.theme}${settings.themeSoft ? "-soft" : ""}`}
-            onChange={async (v) => {
-              await update("themeSoft", v.endsWith("-soft"));
-              await update("theme", v.replace("-soft", "") as Settings["theme"]);
-            }}
-            options={[
-              { value: "system", label: "Follow system" },
-              { value: "light", label: "Light" },
-              { value: "light-soft", label: "Light (soft)" },
-              { value: "dark", label: "Dark" },
-              { value: "dark-soft", label: "Dark (soft)" },
-            ]}
-          />
-        </Row>
-
-        <Row
-          label="Zoom"
-          hint={`Makes everything bigger or smaller. Shortcuts: ${isMac ? "⌘+ / ⌘− / ⌘0" : "Ctrl++ / Ctrl+− / Ctrl+0"}.${platform.kind !== "tauri" ? " (Desktop app only; in the browser use its own zoom.)" : ""}`}
-        >
-          <Select<string>
-            aria-label="Zoom"
-            value={String(settings.zoom)}
-            onChange={(v) => update("zoom", Number(v))}
-            options={(ZOOM_LEVELS.includes(settings.zoom) ? ZOOM_LEVELS : [...ZOOM_LEVELS, settings.zoom].sort((a, b) => a - b)).map((z) => ({
-              value: String(z),
-              label: zoomLabel(z),
-            }))}
-          />
-        </Row>
-
-        <Row label="Highlight color" hint="Used for buttons, selections, links and the today marker.">
-          <div data-testid="accent-picker">
-            <SwatchGrid presets={ACCENT_SWATCHES} value={settings.accent} onPick={(id) => update("accent", id)} size="md" label="Highlight color" />
-          </div>
-        </Row>
-
-        <Row label="Archive completed todos after" hint="Completed todos stay visible for this long, then move to the Archive.">
-          <Select<string>
-            value={String(settings.archiveAfterDays)}
-            onChange={(v) => update("archiveAfterDays", Number(v))}
-            options={[1, 3, 7, 14, 30, 90].map((d) => ({ value: String(d), label: `${d} day${d === 1 ? "" : "s"}` }))}
-          />
-        </Row>
-
-        <TrashRow />
-
-        <NotificationsRow />
-
-        <ModelsSettings />
-
-        <StorageRow desktop={platform.kind === "tauri"} />
-
-        <Row
-          label="Global shortcut"
-          hint={`Opens the quick menu from anywhere, even when the app is in the background. Format: ${isMac ? "CommandOrControl+Shift+Space" : "Control+Alt+Space"}.${platform.kind !== "tauri" ? " (Desktop app only.)" : ""}`}
-        >
-          <div className="flex items-center gap-2">
-            <Input value={hotkey} onChange={(e) => setHotkey(e.target.value)} className="max-w-64 font-mono text-xs" />
-            <Button
-              variant="outline"
-              size="sm"
-              disabled={hotkey === settings.hotkey}
-              onClick={async () => {
-                setHotkeyError(null);
-                try {
-                  await applyHotkey(hotkey);
-                  await update("hotkey", hotkey);
-                } catch (e) {
-                  setHotkeyError(String(e));
-                }
-              }}
+            <Row
+              label="Zoom"
+              hint={`Makes everything bigger or smaller. Shortcuts: ${isMac ? "⌘+ / ⌘− / ⌘0" : "Ctrl++ / Ctrl+− / Ctrl+0"}.${!desktop ? " (Desktop app only; in the browser use its own zoom.)" : ""}`}
             >
-              Save
-            </Button>
-          </div>
-          {hotkeyError && <p className="mt-1 text-xs text-destructive">{hotkeyError}</p>}
-        </Row>
+              <Select<string>
+                aria-label="Zoom"
+                value={String(settings.zoom)}
+                onChange={(v) => update("zoom", Number(v))}
+                options={(ZOOM_LEVELS.includes(settings.zoom) ? ZOOM_LEVELS : [...ZOOM_LEVELS, settings.zoom].sort((a, b) => a - b)).map((z) => ({
+                  value: String(z),
+                  label: zoomLabel(z),
+                }))}
+              />
+            </Row>
+
+            <Row label="Highlight color" hint="Used for buttons, selections, links and the today marker.">
+              <div data-testid="accent-picker">
+                <SwatchGrid presets={ACCENT_SWATCHES} value={settings.accent} onPick={(id) => update("accent", id)} size="md" label="Highlight color" />
+              </div>
+            </Row>
+          </>
+        )}
+        {tab === "todos" && (
+          <>
+            <Row label="Move completed todos to the Trash after" hint="Completed todos stay visible for this long, then move to the Trash (restore them from there).">
+              <Select<string>
+                value={String(settings.archiveAfterDays)}
+                onChange={(v) => update("archiveAfterDays", Number(v))}
+                options={[1, 3, 7, 14, 30, 90].map((d) => ({ value: String(d), label: `${d} day${d === 1 ? "" : "s"}` }))}
+              />
+            </Row>
+          </>
+        )}
+        {tab === "notifications" && <NotificationsRow />}
+        {tab === "models" && <ModelsSettings />}
+        {tab === "shortcuts" && <ShortcutsSettings desktop={desktop} />}
       </div>
     </div>
   );

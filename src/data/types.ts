@@ -42,7 +42,6 @@ export interface Todo {
   createdAt: string;
   updatedAt: string;
   completedAt: string | null;
-  archivedAt: string | null;
   deletedAt: string | null;
   /** Set when the todo was created from a `- [ ]` line inside a note. */
   sourceNoteId: string | null;
@@ -136,4 +135,10 @@ export interface Settings {
   notificationSound: NotificationSound;
   /** The connected Bitbucket account; the API token itself is in the OS keychain. */
   bitbucketAccount: BitbucketAccount | null;
+  /** Keyboard shortcuts the user changed: shortcut id → combos ([] = off). Others use their defaults (app/shortcuts.ts). */
+  shortcuts: Record<string, string[]>;
+  /** The left sidebar is hidden (Mod+\\). */
+  sidebarHidden: boolean;
+  /** Community plugins switched off because they caused an error: plugin id → why (plugins/faults.ts). Cleared when the user switches the plugin on again. */
+  pluginFaults: Record<string, { message: string; where: string; at: string }>;
 }

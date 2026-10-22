@@ -28,7 +28,7 @@ export function PluginPageView({ view }: { view: PluginView }) {
     );
   const Page = page.component;
   return (
-    <PluginBoundary plugin={plugin.name}>
+    <PluginBoundary id={plugin.id} plugin={plugin.name}>
       <Page param={view.param} />
     </PluginBoundary>
   );
@@ -61,7 +61,7 @@ export function PluginPanelView() {
   const Panel = panel && enabled ? getPlugin(panel.plugin)?.panels?.[panel.panel] : undefined;
   if (!panel || !Panel) return null;
   return (
-    <PluginBoundary plugin={panel.plugin}>
+    <PluginBoundary id={panel.plugin} plugin={getPlugin(panel.plugin)?.name ?? panel.plugin}>
       <Panel key={`${panel.plugin}/${panel.panel}/${panel.param}`} param={panel.param} fromFolder={panel.fromFolder ?? null} />
     </PluginBoundary>
   );
@@ -74,7 +74,7 @@ export function PluginSidebarItems() {
       {plugins.map((p) => {
         const Item = p.sidebar;
         return Item ? (
-          <PluginBoundary key={p.id} plugin={p.name} quiet>
+          <PluginBoundary key={p.id} id={p.id} plugin={p.name} quiet>
             <Item />
           </PluginBoundary>
         ) : null;
@@ -90,8 +90,42 @@ export function PluginFolderSections({ folder }: { folder: Folder }) {
       {plugins.map((p) => {
         const Section = p.folderSection;
         return Section ? (
-          <PluginBoundary key={p.id} plugin={p.name}>
+          <PluginBoundary key={p.id} id={p.id} plugin={p.name}>
             <Section folder={folder} />
+          </PluginBoundary>
+        ) : null;
+      })}
+    </>
+  );
+}
+
+/** Plugins' numbers on the Today page (inside its grid of cards; a card that crashes just disappears). */
+export function PluginTodayCards() {
+  const plugins = useEnabledPlugins();
+  return (
+    <>
+      {plugins.map((p) => {
+        const Cards = p.today?.cards;
+        return Cards ? (
+          <PluginBoundary key={p.id} id={p.id} plugin={p.name} quiet>
+            <Cards />
+          </PluginBoundary>
+        ) : null;
+      })}
+    </>
+  );
+}
+
+/** Plugins' lists on the Today page. */
+export function PluginTodaySections() {
+  const plugins = useEnabledPlugins();
+  return (
+    <>
+      {plugins.map((p) => {
+        const Section = p.today?.section;
+        return Section ? (
+          <PluginBoundary key={p.id} id={p.id} plugin={p.name}>
+            <Section />
           </PluginBoundary>
         ) : null;
       })}
@@ -107,7 +141,7 @@ export function PluginNoteHeader({ slot, ...props }: NoteHeaderProps & { slot: "
       {plugins.map((p) => {
         const Part = p.noteHeader?.[slot];
         return Part ? (
-          <PluginBoundary key={p.id} plugin={p.name} quiet>
+          <PluginBoundary key={p.id} id={p.id} plugin={p.name} quiet>
             <Part {...props} />
           </PluginBoundary>
         ) : null;

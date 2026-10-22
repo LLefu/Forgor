@@ -1,7 +1,7 @@
 import { ctx, emitChange } from "./context";
 import type { NoteMeta, Priority, Todo, TodoStatus } from "./types";
 import { newId, nowIso } from "@/lib/utils";
-import { addDaysStr, shouldArchive, todayStr } from "@/lib/dates";
+import { addDaysStr, shouldTrash, todayStr } from "@/lib/dates";
 import { nextOccurrence } from "@/lib/recurrence";
 import { setTaskChecked, setTaskText } from "@/lib/inlineTodos";
 import { readNote, renameMentionsEverywhere, writeNoteBody } from "./notes";
@@ -26,7 +26,6 @@ interface TodoRow {
   created_at: string;
   updated_at: string;
   completed_at: string | null;
-  archived_at: string | null;
   deleted_at: string | null;
   source_note_id: string | null;
   note_count: number;
@@ -60,7 +59,6 @@ function toTodo(r: TodoRow): Todo {
     createdAt: r.created_at,
     updatedAt: r.updated_at,
     completedAt: r.completed_at,
-    archivedAt: r.archived_at,
     deletedAt: r.deleted_at,
     sourceNoteId: r.source_note_id,
     noteCount: Number(r.note_count ?? 0),
@@ -71,16 +69,9 @@ function toTodo(r: TodoRow): Todo {
 
 // ---------------------------------------------------------------- queries
 
-/** All non-deleted, non-archived todos (including done ones not yet archived). */
+/** All todos not in the Trash (done ones too, until trashCompleted moves them). */
 export async function listTodos(): Promise<Todo[]> {
-  const rows = await ctx().sql.select<TodoRow>(`${SELECT} WHERE t.deleted_at IS NULL AND t.archived_at IS NULL ORDER BY t.sort_order`);
-  return rows.map(toTodo);
-}
-
-export async function listArchived(): Promise<Todo[]> {
-  const rows = await ctx().sql.select<TodoRow>(
-    `${SELECT} WHERE t.deleted_at IS NULL AND t.archived_at IS NOT NULL ORDER BY t.completed_at DESC LIMIT 500`,
-  );
+  const rows = await ctx().sql.select<TodoRow>(`${SELECT} WHERE t.deleted_at IS NULL ORDER BY t.sort_order`);
   return rows.map(toTodo);
 }
 
@@ -290,7 +281,7 @@ async function reindex(id: string) {
   }
 }
 
-// ---------------------------------------------------------------- delete / restore / archive
+// ---------------------------------------------------------------- delete / restore
 
 export async function deleteTodo(id: string): Promise<void> {
   const { sql } = ctx();
@@ -311,9 +302,11 @@ export async function deleteTodo(id: string): Promise<void> {
   emitChange("todos", "trash");
 }
 
+/** Back from the Trash; `restored_at` keeps a completed one out of trashCompleted for another N days. */
 export async function restoreTodos(ids: string[]): Promise<void> {
+  const now = nowIso();
   for (const id of ids) {
-    await ctx().sql.execute(`UPDATE todos SET deleted_at = NULL WHERE id = ?`, [id]);
+    await ctx().sql.execute(`UPDATE todos SET deleted_at = NULL, restored_at = ? WHERE id = ?`, [now, id]);
     await reindex(id);
   }
   emitChange("todos");
@@ -329,24 +322,23 @@ export async function purgeTodos(ids: string[]): Promise<void> {
   }
 }
 
-/** Archive todos completed more than `days` ago. Returns how many were archived. */
-export async function archiveCompleted(days: number, now = new Date()): Promise<number> {
-  const { sql } = ctx();
-  const rows = await sql.select<TodoRow>(`${SELECT} WHERE t.status = 'done' AND t.archived_at IS NULL AND t.deleted_at IS NULL`);
+/**
+ * Move todos completed more than `days` ago to the Trash (with their
+ * subtasks), counted from when they were restored if that is later. Returns
+ * how many were moved.
+ */
+export async function trashCompleted(days: number, now = new Date()): Promise<number> {
+  const rows = await ctx().sql.select<{ id: string; completed_at: string | null; restored_at: string | null }>(
+    `SELECT id, completed_at, restored_at FROM todos WHERE status = 'done' AND deleted_at IS NULL AND parent_id IS NULL`,
+  );
   let n = 0;
-  for (const t of rows.map(toTodo)) {
-    if (shouldArchive(t, now, days)) {
-      await sql.execute(`UPDATE todos SET archived_at = ? WHERE id = ?`, [now.toISOString(), t.id]);
+  for (const r of rows) {
+    if (shouldTrash(r.completed_at, r.restored_at, now, days)) {
+      await deleteTodo(r.id);
       n++;
     }
   }
-  if (n) emitChange("todos");
   return n;
-}
-
-export async function unarchive(id: string): Promise<void> {
-  await ctx().sql.execute(`UPDATE todos SET archived_at = NULL WHERE id = ?`, [id]);
-  emitChange("todos");
 }
 
 // ---------------------------------------------------------------- note links (many-to-many)

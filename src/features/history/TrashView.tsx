@@ -1,12 +1,10 @@
 import { FileText, Folder, ListTodo, Paperclip, RotateCcw, Trash2 } from "lucide-react";
-import { format, formatDistanceToNow } from "date-fns";
-import { useArchived, useTrash } from "@/app/queries";
+import { formatDistanceToNow } from "date-fns";
+import { useTrash } from "@/app/queries";
 import { emptyTrash, purgeTrashItem, restoreTrashItem } from "@/data/history";
 import { PageHeader } from "@/features/todos/TodosPage";
-import { TodoRow } from "@/features/todos/TodoRow";
 import { Button } from "@/components/ui/button";
 import { Tooltip } from "@/components/ui/tooltip";
-import { useUI } from "@/app/store";
 import { confirmDialog } from "@/components/ConfirmDialog";
 
 const ICONS = { note: FileText, folder: Folder, todo: ListTodo, file: Paperclip };
@@ -15,7 +13,7 @@ export function TrashView() {
   const { data: items = [] } = useTrash();
   return (
     <div className="mx-auto max-w-3xl pb-16">
-      <PageHeader title="Trash" subtitle="Deleted notes, folders and todos. Restore them or delete them for good.">
+      <PageHeader title="Trash" subtitle="Deleted notes, folders and todos, and completed todos after a while (Settings). Restore them or delete them for good.">
         {items.length > 0 && (
           <Button
             variant="outline"
@@ -78,28 +76,3 @@ export function TrashView() {
   );
 }
 
-export function ArchiveView() {
-  const { data: todos = [] } = useArchived();
-  const days = useUI((s) => s.settings.archiveAfterDays);
-  const groups = new Map<string, typeof todos>();
-  for (const t of todos) {
-    const key = t.completedAt ? format(new Date(t.completedAt), "MMMM yyyy") : "Unknown";
-    groups.set(key, [...(groups.get(key) ?? []), t]);
-  }
-  return (
-    <div className="mx-auto max-w-3xl pb-16">
-      <PageHeader title="Archive" subtitle={`Completed todos are moved here ${days} day${days === 1 ? "" : "s"} after completion. Change this in Settings.`} />
-      <div className="px-6">
-        {todos.length === 0 && <p className="py-10 text-center text-sm text-muted-foreground">Nothing archived yet.</p>}
-        {[...groups.entries()].map(([month, list]) => (
-          <section key={month} className="mb-5">
-            <h3 className="mb-1 border-b pb-1 text-xs font-semibold text-foreground/80">{month}</h3>
-            {list.map((t) => (
-              <TodoRow key={t.id} todo={t} />
-            ))}
-          </section>
-        ))}
-      </div>
-    </div>
-  );
-}

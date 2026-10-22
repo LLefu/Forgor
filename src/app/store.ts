@@ -6,7 +6,7 @@ import { ctx } from "@/data/context";
 import { newId } from "@/lib/utils";
 import { emitAppEvent } from "./events";
 
-export type PageKind = "inbox" | "today" | "all" | "search" | "archive" | "trash" | "settings" | "plugins";
+export type PageKind = "today" | "all" | "search" | "trash" | "settings" | "plugins";
 /** A page of a plugin (src/plugins): `page` is one of its `pages`, `param` e.g. a folder id. */
 export type PluginView = { kind: "plugin"; plugin: string; page: string; param?: string };
 export type View = { kind: PageKind } | { kind: "note"; id: string } | PluginView;
@@ -46,6 +46,9 @@ interface UIState {
   closeOtherTabs: (id: string) => void;
   closeAllTabs: () => void;
   moveTab: (id: string, toIndex: number) => void;
+  /** Views of closed tabs, newest last (Mod+Shift+T reopens them). */
+  closedTabs: View[];
+  reopenClosedTab: () => void;
 
   /** The right-hand detail panel shows one thing at a time: a todo, a folder, a plugin's info or a plugin's own panel. */
   selectedTodoId: string | null;
@@ -69,6 +72,14 @@ interface UIState {
   searchOverlay: boolean;
   setSearchOverlay: (open: boolean) => void;
 
+  /** The Settings page's tab (features/settings/SettingsView.tsx). */
+  settingsTab: string;
+  /** Settings, on `tab` if given. */
+  openSettings: (tab?: string) => void;
+  /** The ⌘/ overview of all keyboard shortcuts. */
+  shortcutsHelp: boolean;
+  setShortcutsHelp: (open: boolean) => void;
+
   quickAdd: { open: boolean; defaults: TodoInput };
   openQuickAdd: (defaults?: TodoInput) => void;
   closeQuickAdd: () => void;
@@ -88,7 +99,7 @@ const REMOVED_PAGES: string[] = ["calendar", "jira-board"];
 /**
  * A saved tab's view as it is now: up to 0.5.1 the Jira and Meetings pages
  * were app pages ("jira", "jira-folder", "meetings"); now they are plugin
- * pages. null: drop the tab (a removed page or a corrupt entry).
+ * pages. Inbox (up to 1.1) is now Todos, Archive the Trash. null: drop the tab (a removed page or a corrupt entry).
  */
 export function migrateView(v: unknown): View | null {
   if (!v || typeof v !== "object") return null;
@@ -98,6 +109,10 @@ export function migrateView(v: unknown): View | null {
   if (kind === "jira") return { kind: "plugin", plugin: "jira", page: "overview" };
   if (kind === "jira-folder") return typeof view.folderId === "string" ? { kind: "plugin", plugin: "jira", page: "folder", param: view.folderId } : null;
   if (kind === "meetings") return { kind: "plugin", plugin: "meetings", page: "list" };
+  // Inbox was removed in 1.2: its todos (no folder) are in Todos.
+  if (kind === "inbox") return { kind: "all" };
+  // Archive too: completed todos go to the Trash.
+  if (kind === "archive") return { kind: "trash" };
   if (kind === "note") return typeof view.id === "string" ? { kind: "note", id: view.id } : null;
   if (kind === "plugin") {
     if (typeof view.plugin !== "string" || typeof view.page !== "string") return null;
@@ -159,6 +174,8 @@ export const useUI = create<UIState>((set, get) => {
   const remove = (keep: (t: Tab, i: number) => boolean, preferActive?: string) => {
     const { tabs, activeTab } = get();
     const next = tabs.filter(keep);
+    const closed = tabs.filter((t, i) => !keep(t, i)).map((t) => t.view);
+    if (closed.length) set({ closedTabs: [...get().closedTabs, ...closed].slice(-20) });
     if (!next.length) return commit([], null);
     let active = next.some((t) => t.id === activeTab) ? activeTab : preferActive && next.some((t) => t.id === preferActive) ? preferActive : null;
     if (!active) {
@@ -214,6 +231,14 @@ export const useUI = create<UIState>((set, get) => {
       tabs.splice(Math.max(0, Math.min(toIndex, tabs.length)), 0, tab);
       commit(tabs, get().activeTab);
     },
+    closedTabs: [],
+    reopenClosedTab: () => {
+      const closed = [...get().closedTabs];
+      const view = closed.pop();
+      if (!view) return;
+      set({ closedTabs: closed });
+      get().setView(view);
+    },
 
     selectedTodoId: null,
     openTodo: (id) => set({ selectedTodoId: id, selectedFolderId: null, selectedPluginId: null, pluginPanel: null }),
@@ -235,6 +260,14 @@ export const useUI = create<UIState>((set, get) => {
 
     searchOverlay: false,
     setSearchOverlay: (open) => set({ searchOverlay: open }),
+
+    settingsTab: "general",
+    openSettings: (tab) => {
+      if (tab) set({ settingsTab: tab });
+      get().setView({ kind: "settings" });
+    },
+    shortcutsHelp: false,
+    setShortcutsHelp: (open) => set({ shortcutsHelp: open }),
 
     quickAdd: { open: false, defaults: {} },
     openQuickAdd: (defaults = {}) => set({ quickAdd: { open: true, defaults } }),

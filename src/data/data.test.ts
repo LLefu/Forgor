@@ -217,14 +217,39 @@ describe("todos", () => {
     expect([p.subtaskCount, p.subtaskDone]).toEqual([2, 1]);
   });
 
-  it("archives completed todos after N days", async () => {
+  it("moves completed todos to the Trash after N days, with their subtasks; restored ones get another N days", async () => {
     const t = await todos.createTodo({ title: "Old" });
+    const sub = await todos.createTodo({ title: "Step", parentId: t.id });
+    await todos.createTodo({ title: "Open" });
     await todos.setDone(t.id, true);
-    expect(await todos.archiveCompleted(7)).toBe(0);
-    const later = new Date(Date.now() + 8 * 86400_000);
-    expect(await todos.archiveCompleted(7, later)).toBe(1);
-    expect((await todos.listTodos()).length).toBe(0);
-    expect((await todos.listArchived()).map((x) => x.title)).toEqual(["Old"]);
+    expect(await todos.trashCompleted(7)).toBe(0);
+    await sql.execute(`UPDATE todos SET completed_at = '2026-01-05T10:00:00.000Z' WHERE id = ?`, [t.id]);
+    expect(await todos.trashCompleted(7)).toBe(1);
+    expect((await todos.listTodos()).map((x) => x.title)).toEqual(["Open"]);
+    const trash = await listTrash();
+    expect(trash.map((x) => [x.kind, x.title])).toEqual([["todo", "Old"]]);
+
+    // Restored now: it stays another 7 days, though it was completed long ago
+    await restoreTrashItem(trash[0].id);
+    expect((await todos.getTodo(sub.id))?.deletedAt).toBeNull();
+    expect(await todos.trashCompleted(7)).toBe(0);
+    expect(await todos.trashCompleted(7, new Date(Date.now() + 8 * 86400_000))).toBe(1);
+  });
+
+  it("v10 moves archived todos (with subtasks) to the Trash", async () => {
+    const t = await todos.createTodo({ title: "Archived" });
+    const sub = await todos.createTodo({ title: "Its step", parentId: t.id });
+    const kept = await todos.createTodo({ title: "Not archived" });
+    await todos.setDone(t.id, true);
+    await sql.execute(`UPDATE todos SET archived_at = '2026-10-01T10:00:00.000Z' WHERE id = ?`, [t.id]);
+    await sql.execute(`UPDATE meta SET value = '9' WHERE key = 'schema_version'`);
+    await migrate(sql);
+    expect((await todos.listTodos()).map((x) => x.id)).toEqual([kept.id]);
+    const trash = await listTrash();
+    expect(trash.map((x) => [x.title, x.deletedAt])).toEqual([["Archived", "2026-10-01T10:00:00.000Z"]]);
+    await restoreTrashItem(trash[0].id);
+    expect((await todos.listTodos()).map((x) => x.id).sort()).toEqual([t.id, sub.id, kept.id].sort());
+    expect((await sql.select<{ n: number }>(`SELECT COUNT(*) AS n FROM todos WHERE archived_at IS NOT NULL`))[0].n).toBe(0);
   });
 
   it("links notes many-to-many and counts them", async () => {

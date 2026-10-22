@@ -50,6 +50,8 @@ describe("plugins after updating from 0.5.1", () => {
     expect(migrateView({ kind: "meetings" })).toEqual({ kind: "plugin", plugin: "meetings", page: "list" });
     expect(migrateView({ kind: "note", id: "n1" })).toEqual({ kind: "note", id: "n1" });
     expect(migrateView({ kind: "today" })).toEqual({ kind: "today" });
+    expect(migrateView({ kind: "inbox" })).toEqual({ kind: "all" }); // Inbox and Archive removed in 1.2
+    expect(migrateView({ kind: "archive" })).toEqual({ kind: "trash" });
     expect(migrateView({ kind: "calendar" })).toBeNull();
     expect(migrateView({ kind: "jira-folder" })).toBeNull();
   });

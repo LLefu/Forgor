@@ -60,7 +60,6 @@ export interface Todo {
   createdAt: string;
   updatedAt: string;
   completedAt: string | null;
-  archivedAt: string | null;
   deletedAt: string | null;
   sourceNoteId: string | null;
   noteCount: number;
@@ -111,7 +110,7 @@ export interface TodosApi {
 
 /** What the main area shows. A plugin's pages are `{ kind: "plugin", plugin: <its id>, page, param }`. */
 export type View =
-  | { kind: "inbox" | "today" | "all" | "search" | "archive" | "trash" | "settings" | "plugins" }
+  | { kind: "today" | "all" | "search" | "trash" | "settings" | "plugins" }
   | { kind: "note"; id: string }
   | { kind: "plugin"; plugin: string; page: string; param?: string };
 
@@ -166,7 +165,7 @@ export interface LiveQueryResult<T> extends QueryResult<T> {
   refetch(): Promise<unknown>;
 }
 
-export type ModelId = "speech" | "speakers" | "language";
+export type ModelId = "speech" | "speakers" | "language" | "search";
 
 export interface WriteRequest {
   instruction: string;
@@ -206,6 +205,10 @@ export interface UiApi {
   PageHeader: React.ComponentType<{ title: string; subtitle?: string; icon?: React.ReactNode; children?: React.ReactNode }>;
   /** A titled list section (as in a folder's panel). */
   Section: React.ComponentType<{ title: string; count?: number; tone?: "danger"; collapsible?: boolean; heading?: React.ReactNode; children: React.ReactNode }>;
+  /** A number on the Today page (in `today.cards`); `count` undefined shows it's loading. Click opens `target`. */
+  TodayCard: React.ComponentType<{ icon: Icon; label: string; count: number | undefined; detail?: string; tone?: "danger"; target: View; testId?: string }>;
+  /** A short list on the Today page (in `today.section`): the first `max` (5) rows, then "N more" opening `target`. Shows nothing when empty. */
+  TodayList: React.ComponentType<{ title: string; rows: React.ReactNode[]; max?: number; target: View; testId?: string }>;
   /** A folder's symbol (its icon, or the folder glyph in its color). */
   FolderGlyph: React.ComponentType<{ icon?: string | null; color: string | null; open?: boolean; className?: string }>;
   /** A folder's name with its color. */
@@ -320,6 +323,8 @@ export interface PluginNotificationKind {
   label: string;
   /** When it notifies, in one sentence. */
   hint?: string;
+  /** Its own options (e.g. which comments), shown under its switch while it's on. Keep them in api.storage. */
+  settings?: React.ComponentType;
 }
 
 export interface PluginPage {
@@ -346,7 +351,7 @@ export interface PluginDefinition {
   icon?: Icon;
   /** Its settings, in its panel on the Plugins page (use api.ui.Setting). */
   settings?: React.ComponentType;
-  /** Items in the sidebar, below All tasks (use api.ui.NavItem). */
+  /** Items in the sidebar, below Todos (use api.ui.NavItem). */
   sidebar?: React.ComponentType;
   /** Its pages by name; open them with api.app.openPage(name, param). */
   pages?: Record<string, PluginPage>;
@@ -354,6 +359,8 @@ export interface PluginDefinition {
   panels?: Record<string, React.ComponentType<{ param: string; fromFolder: string | null }>>;
   /** A section in a folder's panel. */
   folderSection?: React.ComponentType<{ folder: Folder }>;
+  /** On the Today page: numbers in the row on top (`cards`, use api.ui.TodayCard) and short lists of what needs attention (`section`, use api.ui.TodayList). Render nothing while not set up. */
+  today?: { cards?: React.ComponentType; section?: React.ComponentType };
   /** In a note's top bar: before the folder path, and buttons on the right. */
   noteHeader?: { breadcrumb?: React.ComponentType<NoteHeaderProps>; actions?: React.ComponentType<NoteHeaderProps> };
   /** Gives the editor AI writing tools (a hook; null while not usable). */
@@ -362,7 +369,7 @@ export interface PluginDefinition {
   hosts?: React.ComponentType[];
   /** Runs in the main window while enabled; return how to stop (listeners, timers). */
   start?: () => () => void;
-  /** Entries in the quick menu (global shortcut). A hook, called also while disabled (`enabled` false): return nothing then. */
+  /** Entries in the quick menu (global shortcut). A hook, called while the plugin is enabled (`enabled` is always true). */
   useQuickMenu?: (enabled: boolean) => { items: QuickMenuItem[]; status?: React.ReactNode; title?: string };
   /** Why it can't be disabled right now, or null. */
   disableBlocked?: () => string | null;
@@ -370,6 +377,45 @@ export interface PluginDefinition {
   remoteQueries?: string[];
   /** The kinds of desktop notifications it sends (api.notifications); its panel gets a switch for each. */
   notifications?: PluginNotificationKind[];
+  /** Keyboard shortcuts (while enabled), listed in Settings → Shortcuts under the plugin's name; the user can change them. */
+  shortcuts?: PluginShortcut[];
+  /** Things the AI chat plugin may search, and the user may attach to a question with "@" (tickets, pull requests…). */
+  chat?: PluginChatSource;
+}
+
+export interface PluginChatSource {
+  /** What one item is, for the model and the "@" list: "Jira ticket". */
+  kind: string;
+  /** Everything it may use now. Called for every question: return cached data (api.app.queryClient.fetchQuery with a staleTime), [] while not set up. */
+  items(): Promise<PluginChatItem[]>;
+}
+
+export interface PluginChatItem {
+  /** Unique within the plugin. */
+  id: string;
+  title: string;
+  /** What the model reads: status, dates, a short summary (plain text, keep it short). */
+  text: string;
+  /** The folder it belongs to, so "for project X" finds it. */
+  folderId?: string | null;
+  /** Shows it (your page or panel). */
+  open(): void;
+  /** More text when the user attaches it: description, latest comments… (may fetch). */
+  detail?(): Promise<string>;
+}
+
+export interface PluginShortcut {
+  /** Unique within the plugin ("open"). */
+  id: string;
+  /** What it does: "Open Hello". */
+  label: string;
+  /**
+   * Default combos like ["Mod+Shift+H"]: modifiers Mod (⌘ on macOS, Ctrl elsewhere), Ctrl, Alt, Shift, then one
+   * key (A–Z, 0–9, F1–F12, ArrowLeft, Enter, "/"…). Needs Mod, Ctrl or Alt, or an F-key. Leave it out to let the
+   * user pick; a combo the app or another plugin already uses is skipped (the user can still give it one).
+   */
+  keys?: string[];
+  run(): void | Promise<void>;
 }
 
 export type PluginFactory = (api: PluginApi) => PluginDefinition;

@@ -102,6 +102,7 @@ test("the Meetings page offers speaker separation when it isn't downloaded", asy
   await page.goto("/?empty");
   await enablePlugin(page, "meetings");
   await page.getByTestId("nav-settings").click();
+  await page.getByTestId("settings-tab-models").click();
   await page.getByTestId("model-speech").getByRole("button", { name: "Download" }).click();
   await expect(page.getByTestId("model-speech").getByLabel("Downloaded")).toBeVisible();
   await page.getByTestId("nav-meetings").click();
@@ -157,6 +158,7 @@ test("while recording: level meters, and warnings for a silent mic, no computer 
   await page.goto("/?empty");
   await enablePlugin(page, "meetings");
   await page.getByTestId("nav-settings").click();
+  await page.getByTestId("settings-tab-models").click();
   await page.getByTestId("model-speech").getByRole("button", { name: "Download" }).click();
   await expect(page.getByTestId("model-speech").getByLabel("Downloaded")).toBeVisible();
   await page.getByTestId("nav-meetings").click();

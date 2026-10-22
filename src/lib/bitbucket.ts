@@ -166,6 +166,9 @@ export function toPullRequest(raw: unknown, me: string): PullRequest {
 /** How my own review stands (on a PR I'm asked to review). */
 export const myReview = (pr: PullRequest, me: string): ReviewState => pr.reviewers.find((r) => r.person.uuid === me)?.state ?? "waiting";
 
+/** A review request I already approved: nothing left for me to do, so the lists hide it. */
+export const approvedByMe = (pr: PullRequest, me: string) => pr.role === "review" && myReview(pr, me) === "approved";
+
 /** Merges lists (a PR in two of them once), open ones only, last updated first. */
 export function mergePullRequests(lists: PullRequest[][]): PullRequest[] {
   const byRef = new Map<string, PullRequest>();
