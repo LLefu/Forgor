@@ -5,6 +5,8 @@ All notable changes to Forgor. Add new entries under **Unreleased**;
 
 ## Unreleased
 
+## 1.1.0 (2026-10-22)
+
 ### New
 - **Bitbucket plugin** (Plugins → Bitbucket): see your open pull requests and the ones waiting for your review under **Pull requests** in the sidebar. Review requests stand out (an accent bar and where your review stands); your own show how many reviewers approved. Filter on All / Review requested / Mine. Link repositories to a folder in its panel, like Jira boards: the folder shows their pull requests, and they get the folder's icon. Click one for the details: branches, reviewers and their status, comments, files changed, the description, the Jira ticket, and **Open in Bitbucket**. Read-only: Forgor never changes anything in Bitbucket. It needs an Atlassian API token with Bitbucket read scopes (the plugin's settings explain how).
 - **Build status** on pull requests (pipelines or other CI that reports to Bitbucket): ✓ passed, ✗ failed or a spinner while it runs, and each build in the detail panel.
