@@ -5,6 +5,8 @@ All notable changes to Forgor. Add new entries under **Unreleased**;
 
 ## Unreleased
 
+## 1.2.0 (2026-10-22)
+
 ### New
 - **Keyboard shortcuts** for nearly everything, and you can change them all in **Settings → Shortcuts**: click one and press the new keys, add a second one, remove it, or reset it. Keys that are already taken (or that copy/paste and your system need) are refused, with what uses them. Press **⌘/** (Ctrl+/) to see them all. New: **⌘N** new note, **⇧⌘N** new folder, **⌘P / ⌘O** quick open, **⇧⌘D** Today, **⇧⌘L** Todos, **⌘,** Settings, **⌘1–⌘9** go to a tab, **⇧⌘T** reopen a closed tab, **⌘\\** hide or show the sidebar, **F2** rename the open note, **⇧⌘E** show it in the explorer. Meeting recordings adds **⇧⌘R** to start or stop a recording. On Windows, ⌘ is Ctrl.
 - **Plugins can add keyboard shortcuts** (`shortcuts`), listed under the plugin's name in Settings → Shortcuts.
