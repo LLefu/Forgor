@@ -7,7 +7,7 @@ import { admin, caller, limit, newer, PLUGIN_ID, Refused, serve, sha256, json, V
 const MAX_ZIP = 5 * 1024 * 1024;
 const FILES = ["manifest.json", "main.js", "styles.css", "icon.png", "icon.svg"] as const;
 /** The built-in plugins' ids, and the app's name. */
-const RESERVED = new Set(["meetings", "writing", "jira", "forgor"]);
+const RESERVED = new Set(["meetings", "writing", "jira", "bitbucket", "forgor"]);
 
 interface Manifest {
   id?: unknown;

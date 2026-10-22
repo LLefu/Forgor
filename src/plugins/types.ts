@@ -62,6 +62,17 @@ export interface Plugin {
   disableBlocked?: () => string | null;
   /** First parts of query keys that are remote: not refreshed on every local change, they refresh on their own. */
   remoteQueries?: string[];
+  /** The kinds of desktop notifications it sends (app/notifications.ts); its panel shows a switch for each. */
+  notifications?: PluginNotificationKind[];
+}
+
+export interface PluginNotificationKind {
+  /** Used with notifyNew / notify (e.g. "review"). */
+  kind: string;
+  /** "New review requests" */
+  label: string;
+  /** When it notifies, in one sentence. */
+  hint?: string;
 }
 
 export interface PluginPage {

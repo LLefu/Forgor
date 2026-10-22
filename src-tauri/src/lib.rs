@@ -1,9 +1,11 @@
 mod access;
+mod bitbucket;
 mod jira;
 mod language;
 mod meetings;
 mod models;
 mod secrets;
+mod sound;
 mod writing;
 mod storage;
 
@@ -119,6 +121,10 @@ pub fn run() {
             jira::jira_disconnect,
             jira::jira_get,
             jira::jira_attachment,
+            bitbucket::bitbucket_connect,
+            bitbucket::bitbucket_disconnect,
+            bitbucket::bitbucket_get,
+            sound::play_sound,
             secrets::secret_get,
             secrets::secret_set,
             secrets::secret_delete,

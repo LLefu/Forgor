@@ -148,6 +148,24 @@ export interface QueryResult<T> {
   error: unknown;
 }
 
+/** A query on the app's own TanStack Query client (api.app.useQuery / queryClient.fetchQuery). */
+export interface QueryOptions<T> {
+  /** Start it with your plugin id, and list that in `remoteQueries` when it fetches from the internet. */
+  queryKey: readonly unknown[];
+  queryFn: () => Promise<T>;
+  enabled?: boolean;
+  /** How long a result counts as fresh (ms). */
+  staleTime?: number;
+  /** Refetch on a timer (ms), e.g. 5 * 60_000. */
+  refetchInterval?: number;
+  refetchOnWindowFocus?: boolean;
+}
+
+export interface LiveQueryResult<T> extends QueryResult<T> {
+  isFetching: boolean;
+  refetch(): Promise<unknown>;
+}
+
 export type ModelId = "speech" | "speakers" | "language";
 
 export interface WriteRequest {
@@ -224,7 +242,13 @@ export interface PluginApi {
     /** Follow an app event; returns how to stop. */
     on<K extends keyof AppEvents>(event: K, cb: (payload: AppEvents[K]) => void): () => void;
     useEnabled(): boolean;
-    queryClient: { invalidateQueries(filters?: { queryKey?: readonly unknown[] }): Promise<void> };
+    queryClient: {
+      invalidateQueries(filters?: { queryKey?: readonly unknown[] }): Promise<void>;
+      /** The query's data: cached while fresh (`staleTime`), else fetched. For checks outside React (e.g. notifications). */
+      fetchQuery<T>(options: QueryOptions<T>): Promise<T>;
+    };
+    /** A query on the app's client: shares its cache, refreshing and error handling with everything else using the same key. */
+    useQuery<T>(options: QueryOptions<T>): LiveQueryResult<T>;
     useFolders(): QueryResult<Folder[]>;
     useNotes(): QueryResult<NoteMeta[]>;
     useTodos(): QueryResult<Todo[]>;
@@ -236,6 +260,24 @@ export interface PluginApi {
     set(key: string, value: unknown): Promise<void>;
     /** As React state: [value, set]. */
     useValue<T>(key: string, fallback: T): [T, (value: T) => Promise<void>];
+  };
+  /**
+   * Desktop notifications, for the kinds declared in `notifications` (each gets a
+   * switch in the plugin's panel; Settings turns all of them off). Checks run in
+   * the main window, also while Forgor is in the tray.
+   */
+  notifications: {
+    /**
+     * Notifies about the items not seen before (by id). The first call for a kind
+     * only remembers what's there, unless `baseline` is false. Items left out stay
+     * remembered. More than three at once become one notification (`summary`).
+     * Returns the new ones.
+     */
+    notifyNew(kind: string, items: NotifyItem[], options?: { baseline?: boolean; summary?: (count: number) => { title: string; body: string } }): Promise<NotifyItem[]>;
+    /** One notification now (if its kind is on). */
+    notify(kind: string, notification: { title: string; body: string; open?: NotificationTarget }): Promise<void>;
+    /** Runs `check` soon and then every `everyMs` (default 5 minutes); returns how to stop. Call it in `start`. */
+    poll(check: () => Promise<void>, everyMs?: number): () => void;
   };
   ui: UiApi;
   lib: {
@@ -253,7 +295,32 @@ export interface PluginApi {
   };
 }
 
+export interface NotifyItem {
+  /** Stable and unique within its kind (an id from the service). */
+  id: string;
+  title: string;
+  body: string;
+  /** What clicking it in the notification history (the bell) opens: one of this plugin's pages and/or panels. */
+  open?: NotificationTarget;
+}
+
+export interface NotificationTarget {
+  page?: string;
+  pageParam?: string;
+  panel?: string;
+  panelParam?: string;
+}
+
 // ---------------------------------------------------------------- what a plugin returns
+
+export interface PluginNotificationKind {
+  /** What you pass to api.notifications (e.g. "mention"). */
+  kind: string;
+  /** Its switch in the plugin's panel, e.g. "New mentions". */
+  label: string;
+  /** When it notifies, in one sentence. */
+  hint?: string;
+}
 
 export interface PluginPage {
   /** The tab's label and icon (a hook: may use other hooks). */
@@ -301,6 +368,8 @@ export interface PluginDefinition {
   disableBlocked?: () => string | null;
   /** First parts of query keys that are remote (not refreshed on every local change). */
   remoteQueries?: string[];
+  /** The kinds of desktop notifications it sends (api.notifications); its panel gets a switch for each. */
+  notifications?: PluginNotificationKind[];
 }
 
 export type PluginFactory = (api: PluginApi) => PluginDefinition;

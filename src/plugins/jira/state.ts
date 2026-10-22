@@ -36,7 +36,8 @@ export function openIssue(key: string | null, fromFolder: string | null = null) 
 export async function connectJira(site: string, email: string, token: string) {
   const account = await jira().connect(site, email, token);
   await useUI.getState().updateSetting("jiraAccount", account);
-  queryClient.removeQueries({ queryKey: ["jira"] });
+  // Reset, not remove: lists already on screen (the sidebar count) must load again, not stay empty.
+  await queryClient.resetQueries({ queryKey: ["jira"] });
   return account;
 }
 
@@ -51,10 +52,13 @@ export async function disconnectJira() {
 /** Everything assigned to me on the site (open, or also done in the last 30 days). */
 export function useMyIssues(withDone: boolean) {
   const account = useJiraAccount();
-  return useQuery({
+  return useQuery({ ...myIssuesQuery(account, withDone), enabled: !!account, ...REMOTE });
+}
+
+/** The query behind useMyIssues, also fetched by the notification check. */
+export function myIssuesQuery(account: JiraAccount | null, withDone: boolean) {
+  return {
     queryKey: ["jira", account?.site, "mine", withDone],
-    enabled: !!account,
-    ...REMOTE,
     queryFn: async () => {
       const issues: JiraIssue[] = [];
       let token: string | undefined;
@@ -70,7 +74,7 @@ export function useMyIssues(withDone: boolean) {
       }
       return issues;
     },
-  });
+  };
 }
 
 /** What the list pages need of a query (one search, or several boards together). */

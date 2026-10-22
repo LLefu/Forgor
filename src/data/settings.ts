@@ -23,6 +23,10 @@ export const DEFAULT_SETTINGS: Settings = {
   writingEnabled: false,
   jiraEnabled: false,
   jiraAccount: null,
+  bitbucketAccount: null,
+  notificationsEnabled: true,
+  notificationsMuted: [],
+  notificationSound: "chime",
 };
 
 function navigatorIsMac() {

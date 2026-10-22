@@ -1,5 +1,7 @@
 import { useState } from "react";
-import { FolderOpen, RefreshCw, CheckCircle2, Loader2, Download, RotateCw, History, Trash2 } from "lucide-react";
+import { FolderOpen, RefreshCw, CheckCircle2, Loader2, Download, RotateCw, History, Trash2, Play } from "lucide-react";
+import { Tooltip } from "@/components/ui/tooltip";
+import { showError } from "@/components/Toasts";
 import { VersionHistoryDialog } from "./VersionHistoryDialog";
 import { ACCENTS } from "@/lib/accents";
 import { SwatchGrid, type Swatch } from "@/components/ColorPicker";
@@ -18,9 +20,15 @@ import { PageHeader } from "@/features/todos/TodosPage";
 import { Select } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Switch } from "@/components/ui/switch";
+import { notifications } from "@/platform/notifications";
+import { sendTestNotification } from "@/app/notifications";
+
+/** The test notification waits this long, so you can switch to another app and see its banner. */
+const TEST_DELAY = 5000;
 import { ctx } from "@/data/context";
 import type { Platform } from "@/platform/types";
-import type { Settings } from "@/data/types";
+import type { NotificationSound, Settings } from "@/data/types";
 import { chooseVault } from "@/app/boot";
 import { isMac } from "@/lib/keys";
 import { ZOOM_LEVELS, zoomLabel } from "@/lib/zoom";
@@ -119,6 +127,8 @@ export function SettingsView({ platform }: { platform: Platform }) {
         </Row>
 
         <TrashRow />
+
+        <NotificationsRow />
 
         <ModelsSettings />
 
@@ -234,6 +244,58 @@ function TrashRow() {
       <Button variant="outline" size="sm" onClick={() => useUI.getState().setView({ kind: "trash" })} data-testid="open-trash">
         <Trash2 /> Open trash{items.length ? ` (${items.length})` : ""}
       </Button>
+    </Row>
+  );
+}
+
+/** Desktop notifications for all of Forgor; which kinds is chosen per plugin (in its panel). */
+function NotificationsRow() {
+  const on = useUI((s) => s.settings.notificationsEnabled);
+  const sound = useUI((s) => s.settings.notificationSound);
+  const update = useUI((s) => s.updateSetting);
+  const [tested, setTested] = useState<"waiting" | "sent" | "blocked" | null>(null);
+  return (
+    <Row label="Notifications" hint="Desktop notifications, e.g. for new review requests or Jira comments, while Forgor runs (also in the tray). Choose which ones in each plugin's panel.">
+      <div className="flex flex-wrap items-center gap-3">
+        <Switch checked={on} onCheckedChange={(v) => void update("notificationsEnabled", v)} aria-label="Notifications" data-testid="notifications-enabled" />
+        <div className="flex items-center gap-1">
+          <Select<NotificationSound>
+            aria-label="Notification sound"
+            value={sound}
+            onChange={(v) => {
+              void update("notificationSound", v);
+              if (v !== "none") void notifications().playSound(v);
+            }}
+            options={[
+              { value: "chime", label: "Sound: Chime" },
+              { value: "ping", label: "Sound: Ping" },
+              { value: "pop", label: "Sound: Pop" },
+              { value: "none", label: "No sound" },
+            ]}
+          />
+          <Tooltip content="Play the sound">
+            <Button variant="ghost" size="icon" disabled={sound === "none"} onClick={() => void notifications().playSound(sound).catch((e) => showError(e, "Couldn't play the sound"))} aria-label="Play the sound" data-testid="notifications-play-sound">
+              <Play />
+            </Button>
+          </Tooltip>
+        </div>
+        <Button
+          variant="outline"
+          size="sm"
+          disabled={!on || tested === "waiting"}
+          onClick={() => {
+            // In 5 s: macOS shows no banner for the app in front, so there's time to switch away and see the real one.
+            setTested("waiting");
+            setTimeout(() => void sendTestNotification().then((ok) => setTested(ok ? "sent" : "blocked")), TEST_DELAY);
+          }}
+          data-testid="notifications-test"
+        >
+          Send a test notification
+        </Button>
+        {tested === "waiting" && <span className="text-xs text-muted-foreground" data-testid="notifications-test-waiting">Switch to another app: it arrives in 5 seconds.</span>}
+        {tested === "blocked" && <span className="text-xs text-warning">Not allowed: turn on notifications for Forgor in your system settings.</span>}
+        {tested === "sent" && <span className="text-xs text-muted-foreground">Sent. Didn't see it? Check your system's notification settings for Forgor (and Focus / Do Not Disturb).</span>}
+      </div>
     </Row>
   );
 }

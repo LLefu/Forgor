@@ -33,6 +33,8 @@ export interface JiraAttachment {
 export interface JiraComment {
   id: string;
   author: string;
+  /** To tell my own comments apart (notifications skip them). */
+  authorId: string | null;
   created: string;
   body: AdfNode | null;
 }
@@ -141,7 +143,13 @@ export function mediaAttachments(doc: AdfNode | null, attachments: JiraAttachmen
 }
 
 export function toComment(raw: { id: string; author?: unknown; created?: string; body?: unknown }): JiraComment {
-  return { id: raw.id, author: name(raw.author) ?? "Unknown", created: raw.created ?? "", body: (raw.body as AdfNode | null) ?? null };
+  return {
+    id: raw.id,
+    author: name(raw.author) ?? "Unknown",
+    authorId: (raw.author as { accountId?: string } | null)?.accountId ?? null,
+    created: raw.created ?? "",
+    body: (raw.body as AdfNode | null) ?? null,
+  };
 }
 
 /**

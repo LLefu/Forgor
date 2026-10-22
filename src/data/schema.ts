@@ -112,6 +112,8 @@ export const MIGRATIONS: string[][] = [
   [`ALTER TABLE folders ADD COLUMN jira_board TEXT`],
   // v8: an uploaded folder icon (small PNG as a data URL; lib/folderIcon.ts)
   [`ALTER TABLE folders ADD COLUMN icon TEXT`],
+  // v9: the Bitbucket repositories linked to a folder (JSON: a list of lib/bitbucket.ts BitbucketRepoRef)
+  [`ALTER TABLE folders ADD COLUMN bitbucket_repos TEXT`],
 ];
 
 export async function migrate(sql: SqlDriver): Promise<void> {

@@ -1,5 +1,6 @@
 import { ctx, emitChange } from "./context";
 import type { Folder, NoteMeta } from "./types";
+import type { BitbucketRepoRef } from "@/lib/bitbucket";
 import type { JiraBoardRef } from "@/lib/jira";
 import { parseNote, stringifyNote } from "@/lib/frontmatter";
 import { extractMentions, renameMentions, type MentionKind } from "@/lib/mentions";
@@ -42,8 +43,19 @@ const toMeta = (r: NoteRow): NoteMeta => ({
 // ---------------------------------------------------------------- queries
 
 export async function listFolders(): Promise<Folder[]> {
-  const rows = await ctx().sql.select<Folder & { jira_board: string | null }>(`SELECT id, path, color, jira_board, icon FROM folders ORDER BY path COLLATE NOCASE`);
-  return rows.map(({ jira_board, ...f }) => ({ ...f, jiraBoards: parseBoards(jira_board) }));
+  const rows = await ctx().sql.select<Folder & { jira_board: string | null; bitbucket_repos: string | null }>(
+    `SELECT id, path, color, jira_board, bitbucket_repos, icon FROM folders ORDER BY path COLLATE NOCASE`,
+  );
+  return rows.map(({ jira_board, bitbucket_repos, ...f }) => ({ ...f, jiraBoards: parseBoards(jira_board), bitbucketRepos: parseList<BitbucketRepoRef>(bitbucket_repos) }));
+}
+
+function parseList<T>(json: string | null): T[] {
+  try {
+    const v = json ? (JSON.parse(json) as unknown) : null;
+    return Array.isArray(v) ? (v as T[]) : [];
+  } catch {
+    return [];
+  }
 }
 
 /** `jira_board` holds a list of boards; 0.5.0 stored a single one (an object). */
@@ -59,6 +71,12 @@ function parseBoards(json: string | null): JiraBoardRef[] {
 /** Set or remove (null) a folder's icon (a PNG data URL, see lib/folderIcon.ts). */
 export async function setFolderIcon(id: string, icon: string | null): Promise<void> {
   await ctx().sql.execute(`UPDATE folders SET icon = ? WHERE id = ?`, [icon, id]);
+  emitChange("folders");
+}
+
+/** The Bitbucket repositories linked to a folder (empty unlinks all). */
+export async function setFolderBitbucketRepos(id: string, repos: BitbucketRepoRef[]): Promise<void> {
+  await ctx().sql.execute(`UPDATE folders SET bitbucket_repos = ? WHERE id = ?`, [repos.length ? JSON.stringify(repos) : null, id]);
   emitChange("folders");
 }
 

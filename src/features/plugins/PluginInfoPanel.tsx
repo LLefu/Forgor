@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { CheckCircle2, FileArchive, Trash2, Upload, X } from "lucide-react";
 import { useUI } from "@/app/store";
+import { setNotificationOn } from "@/app/notifications";
 import { useResizableWidth } from "@/components/ResizeHandle";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
@@ -84,6 +85,12 @@ export function PluginInfoPanel({ id }: { id: string }) {
             </div>
           </div>
         </PanelSection>
+
+        {plugin.notifications?.length ? (
+          <PanelSection title="Notifications">
+            {on ? <NotificationSwitches plugin={plugin} /> : <p className="text-[13px] text-muted-foreground">Enable the plugin to choose its notifications.</p>}
+          </PanelSection>
+        ) : null}
 
         {Settings && (
           <PanelSection title="Settings">
@@ -201,5 +208,38 @@ function PanelSection({ title, children }: { title: string; children: React.Reac
       <h3 className="mb-2 border-b pb-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{title}</h3>
       {children}
     </section>
+  );
+}
+
+/** A switch per kind of notification the plugin sends (muted ones are in settings.notificationsMuted). */
+function NotificationSwitches({ plugin }: { plugin: Plugin }) {
+  const muted = useUI((s) => s.settings.notificationsMuted);
+  const allOn = useUI((s) => s.settings.notificationsEnabled);
+  return (
+    <div className="space-y-3" data-testid="plugin-notifications">
+      {!allOn && (
+        <p className="text-xs text-warning">
+          Notifications are off for all of Forgor.{" "}
+          <button className="underline underline-offset-2" onClick={() => useUI.getState().setView({ kind: "settings" })}>
+            Turn them on in Settings
+          </button>
+          .
+        </p>
+      )}
+      {plugin.notifications!.map((n) => (
+        <label key={n.kind} className="flex items-start gap-3">
+          <span className="min-w-0 flex-1">
+            <span className="block text-[13px]">{n.label}</span>
+            {n.hint && <span className="block text-xs text-muted-foreground">{n.hint}</span>}
+          </span>
+          <Switch
+            checked={!muted.includes(`${plugin.id}:${n.kind}`)}
+            onCheckedChange={(v) => void setNotificationOn(plugin.id, n.kind, v)}
+            aria-label={n.label}
+            data-testid={`notify-${plugin.id}-${n.kind}`}
+          />
+        </label>
+      ))}
+    </div>
   );
 }

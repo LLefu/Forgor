@@ -33,6 +33,7 @@ test("overview: all my tickets, with search, filters and sorting; a ticket opens
   await page.goto("/");
   await connect(page);
 
+  await expect(page.getByTestId("nav-jira")).toContainText("5"); // open tickets assigned to me
   await page.getByTestId("nav-jira").click();
   const list = page.getByTestId("jira-list");
   const keys = () => list.getByTestId("issue-row").evaluateAll((rows) => rows.map((r) => r.getAttribute("data-key")));
@@ -159,6 +160,7 @@ test("in the overview, tickets of a board linked to a folder with an icon show t
   await (await chooser).setFiles({ name: "acme.svg", mimeType: "image/svg+xml", buffer: Buffer.from(svg) });
   await expect(folder.getByTestId("folder-icon").first()).toBeVisible();
 
+  await expect(page.getByTestId("nav-jira")).toContainText("5"); // open tickets assigned to me
   await page.getByTestId("nav-jira").click();
   const list = page.getByTestId("jira-list");
   await expect(list.locator('[data-key="WEB-12"]').getByTestId("issue-folder-icon")).toBeVisible();

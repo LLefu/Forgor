@@ -8,6 +8,14 @@ import { JiraFolderPage, JiraOverview } from "./JiraPages";
 import { IssuePanel } from "./IssuePanel";
 import { FolderJira } from "./FolderJira";
 import { JiraSettings } from "./JiraSettings";
+import { useMyIssues } from "./state";
+import { JIRA_NOTIFICATIONS, startJiraNotifications } from "./notify";
+
+/** Sidebar: Jira, with how many open tickets are assigned to me (the overview's own query, so no extra request). */
+function JiraNav() {
+  const { data } = useMyIssues(false);
+  return <NavItem icon={Ticket} label="Jira" count={data?.length} target={pluginView("jira", "overview")} testId="nav-jira" />;
+}
 
 /** Jira Cloud, read-only: my tickets per folder (linked boards) and all together. */
 export const jiraPlugin: Plugin = {
@@ -19,7 +27,7 @@ export const jiraPlugin: Plugin = {
   icon: Ticket,
   builtIn: true,
   settings: JiraSettings,
-  sidebar: () => <NavItem icon={Ticket} label="Jira" target={pluginView("jira", "overview")} testId="nav-jira" />,
+  sidebar: JiraNav,
   pages: {
     overview: { useTab: () => ({ label: "Jira", icon: Ticket }), component: () => <JiraOverview /> },
     folder: {
@@ -34,4 +42,6 @@ export const jiraPlugin: Plugin = {
   panels: { issue: IssuePanel },
   folderSection: FolderJira,
   remoteQueries: ["jira"],
+  notifications: JIRA_NOTIFICATIONS,
+  start: startJiraNotifications,
 };

@@ -78,6 +78,24 @@ const FAKE_BOARDS = [
   ...Array.from({ length: 60 }, (_, i) => ({ id: 100 + i, name: `Team ${i + 1} board`, type: "kanban", location: { projectKey: "OPS", projectName: "Operations", displayName: "Operations (OPS)" } })),
 ];
 
+/** Comments added while the fake runs (fakeJira.comment). */
+const EXTRA_COMMENTS = new Map<string, { id: string; author: ReturnType<typeof person>; created: string; updated: string; body: ReturnType<typeof doc> }[]>();
+
+/** Browser build / e2e: make things happen on the fake site (for notifications). */
+export const fakeJira = {
+  assign(key: string, summary: string) {
+    FAKE_ISSUES.push({ key, summary, status: STATUS.todo, priority: "Medium", type: "Task", project: PROJECTS.WEB, due: null, updated: new Date().toISOString() });
+  },
+  comment(key: string, author: string, text: string) {
+    const now = new Date().toISOString();
+    const list = EXTRA_COMMENTS.get(key) ?? [];
+    list.push({ id: `x${Date.now()}${list.length}`, author: author === ME.displayName ? ME : person(author), created: now, updated: now, body: doc(text) });
+    EXTRA_COMMENTS.set(key, list);
+    const issue = FAKE_ISSUES.find((i) => i.key === key);
+    if (issue) issue.updated = now;
+  },
+};
+
 function fakeIssue(i: (typeof FAKE_ISSUES)[number]) {
   return {
     id: i.key,
@@ -150,8 +168,9 @@ function fakeBackend(): JiraBackend {
           comments: [
             { id: "1", author: person("Sanne de Vries"), created: "2026-10-11T09:00:00.000+0200", updated: "2026-10-11T09:00:00.000+0200", body: doc("Can you look at this before Friday?") },
             { id: "2", author: ME, created: "2026-10-12T10:00:00.000+0200", updated: "2026-10-12T10:00:00.000+0200", body: doc(`On it. ${m[1]} is next.`) },
+            ...(EXTRA_COMMENTS.get(m[1]) ?? []),
           ],
-          total: 2,
+          total: 2 + (EXTRA_COMMENTS.get(m[1])?.length ?? 0),
         } as T;
       }
       if ((m = /^\/rest\/api\/3\/issue\/([\w-]+)$/.exec(p))) {

@@ -11,13 +11,14 @@ import { showError } from "@/components/Toasts";
 import { meetingsPlugin } from "./meetings";
 import { writingPlugin } from "./writing";
 import { jiraPlugin } from "./jira";
+import { bitbucketPlugin } from "./bitbucket";
 
 /**
  * Every plugin the app knows, in the order their contributions appear:
  * the built-in ones, then community plugins (community.tsx). The app reads
  * contributions only through here (and only of enabled plugins).
  */
-export const PLUGINS: Plugin[] = [meetingsPlugin, writingPlugin, jiraPlugin];
+export const PLUGINS: Plugin[] = [meetingsPlugin, writingPlugin, jiraPlugin, bitbucketPlugin];
 const BUILT_IN = PLUGINS.length;
 
 addRemoteQueries(PLUGINS.flatMap((p) => p.remoteQueries ?? []));

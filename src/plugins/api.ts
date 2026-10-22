@@ -7,6 +7,7 @@ import { noteLinkProps } from "@/app/noteLink";
 import * as notes from "@/data/notes";
 import * as todos from "@/data/todos";
 import { getPluginValue, setPluginValue } from "@/data/pluginStorage";
+import { notify, notifyNew, pollForNotifications, type NotificationTarget, type NotifyItem } from "@/app/notifications";
 import { NavItem } from "@/components/NavItem";
 import { Button } from "@/components/ui/button";
 import { Input, Textarea } from "@/components/ui/input";
@@ -66,6 +67,8 @@ export function createPluginApi(id: string) {
       on: <K extends keyof AppEvents>(event: K, cb: (payload: AppEvents[K]) => void) => onAppEvent(event, cb),
       useEnabled: () => usePluginEnabled(id),
       queryClient,
+      /** The app's useQuery (its client), with the options plugins need. */
+      useQuery: <T,>(options: PluginQueryOptions<T>) => useQuery(options),
       useFolders,
       useNotes,
       useTodos,
@@ -74,6 +77,12 @@ export function createPluginApi(id: string) {
     data: { notes, todos },
     /** Small data of this plugin (on this computer, not in the notes folder). */
     storage,
+    /** Desktop notifications of the kinds this plugin declares (`notifications`). */
+    notifications: {
+      notifyNew: (kind: string, items: NotifyItem[], options?: { baseline?: boolean; summary?: (count: number) => { title: string; body: string } }) => notifyNew(id, kind, items, options),
+      notify: (kind: string, n: { title: string; body: string; open?: NotificationTarget }) => notify(id, kind, n),
+      poll: (check: () => Promise<void>, everyMs?: number) => pollForNotifications(check, everyMs),
+    },
     ui: {
       NavItem,
       Setting,
@@ -99,6 +108,15 @@ export function createPluginApi(id: string) {
     lib: { basename, dirname, joinPath, effectiveFolderColor, colorHex },
     platform: { isTauri, openExternal },
   };
+}
+
+export interface PluginQueryOptions<T> {
+  queryKey: readonly unknown[];
+  queryFn: () => Promise<T>;
+  enabled?: boolean;
+  staleTime?: number;
+  refetchInterval?: number;
+  refetchOnWindowFocus?: boolean;
 }
 
 export type PluginApi = ReturnType<typeof createPluginApi>;

@@ -13,6 +13,10 @@ import { usePluginsVersion } from "@/plugins/registry";
 import { storeApi } from "@/platform/store";
 import type { PluginFiles } from "@/platform/plugins";
 import { zipPlugin } from "@/plugins/zip";
+import { fakeJira } from "@/platform/jira";
+import { fakeBitbucket } from "@/platform/bitbucket";
+import { playedSounds, sentNotifications } from "@/platform/notifications";
+import { checkNotificationsNow } from "./notifications";
 
 export default function App() {
   const [state, setState] = useState<BootResult | null>(null);
@@ -33,6 +37,18 @@ export default function App() {
             store: storeApi(),
             /** Publish plugin files to the fake store as someone else would. */
             publishToStore: (files: PluginFiles, key: string | null) => storeApi().publish(zipPlugin(files), key),
+            fakeJira,
+            fakeBitbucket,
+            notifications: {
+              sent: sentNotifications,
+              played: playedSounds,
+              /** Run the checks now, past the lists' one-minute cache. */
+              check: async () => {
+                await queryClient.invalidateQueries({ queryKey: ["jira"] });
+                await queryClient.invalidateQueries({ queryKey: ["bitbucket"] });
+                await checkNotificationsNow();
+              },
+            },
           });
         initSettings(r.settings);
         setState(r);

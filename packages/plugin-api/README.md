@@ -47,9 +47,10 @@ All contribution points are in [`src/plugins/types.ts`](../../src/plugins/types.
 
 See [`src/plugins/api.ts`](../../src/plugins/api.ts) for everything. In short:
 
-- `api.app`: `openPage(page, param)`, `openNote`, `openFolder`, `openTodo`, `openSettings`, `on("folder-open", cb)`, the UI store (`useUI`), and data hooks (`useFolders`, `useNotes`, `useTodos`).
+- `api.app`: `openPage(page, param)`, `openNote`, `openFolder`, `openTodo`, `openSettings`, `on("folder-open", cb)`, the UI store (`useUI`), data hooks (`useFolders`, `useNotes`, `useTodos`), and `useQuery` / `queryClient.fetchQuery` on the app's own TanStack client (one cache for a plugin's page, sidebar count and background checks; list remote keys in `remoteQueries`). The template's AGENTS.md has a recipe for a web service with a count and notifications.
 - `api.data`: the app's data layer. `notes` covers notes and folders (`createNote`, `createFolder`, `renameNote`, `moveNote`…), plus `todos`. Changes refresh the app by themselves.
 - `api.storage`: small data for your plugin, stored on this computer (not in the notes folder). Use `get`, `set`, and `useValue(key, fallback)` as React state.
+- `api.notifications`: desktop notifications for the kinds the plugin declares in `notifications` (a switch each in its panel): `poll(check)` in `start`, `notifyNew(kind, items)` notifies only about ids not seen before (the first call only takes stock), `notify(kind, n)` for one right away. Every notification also lands in the history (the bell next to Settings); give items an `open` (a page and/or panel of the plugin) so a click there opens what it's about.
 - `api.ui`: the app's components (`Button`, `Input`, `Switch`, `Select`, `Dialog`, `DialogContent`, `Tooltip`, `NavItem`, `Setting`, `PageHeader`, `Section`, `FolderGlyph`, `FolderLabel`), plus `confirmDialog`, `showError`, `noteLinkProps` and `cn`.
 - `api.lib` / `api.platform`: path helpers, folder colors, `isTauri`, `openExternal`.
 

@@ -1,4 +1,6 @@
+import type { BitbucketRepoRef } from "@/lib/bitbucket";
 import type { JiraBoardRef } from "@/lib/jira";
+import type { BitbucketAccount } from "@/platform/bitbucket";
 import type { JiraAccount } from "@/platform/jira";
 export type TodoStatus = "todo" | "in_progress" | "waiting" | "blocked" | "done";
 export type Priority = 1 | 2 | 3 | 4;
@@ -59,6 +61,8 @@ export interface Folder {
   color?: string | null;
   /** The Jira boards linked to this folder (a project can have several). */
   jiraBoards?: JiraBoardRef[];
+  /** The Bitbucket repositories linked to this folder (the Bitbucket plugin). */
+  bitbucketRepos?: BitbucketRepoRef[];
   /** Uploaded icon (PNG data URL) shown instead of the folder symbol; not inherited by subfolders. */
   icon?: string | null;
 }
@@ -87,6 +91,9 @@ export interface TrashItem {
   trashPath: string | null;
   deletedAt: string;
 }
+
+/** Sounds made in src-tauri/src/sound.rs, or none. */
+export type NotificationSound = "chime" | "ping" | "pop" | "none";
 
 export interface Settings {
   theme: "system" | "light" | "dark";
@@ -121,4 +128,12 @@ export interface Settings {
   jiraEnabled: boolean;
   /** The connected Jira account; the API token itself is in the OS keychain. */
   jiraAccount: JiraAccount | null;
+  /** Desktop notifications at all (Settings → Notifications). */
+  notificationsEnabled: boolean;
+  /** Kinds of notifications switched off, as "plugin:kind" (a plugin's panel). */
+  notificationsMuted: string[];
+  /** The sound Forgor plays with a notification (src-tauri/src/sound.rs). */
+  notificationSound: NotificationSound;
+  /** The connected Bitbucket account; the API token itself is in the OS keychain. */
+  bitbucketAccount: BitbucketAccount | null;
 }

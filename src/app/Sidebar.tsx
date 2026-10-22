@@ -28,6 +28,7 @@ import { Tooltip } from "@/components/ui/tooltip";
 import * as notes from "@/data/notes";
 import { shortcutLabel } from "@/lib/keys";
 import { NavItem } from "@/components/NavItem";
+import { NotificationsMenu } from "@/features/notifications/NotificationsMenu";
 import { PluginSidebarItems } from "@/plugins/views";
 
 export function Sidebar() {
@@ -158,7 +159,12 @@ export function Sidebar() {
       <div className="space-y-px border-t px-2 py-2">
         <UpdateNotice />
         <NavItem icon={Puzzle} label="Plugins" target={{ kind: "plugins" }} />
-        <NavItem icon={Settings} label="Settings" target={{ kind: "settings" }} />
+        <div className="flex items-center gap-1">
+          <div className="min-w-0 flex-1">
+            <NavItem icon={Settings} label="Settings" target={{ kind: "settings" }} />
+          </div>
+          <NotificationsMenu />
+        </div>
       </div>
     </aside>
   );

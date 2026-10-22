@@ -107,3 +107,35 @@ test("community plugins: install from a folder, a broken one shows why, uninstal
   await expect(page.getByTestId("plugin-card-hello")).toHaveCount(0);
   await expect(page.getByTestId("nav-hello")).toHaveCount(0);
 });
+
+test("a community plugin's query runs on the app's client: a sidebar count and the same data from fetchQuery", async ({ page }) => {
+  await page.goto("/");
+  await expect(page.getByTestId("nav-plugins")).toBeVisible();
+  type Wn = { __wn: { installPlugin(files: Record<string, string>): Promise<{ error?: string }> } };
+  const manifest = JSON.stringify({ id: "counter", name: "Counter", version: "0.1.0", author: "Someone", description: "Counts." });
+  // The recipe in the template's AGENTS.md, by hand: one query for the count and for a check outside React
+  const main = `
+    const React = require("react");
+    let calls = 0;
+    const itemsQuery = { queryKey: ["counter", "items"], queryFn: async () => { calls++; return [{ id: "a" }, { id: "b" }, { id: "c" }]; }, staleTime: 60000 };
+    module.exports = (api) => ({
+      remoteQueries: ["counter"],
+      sidebar: () => {
+        const { data } = api.app.useQuery(itemsQuery);
+        return React.createElement(api.ui.NavItem, { label: "Counter", icon: () => null, count: data && data.length, target: { kind: "plugin", plugin: api.id, page: "main" }, testId: "nav-counter" });
+      },
+      pages: { main: { useTab: () => ({ label: "Counter", icon: () => null }), component: () => {
+        const [text, setText] = React.useState("");
+        return React.createElement("button", { "data-testid": "counter-fetch", onClick: async () => {
+          const items = await api.app.queryClient.fetchQuery(itemsQuery);
+          setText(items.length + " items, " + calls + " request");
+        } }, text || "Fetch");
+      } } },
+    });`;
+  const r = await page.evaluate(([m, js]) => (window as unknown as Wn).__wn.installPlugin({ "manifest.json": m, "main.js": js }), [manifest, main]);
+  expect(r.error).toBeUndefined();
+  await expect(page.getByTestId("nav-counter")).toContainText("3");
+  await page.getByTestId("nav-counter").click();
+  await page.getByTestId("counter-fetch").click();
+  await expect(page.getByTestId("counter-fetch")).toHaveText("3 items, 1 request"); // from the shared cache
+});

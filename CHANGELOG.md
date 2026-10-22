@@ -5,6 +5,12 @@ All notable changes to Forgor. Add new entries under **Unreleased**;
 
 ## Unreleased
 
+### New
+- **Bitbucket plugin** (Plugins → Bitbucket): see your open pull requests and the ones waiting for your review under **Pull requests** in the sidebar. Review requests stand out (an accent bar and where your review stands); your own show how many reviewers approved. Filter on All / Review requested / Mine. Link repositories to a folder in its panel, like Jira boards: the folder shows their pull requests, and they get the folder's icon. Click one for the details: branches, reviewers and their status, comments, files changed, the description, the Jira ticket, and **Open in Bitbucket**. Read-only: Forgor never changes anything in Bitbucket. It needs an Atlassian API token with Bitbucket read scopes (the plugin's settings explain how).
+- **Build status** on pull requests (pipelines or other CI that reports to Bitbucket): ✓ passed, ✗ failed or a spinner while it runs, and each build in the detail panel.
+- **Desktop notifications**: a new review request, a ticket assigned to you, or someone else's comment on one of your tickets shows a notification (checked every 5 minutes while Forgor runs, also in the tray). Choose which in the Jira and Bitbucket plugins' panels, or turn them all off in Settings → Notifications, where you also pick the sound (Chime, Ping, Pop or none, with ▶ to hear it) and can send a test. Plugins can send them too, and can now show a count in the sidebar from data they fetch (`api.app.useQuery`). The **bell** next to Settings keeps a history (a dot while there are unread ones): click one to open the ticket or pull request it's about.
+- **Counts in the sidebar**: Jira shows how many open tickets are assigned to you, Pull requests how many review requests are still waiting for you.
+
 ## 1.0.0 (2026-10-19)
 
 ### New
