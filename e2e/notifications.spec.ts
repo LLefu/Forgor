@@ -78,18 +78,19 @@ test("the bell keeps a history: unread dot, newest first, a click opens the tick
   await check(page);
   await expect(page.getByTestId("notifications-unread")).toBeVisible();
 
-  // The menu lists them; opening it marks them read
+  // The menu lists them; opening it doesn't mark them read, clicking one does
   await bell.click();
   const menu = page.getByTestId("notifications-menu");
   await expect(menu.getByTestId("notification-entry")).toHaveCount(2);
   await expect(menu).toContainText("Lisa Jansen asked you to review");
   await expect(menu).toContainText("Offline mode (Mobile app #60)");
   await expect(menu).toContainText("Sanne de Vries commented on WEB-12");
-  await expect(bell).toHaveAttribute("data-unread", "false");
+  await expect(bell).toHaveAttribute("data-unread", "true");
 
   // A comment opens the Jira overview with that ticket's panel
   await menu.getByTestId("notification-entry").filter({ hasText: "commented on WEB-12" }).click();
   await expect(menu).toHaveCount(0);
+  await expect(bell).toHaveAttribute("data-unread", "true"); // the review request is still unread
   await expect(page.getByTestId("jira-page")).toBeVisible();
   await expect(page.getByTestId("issue-panel").getByTestId("issue-summary")).toHaveText("Homepage hero loads slowly on mobile");
 
@@ -98,10 +99,19 @@ test("the bell keeps a history: unread dot, newest first, a click opens the tick
   await menu.getByTestId("notification-entry").filter({ hasText: "asked you to review" }).click();
   await expect(page.getByTestId("pr-page")).toBeVisible();
   await expect(page.getByTestId("pr-panel").getByTestId("pr-title")).toHaveText("Offline mode");
+  await expect(bell).toHaveAttribute("data-unread", "false");
+
+  // One can be deleted on its own
+  await bell.click();
+  const row = menu.locator("li").filter({ hasText: "commented on WEB-12" });
+  await row.hover();
+  await row.getByTestId("notification-delete").click();
+  await expect(menu.getByTestId("notification-entry")).toHaveCount(1);
+  await page.keyboard.press("Escape");
 
   // Cleared (it's kept in the database; the browser build's is in memory, so no reload here)
   await bell.click();
-  await expect(menu.getByTestId("notification-entry")).toHaveCount(2);
+  await expect(menu.getByTestId("notification-entry")).toHaveCount(1);
   await page.getByTestId("notifications-clear").click();
   await expect(page.getByTestId("notifications-menu")).toContainText("No notifications yet.");
 });

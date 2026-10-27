@@ -1,43 +1,35 @@
 import { useEffect, useState } from "react";
 import { formatDistanceToNowStrict } from "date-fns";
-import { Bell } from "lucide-react";
+import { Bell, X } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Tooltip } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
-import { clearNotifications, loadNotificationHistory, markNotificationsRead, openNotification, useNotificationHistory, type HistoryEntry } from "@/app/notifications";
+import { clearNotifications, deleteNotification, loadNotificationHistory, markNotificationRead, openNotification, useNotificationHistory, type HistoryEntry } from "@/app/notifications";
 import { getPlugin } from "@/plugins/registry";
 
 /**
  * Sidebar, next to Settings: the bell. A dot while there are unread
- * notifications; the menu lists the recent ones (app/notifications.ts), and a
- * click opens what it's about (the ticket, the PR).
+ * notifications; the menu lists the recent ones (app/notifications.ts). A
+ * notification stays unread until it's clicked (which also opens what it's
+ * about: the ticket, the PR); hovering one shows a button to delete it.
  */
 export function NotificationsMenu() {
   const entries = useNotificationHistory((s) => s.entries);
   const [open, setOpen] = useState(false);
-  // Unread when the menu opened (they're marked read right away, but stay highlighted while it's open).
-  const [fresh, setFresh] = useState<Set<string>>(new Set());
   const unread = entries.some((e) => !e.read);
 
   useEffect(() => {
     void loadNotificationHistory();
   }, []);
 
-  const toggle = (next: boolean) => {
-    setOpen(next);
-    if (next) {
-      setFresh(new Set(entries.filter((e) => !e.read).map((e) => e.id)));
-      if (unread) void markNotificationsRead();
-    }
-  };
-
   const click = (e: HistoryEntry) => {
+    void markNotificationRead(e.id);
     openNotification(e);
     setOpen(false);
   };
 
   return (
-    <Popover open={open} onOpenChange={toggle}>
+    <Popover open={open} onOpenChange={setOpen}>
       <Tooltip content="Notifications">
         <PopoverTrigger asChild>
           <button
@@ -67,11 +59,10 @@ export function NotificationsMenu() {
             {entries.map((e) => {
               const Icon = getPlugin(e.source)?.icon ?? Bell;
               return (
-                <li key={e.id}>
+                <li key={e.id} className="group relative">
                   <button
                     onClick={() => click(e)}
-                    disabled={!e.open}
-                    className={cn("flex w-full items-start gap-2.5 px-3 py-2 text-left hover:bg-muted disabled:cursor-default disabled:hover:bg-transparent", fresh.has(e.id) && "bg-accent/60")}
+                    className={cn("flex w-full items-start gap-2.5 px-3 py-2 text-left hover:bg-muted", !e.read && "bg-accent/60")}
                     data-testid="notification-entry"
                   >
                     <Icon className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
@@ -80,7 +71,15 @@ export function NotificationsMenu() {
                       <span className="line-clamp-2 text-xs text-muted-foreground">{e.body}</span>
                       <span className="mt-0.5 block text-[11px] text-muted-foreground">{formatDistanceToNowStrict(new Date(e.at), { addSuffix: true })}</span>
                     </span>
-                    {fresh.has(e.id) && <span className="mt-1.5 size-1.5 shrink-0 rounded-full bg-primary" aria-label="New" />}
+                    {!e.read && <span className="mt-1.5 size-1.5 shrink-0 rounded-full bg-primary group-hover:invisible" aria-label="New" />}
+                  </button>
+                  <button
+                    onClick={() => void deleteNotification(e.id)}
+                    className="absolute right-2 top-2 hidden size-5 items-center justify-center rounded text-muted-foreground hover:bg-background hover:text-foreground group-hover:flex"
+                    aria-label="Delete notification"
+                    data-testid="notification-delete"
+                  >
+                    <X className="size-3.5" />
                   </button>
                 </li>
               );

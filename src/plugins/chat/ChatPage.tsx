@@ -262,6 +262,8 @@ function Composer({ busy }: { busy: boolean }) {
     if (!el) return;
     el.style.height = "auto";
     el.style.height = `${Math.min(el.scrollHeight, 200)}px`;
+    // Scrollbars only once it's at its maximum height (a rounding difference showed them on one line).
+    el.style.overflowY = el.scrollHeight > 200 ? "auto" : "hidden";
   }, [text]);
 
   const send = () => {
@@ -312,7 +314,7 @@ function Composer({ busy }: { busy: boolean }) {
                 }
               }}
               placeholder="Ask about your notes… (@ to attach)"
-              className="max-h-[200px] min-h-8 flex-1 resize-none bg-transparent px-1.5 py-1 text-[14px] outline-none placeholder:text-muted-foreground"
+              className="max-h-[200px] min-h-8 flex-1 resize-none overflow-x-hidden bg-transparent px-1.5 py-1 text-[14px] outline-none placeholder:text-muted-foreground"
               aria-label="Your question"
             />
             <Tooltip content="Attach a note, todo…">

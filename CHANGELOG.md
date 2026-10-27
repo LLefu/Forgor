@@ -5,6 +5,12 @@ All notable changes to Forgor. Add new entries under **Unreleased**;
 
 ## Unreleased
 
+### Changed
+- **Notifications** stay unread until you click them (opening the bell no longer marks them all read), and hovering one shows a button to delete just that notification. Settings' test notification now shows up in the bell too.
+
+### Fixed
+- The AI chat's typing bar no longer shows scrollbars.
+
 ## 1.2.0 (2026-10-22)
 
 ### New

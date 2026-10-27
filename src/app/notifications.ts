@@ -83,7 +83,8 @@ async function record(source: string, kind: string, items: (DesktopNotification 
   await saveHistory([...added.reverse(), ...useNotificationHistory.getState().entries].slice(0, MAX_HISTORY));
 }
 
-export const markNotificationsRead = () => saveHistory(useNotificationHistory.getState().entries.map((e) => (e.read ? e : { ...e, read: true })));
+export const markNotificationRead = (id: string) => saveHistory(useNotificationHistory.getState().entries.map((e) => (e.id === id && !e.read ? { ...e, read: true } : e)));
+export const deleteNotification = (id: string) => saveHistory(useNotificationHistory.getState().entries.filter((e) => e.id !== id));
 export const clearNotifications = () => saveHistory([]);
 
 /** Clicking one in the history: its source's page and/or panel. */
@@ -138,10 +139,12 @@ export async function notify(source: string, kind: string, n: DesktopNotificatio
   if (await show(n)) await sound();
 }
 
-/** Settings → Send a test notification: always, with the chosen sound. False when the system doesn't allow it. */
+/** Settings → Send a test notification: always, with the chosen sound, and in the history too. False when the system doesn't allow it. */
 export async function sendTestNotification(): Promise<boolean> {
   lastSound = 0;
-  const ok = await show({ title: "Forgor", body: "Notifications work." });
+  const test = { title: "Forgor", body: "Notifications work." };
+  await record("app", "test", [test]);
+  const ok = await show(test);
   if (ok) await sound();
   return ok;
 }
