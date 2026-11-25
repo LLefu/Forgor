@@ -281,7 +281,9 @@ body.resizing-media * {
 /* Crepe's reset (".milkdown *", ".milkdown button") is unlayered, so it beats Tailwind's
    layered utilities. Inside our React widgets, fall back to the utilities again. */
 .note-editor .milkdown .media-player *,
-.note-editor .milkdown .media-player button {
+.note-editor .milkdown .media-player button,
+.note-editor .milkdown .plugin-code-preview *,
+.note-editor .milkdown .plugin-code-preview button {
   margin: revert-layer;
   padding: revert-layer;
   border: revert-layer;
@@ -340,4 +342,73 @@ body.resizing-media * {
 @keyframes review-nudge {
   0%, 100% { transform: translateX(-50%) scale(1); }
   40% { transform: translateX(-50%) scale(1.08); }
+}
+
+/* Highlight (==text==): the theme's highlight color, soft enough to read through. */
+.note-editor .milkdown mark.note-highlight {
+  background: color-mix(in srgb, var(--primary) 22%, transparent);
+  color: inherit;
+  border-radius: 2px;
+  padding: 0 1px;
+}
+
+/* Toggle (<details>): an arrow, the title line, and content that folds away. */
+.note-editor .milkdown .toggle-block {
+  position: relative;
+  padding-left: 26px;
+  margin: 4px 0;
+}
+.note-editor .milkdown .toggle-block > .toggle-arrow {
+  position: absolute;
+  left: 0;
+  top: 3px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: 0;
+  border-radius: 4px;
+  background: none;
+  color: var(--muted-foreground);
+  cursor: pointer;
+  transition: transform 0.12s;
+}
+.note-editor .milkdown .toggle-block > .toggle-arrow:hover {
+  background: var(--muted);
+  color: var(--foreground);
+}
+.note-editor .milkdown .toggle-block[data-open] > .toggle-arrow {
+  transform: rotate(90deg);
+}
+.note-editor .milkdown .toggle-block > .toggle-content > .toggle-summary {
+  font-weight: 500;
+  min-height: 1.6em;
+  line-height: 1.75;
+}
+.note-editor .milkdown .toggle-block > .toggle-content > .toggle-summary:empty::before,
+.note-editor .milkdown .toggle-block > .toggle-content > .toggle-summary:has(> br:only-child)::before {
+  content: attr(data-placeholder);
+  color: var(--muted-foreground);
+  pointer-events: none;
+  float: left;
+  height: 0;
+}
+.note-editor .milkdown .toggle-block:not([data-open]) > .toggle-content > :not(.toggle-summary) {
+  display: none;
+}
+
+/* Long lists of short items flow into columns when there is room (listColumns.ts). */
+.note-editor .milkdown .list-columns {
+  column-width: 13rem;
+  column-gap: 2rem;
+}
+.note-editor .milkdown .list-columns > * {
+  break-inside: avoid;
+}
+
+/* A plugin's preview under a code block. */
+.note-editor .milkdown .plugin-code-preview {
+  overflow-x: auto;
 }

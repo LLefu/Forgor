@@ -100,6 +100,10 @@ export interface Settings {
   themeSoft: boolean;
   /** A plugin's color theme ("<plugin id>:<theme id>", plugins/themes.ts), or null for the app's own colors. */
   themePreset: string | null;
+  /** Notion-style typing in notes: `"` + space = quote, `>` + space = toggle (else `>` is a quote, as in markdown). */
+  notionTyping: boolean;
+  /** Long lists of short items flow into columns in wide notes (features/editor/listColumns.ts). */
+  listColumns: boolean;
   archiveAfterDays: number;
   hotkey: string;
   vaultPath: string | null;

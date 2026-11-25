@@ -6,6 +6,12 @@ All notable changes to Forgor. Add new entries under **Unreleased**;
 ## Unreleased
 
 ### New
+- **Highlight**: select text and press **⇧⌘H** (or the new toolbar button), or type `==text==`. Saved as `==text==`, like Obsidian and Typora; shown in your highlight color.
+- **Toggles**: a line that folds its content away (**/toggle**). Saved as `<details>`, which GitHub and Obsidian show the same way. Notes open with their toggles closed.
+- **Turn into**: click the drag handle left of a block to change it into text, a heading, a list, a todo, a toggle, a quote or code. Content that doesn't fit is kept below it, and ⌘Z undoes it in one step. Turning a todo line into something else asks whether to keep the todo or move it to the Trash.
+- **Notion-style typing** (Settings → Shortcuts → Typing): `"` + space makes a quote and `>` + space a toggle. Off by default, so `>` keeps making a quote as in markdown.
+- **Lists in columns**: long lists of short items fill the width of a wide note in columns (Settings → Appearance to turn it off). The note itself doesn't change.
+- **Plugins can add to the editor** (`editor`): previews under code blocks (a diagram for a ```mermaid block, say), items in the "/" menu and in a block's menu.
 - **Plugins can share their items**: Jira (1.2.0) and Bitbucket (1.1.0) offer my open tickets and pull requests as a structured list (status, dates, estimate, folder, link), and other plugins read every plugin's items with `api.app.useItems()`, so an overview of everything is possible as a plugin. A plugin can add its own with `items`. Jira tickets now also come with their estimated time.
 - **Color themes from plugins**: a plugin can add color themes (`themes`), picked under **Settings → Appearance → Colors**. A theme with its own highlight color switches the highlight color picker off while it's used, and a theme that only comes in dark (or light) always uses that.
 - **Plugin API**: `api.data.notes.writeNoteData(id, patch)` changes a note's front matter without touching its text (`null` removes a key; `id` and `created` stay Forgor's). `saveAttachment` (save a file next to a note) and `setFolderIcon` (any image, scaled like an uploaded icon) are now part of the public API.

@@ -164,6 +164,43 @@ export function sanitizeDefinition(input: unknown): { definition: PluginDefiniti
       });
     }
   }
+  if (out.editor !== undefined) {
+    if (!isRecord(out.editor)) drop("editor", "it must be an object (codeBlockRenderers, slashItems, blockMenuItems)");
+    else {
+      const editor: Record<string, unknown> = { ...out.editor };
+      const renderers = editor.codeBlockRenderers;
+      if (renderers !== undefined) {
+        if (!isRecord(renderers)) {
+          delete editor.codeBlockRenderers;
+          warnings.push("“editor.codeBlockRenderers” was ignored: it must be an object of language → component.");
+        } else {
+          const kept: Record<string, unknown> = {};
+          for (const [lang, c] of Object.entries(renderers)) {
+            if (isComponent(c)) kept[lang.toLowerCase()] = c;
+            else warnings.push(`The code block preview for “${lang}” was ignored: it must be a component.`);
+          }
+          editor.codeBlockRenderers = kept;
+        }
+      }
+      for (const key of ["slashItems", "blockMenuItems"] as const) {
+        const list = editor[key];
+        if (list === undefined) continue;
+        if (!Array.isArray(list)) {
+          delete editor[key];
+          warnings.push(`“editor.${key}” was ignored: it must be a list.`);
+          continue;
+        }
+        const seen = new Set<string>();
+        editor[key] = list.filter((item, i) => {
+          const ok = isRecord(item) && isText(item.id) && isText(item.label) && isFn(item.run) && (item.show === undefined || isFn(item.show)) && !seen.has(item.id);
+          if (!ok) warnings.push(`editor.${key}[${i}] was ignored: it needs a unique id, a label and a run function.`);
+          else seen.add(item.id as string);
+          return ok;
+        });
+      }
+      out.editor = editor;
+    }
+  }
   if (out.items !== undefined && !(isRecord(out.items) && isText(out.items.kind) && isFn(out.items.items))) drop("items", "it needs a kind and an items function");
   if (out.chat !== undefined && !(isRecord(out.chat) && isText(out.chat.kind) && isFn(out.chat.items))) drop("chat", "it needs a kind and an items function");
 

@@ -1,11 +1,12 @@
 import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from "react";
 import { Crepe } from "@milkdown/crepe";
-import { commandsCtx, editorViewCtx, serializerCtx } from "@milkdown/kit/core";
+import { commandsCtx, editorViewCtx, parserCtx, serializerCtx } from "@milkdown/kit/core";
 import { clearTextInCurrentBlockCommand } from "@milkdown/kit/preset/commonmark";
 import { replaceAll, insert } from "@milkdown/kit/utils";
 import type { EditorView } from "@milkdown/kit/prose/view";
 import type { Node as ProseNode } from "@milkdown/kit/prose/model";
-import { AllSelection, TextSelection, type EditorState } from "@milkdown/kit/prose/state";
+import { AllSelection, NodeSelection, TextSelection, type EditorState } from "@milkdown/kit/prose/state";
+import { Fragment } from "@milkdown/kit/prose/model";
 import { streamingPluginKey } from "@milkdown/kit/plugin/streaming";
 import { clearDiffReviewCmd, diffPluginKey } from "@milkdown/kit/plugin/diff";
 import "@milkdown/crepe/theme/common/style.css";
@@ -37,7 +38,17 @@ import { MentionMenu, type MentionMenuState } from "./MentionMenu";
 import { renderEmbed } from "./embed";
 import { renderMedia } from "./mediaWidget";
 import { installImageResize } from "./imageResize";
-import { buildSlashMenu } from "./slashMenu";
+import { buildSlashMenu, type ExtraSlashItem } from "./slashMenu";
+import { highlight, highlightSchema, runToggleHighlight } from "./highlight";
+import { insertToggle, toggle, toggleKeydown } from "./toggle";
+import { notionTyping } from "./typing";
+import { listColumns } from "./listColumns";
+import { linkedTodo, targetsFor, turnInto, type Block, type BlockKind } from "./turnInto";
+import { BlockMenu, type BlockMenuState } from "./BlockMenu";
+import { chooseDialog } from "@/components/ConfirmDialog";
+import { deleteTodo } from "@/data/todos";
+import { codePreviews, runSafely, shows, type EditorExtensions } from "@/plugins/editor";
+import type { PluginBlock, PluginEditorApi } from "@/plugins/types";
 import { codeTheme } from "./codeTheme";
 import { cleanMarkdown } from "@/lib/markdown";
 import { ACCEPT, fileKind } from "@/lib/files";
@@ -71,7 +82,13 @@ interface Props {
   writer?: WriteFn | null;
   /** Before each AI request: save, and keep the current text in the version history. */
   onBeforeAI?: () => Promise<void>;
+  /** What enabled plugins add to the editor (plugins/editor.tsx). */
+  extensions?: EditorExtensions;
 }
+
+const NO_EXTENSIONS: EditorExtensions = { key: "", slashItems: [], blockMenuItems: [], renderers: new Map() };
+
+const highlightIcon = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 11-6 6v3h9l3-3"/><path d="m22 12-4.6 4.6a2 2 0 0 1-2.8 0l-5.2-5.2a2 2 0 0 1 0-2.8L14 4"/></svg>`;
 
 /**
  * What the writing tools get: the selected markdown, exactly the range the reply
@@ -94,7 +111,7 @@ function aiContext(state: EditorState, serialize: (doc: ProseNode) => string, in
 const isExternal = (url: string) => /^(https?:|data:|blob:|asset:|http:\/\/asset\.localhost)/.test(url);
 
 export const NoteEditor = forwardRef<NoteEditorHandle, Props>(function NoteEditor(
-  { noteId, notePath, initial, onChange, onOpenMention, onCreateNote, onOpenFile, writer = null, onBeforeAI },
+  { noteId, notePath, initial, onChange, onOpenMention, onCreateNote, onOpenFile, writer = null, onBeforeAI, extensions = NO_EXTENSIONS },
   ref,
 ) {
   const root = useRef<HTMLDivElement>(null);
@@ -103,13 +120,17 @@ export const NoteEditor = forwardRef<NoteEditorHandle, Props>(function NoteEdito
   const [suggest, setSuggest] = useState<MentionSuggestState | null>(null);
   const [onlyNotes, setOnlyNotes] = useState(false);
   const [menu, setMenu] = useState<MentionMenuState | null>(null);
+  const [blockMenu, setBlockMenu] = useState<(BlockMenuState & { block: Block }) | null>(null);
+  /** Made with each editor: what plugin items get. */
+  const helpers = useRef<{ editorApi: () => PluginEditorApi; pluginBlock: (b: Block) => PluginBlock } | null>(null);
   const { data: notes = [] } = useNotes();
   const { data: todos = [] } = useTodos();
   const { data: folders = [] } = useFolders();
 
   // Latest values for use inside long-lived editor callbacks.
-  const live = useRef({ notes, todos, folders, notePath, onChange, onOpenMention, onOpenFile, onBeforeAI, writer });
-  live.current = { notes, todos, folders, notePath, onChange, onOpenMention, onOpenFile, onBeforeAI, writer };
+  const live = useRef({ notes, todos, folders, notePath, onChange, onOpenMention, onOpenFile, onBeforeAI, writer, extensions });
+  live.current = { notes, todos, folders, notePath, onChange, onOpenMention, onOpenFile, onBeforeAI, writer, extensions };
+  const listColumnsOn = useUI((s) => s.settings.listColumns);
   const ai = !!writer;
 
   const withView = <T,>(fn: (view: EditorView) => T): T | undefined => crepeRef.current?.editor.action((c) => fn(c.get(editorViewCtx)));
@@ -189,6 +210,47 @@ export const NoteEditor = forwardRef<NoteEditorHandle, Props>(function NoteEdito
       else if (choice?.type === "upload") upload(kind);
     };
 
+    const previews = codePreviews(() => live.current.extensions);
+
+    /** What a plugin's editor items get: this note, and a way to change it. */
+    const editorApi = (): PluginEditorApi => ({
+      noteId,
+      notePath: live.current.notePath,
+      insertMarkdown: (md) => {
+        crepe.editor.action((c) => c.get(editorViewCtx).focus());
+        crepe.editor.action(insert(md));
+      },
+      selectedText: () =>
+        crepe.editor.action((c) => {
+          const { state } = c.get(editorViewCtx);
+          return state.doc.textBetween(state.selection.from, state.selection.to, " ");
+        }),
+    });
+
+    /** A block as plugins see it: its markdown, and a way to replace it. */
+    const pluginBlock = (block: Block): PluginBlock =>
+      crepe.editor.action((c) => {
+        const view = c.get(editorViewCtx);
+        const { schema } = view.state;
+        const { node, pos } = block;
+        // A list item is written as a list of one.
+        const wrapped = node.type.name === "list_item" ? view.state.doc.resolve(pos).parent.copy(Fragment.from(node)) : node;
+        return {
+          type: node.type.name,
+          markdown: c.get(serializerCtx)(schema.topNodeType.create(null, wrapped)).trim(),
+          replaceWith: (md: string) =>
+            crepe.editor.action((c2) => {
+              const v = c2.get(editorViewCtx);
+              const current = v.state.doc.nodeAt(pos);
+              if (!current) return;
+              const doc = c2.get(parserCtx)(md);
+              v.dispatch(v.state.tr.replaceWith(pos, pos + current.nodeSize, doc.content).scrollIntoView());
+            }),
+        };
+      });
+
+    helpers.current = { editorApi, pluginBlock };
+
     const crepe = new Crepe({
       root: root.current,
       defaultValue: initial,
@@ -216,7 +278,26 @@ export const NoteEditor = forwardRef<NoteEditorHandle, Props>(function NoteEdito
           onError: (e) => showError(e.cause ?? e, "Writing tools"),
         },
         [Crepe.Feature.Placeholder]: { text: "Start writing… type / for blocks, @ to link a note or todo, - [ ] for a todo", mode: "doc" },
-        [Crepe.Feature.CodeMirror]: { theme: codeTheme },
+        [Crepe.Feature.CodeMirror]: {
+          theme: codeTheme,
+          // Plugins' previews (a diagram under a ```mermaid block…); no preview for other languages.
+          renderPreview: (language: string, content: string) => previews.render(language, content),
+        },
+        [Crepe.Feature.Toolbar]: {
+          buildToolbar: (builder) => {
+            builder.getGroup("formatting").addItem("highlight", {
+              icon: highlightIcon,
+              label: "Highlight",
+              active: (c) => {
+                const { state } = c.get(editorViewCtx);
+                const type = highlightSchema.type(c);
+                const { from, to, empty, $from } = state.selection;
+                return empty ? !!type.isInSet(state.storedMarks ?? $from.marks()) : state.doc.rangeHasMark(from, to, type);
+              },
+              onRun: (c) => runToggleHighlight(c),
+            });
+          },
+        },
         [Crepe.Feature.ImageBlock]: {
           onUpload: async (file) => (await saveAttachment(noteId, file.name, new Uint8Array(await file.arrayBuffer()))).rel,
           proxyDomURL: toDisplayUrl,
@@ -236,6 +317,23 @@ export const NoteEditor = forwardRef<NoteEditorHandle, Props>(function NoteEdito
                 c.get(commandsCtx).call(clearTextInCurrentBlockCommand.key);
                 void attachFile(kind);
               },
+              toggle: (c) => {
+                c.get(commandsCtx).call(clearTextInCurrentBlockCommand.key);
+                insertToggle(c.get(editorViewCtx));
+              },
+              extra: live.current.extensions.slashItems.map(
+                ({ plugin, item }): ExtraSlashItem => ({
+                  key: `${plugin.id}:${item.id}`,
+                  group: plugin.name,
+                  label: item.label,
+                  icon: item.icon,
+                  keywords: item.keywords,
+                  onRun: (c) => {
+                    c.get(commandsCtx).call(clearTextInCurrentBlockCommand.key);
+                    runSafely(plugin, () => item.run(editorApi()));
+                  },
+                }),
+              ),
             }),
         },
       },
@@ -249,6 +347,10 @@ export const NoteEditor = forwardRef<NoteEditorHandle, Props>(function NoteEdito
     };
 
     crepe.editor
+      .use(highlight)
+      .use(toggle)
+      .use(notionTyping(() => useUI.getState().settings.notionTyping))
+      .use(listColumns(() => useUI.getState().settings.listColumns))
       .use(inlineTodoDecorations((id) => useUI.getState().openTodo(id)))
       .use(
         linkPlugin({
@@ -334,6 +436,41 @@ export const NoteEditor = forwardRef<NoteEditorHandle, Props>(function NoteEdito
     el.addEventListener("mousedown", noAutoscroll, true);
     const stopImageResize = installImageResize(el, () => crepeRef.current?.editor.action((c) => c.get(editorViewCtx)));
 
+    // A click on the drag handle (no drag) opens the block's menu. The handle selected the block on mousedown.
+    const onHandleClick = (e: MouseEvent) => {
+      const handle = (e.target as HTMLElement).closest?.(".milkdown-block-handle .operation-item");
+      if (!handle || handle !== handle.parentElement?.lastElementChild || !crepeRef.current) return;
+      const view = crepe.editor.action((c) => c.get(editorViewCtx));
+      const sel = view.state.selection;
+      if (!(sel instanceof NodeSelection)) return;
+      const block: Block = { node: sel.node, pos: sel.from };
+      const kinds = targetsFor(block, view.state);
+      const asPlugin = pluginBlock(block);
+      const extra = live.current.extensions.blockMenuItems
+        .filter(({ plugin, item }) => shows(plugin, item.show && (() => item.show!(asPlugin))))
+        .map(({ plugin, item }) => ({ id: `${plugin.id}:${item.id}`, label: item.label, group: plugin.name }));
+      if (!kinds.length && !extra.length) return;
+      setBlockMenu({ rect: handle.getBoundingClientRect(), kinds, extra, block });
+    };
+    document.addEventListener("click", onHandleClick);
+
+    // Toggle keys, before ProseMirror and Crepe's plugins (which take Backspace first).
+    const onKeydown = (e: KeyboardEvent) => {
+      if (!crepeRef.current || e.defaultPrevented) return;
+      const view = crepe.editor.action((c) => c.get(editorViewCtx));
+      // ProseMirror only reads a moved cursor (⌘← …) when it handles the key itself: catch up first, as it does.
+      (view as unknown as { domObserver?: { flush?: () => void } }).domObserver?.flush?.();
+      if (toggleKeydown(view, e)) e.stopPropagation();
+    };
+    el.addEventListener("keydown", onKeydown, true);
+
+    // ⌘⇧H (the shortcut registry sends it to whichever editor has the focus).
+    const onCommand = (e: Event) => {
+      if ((e as CustomEvent).detail !== "highlight" || !crepeRef.current) return;
+      crepe.editor.action((c) => c.get(editorViewCtx).hasFocus() && runToggleHighlight(c));
+    };
+    window.addEventListener("editor-command", onCommand);
+
     void crepe.create().then(() => {
       if (disposed) void crepe.destroy();
       else crepeRef.current = crepe;
@@ -348,6 +485,10 @@ export const NoteEditor = forwardRef<NoteEditorHandle, Props>(function NoteEdito
       el.removeEventListener("auxclick", middleClick);
       el.removeEventListener("mousedown", noAutoscroll, true);
       stopImageResize();
+      document.removeEventListener("click", onHandleClick);
+      el.removeEventListener("keydown", onKeydown, true);
+      window.removeEventListener("editor-command", onCommand);
+      previews.destroy();
       if (crepeRef.current === crepe) {
         crepeRef.current = null;
         void crepe.destroy();
@@ -355,7 +496,12 @@ export const NoteEditor = forwardRef<NoteEditorHandle, Props>(function NoteEdito
     };
     // The editor is created once per note (and again when writing tools are turned on or off); content updates go through setMarkdown.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [noteId, ai]);
+  }, [noteId, ai, extensions.key]);
+
+  // List columns on/off: draw the decorations again.
+  useEffect(() => {
+    withView((v) => v.dispatch(v.state.tr.setMeta("list-columns", listColumnsOn)));
+  }, [listColumnsOn]);
 
   // Re-check "@" links (missing or not) when notes, todos or folders change.
   useEffect(() => {
@@ -375,6 +521,43 @@ export const NoteEditor = forwardRef<NoteEditorHandle, Props>(function NoteEdito
 
   const onMenu = (fn: (v: EditorView, t: MentionTarget) => void) => () => menu && withView((v) => fn(v, menu.target));
 
+  /** Turn into: a todo line that stops being one asks what happens to its todo first. */
+  const onTurnInto = async (block: Block, kind: BlockKind) => {
+    const todoId = kind === "todo" ? null : linkedTodo(block);
+    let trash = false;
+    if (todoId) {
+      const title = todos.find((t) => t.id === todoId)?.title;
+      const choice = await chooseDialog({
+        title: "This line is a todo",
+        message: `${title ? `“${title}” is` : "It's"} a todo. After this it's no longer in the note. Keep the todo, or move it to the Trash?`,
+        choices: [
+          { id: "trash", label: "Move todo to Trash" },
+          { id: "keep", label: "Keep the todo" },
+        ],
+      });
+      if (!choice) return;
+      trash = choice === "trash";
+    }
+    withView((v) => {
+      // The note may have changed while the dialog was open: only go on if the block is still there.
+      const node = v.state.doc.nodeAt(block.pos);
+      if (!node || !node.eq(block.node)) return;
+      const tr = turnInto(v.state, { node, pos: block.pos }, kind);
+      if (tr) v.dispatch(tr.scrollIntoView());
+      v.focus();
+    });
+    if (trash && todoId) await deleteTodo(todoId);
+  };
+
+  const onBlockExtra = (block: Block, id: string) => {
+    const found = extensions.blockMenuItems.find(({ plugin, item }) => `${plugin.id}:${item.id}` === id);
+    if (!found) return;
+    const { plugin, item } = found;
+    const h = helpers.current;
+    if (!h) return;
+    runSafely(plugin, () => item.run(h.pluginBlock(block), h.editorApi()));
+  };
+
   return (
     <>
       <div ref={root} className="note-editor" data-testid="note-editor" />
@@ -387,6 +570,14 @@ export const NoteEditor = forwardRef<NoteEditorHandle, Props>(function NoteEdito
           folders={folders}
           onlyNotes={onlyNotes}
           onPick={(p) => void pick(p)}
+        />
+      )}
+      {blockMenu && (
+        <BlockMenu
+          state={blockMenu}
+          onClose={() => setBlockMenu(null)}
+          onTurnInto={(kind) => void onTurnInto(blockMenu.block, kind).catch(showError)}
+          onExtra={(id) => onBlockExtra(blockMenu.block, id)}
         />
       )}
       {menu && (

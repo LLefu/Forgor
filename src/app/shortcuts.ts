@@ -126,6 +126,14 @@ export const APP_SHORTCUTS: Shortcut[] = [
     },
   },
   // General
+  {
+    id: "highlight",
+    group: "Editor",
+    label: "Highlight the selected text",
+    keys: ["Mod+Shift+H"],
+    // The note editor that has the focus does it (NoteEditor listens).
+    run: () => void window.dispatchEvent(new CustomEvent("editor-command", { detail: "highlight" })),
+  },
   { id: "toggle-sidebar", group: "General", label: "Show or hide the sidebar", keys: ["Mod+\\"], run: () => void ui().updateSetting("sidebarHidden", !ui().settings.sidebarHidden) },
   { id: "shortcuts-help", group: "General", label: "All keyboard shortcuts", keys: ["Mod+/"], run: () => ui().setShortcutsHelp(!ui().shortcutsHelp) },
 ];

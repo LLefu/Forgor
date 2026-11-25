@@ -20,6 +20,7 @@ import { format } from "date-fns";
 import { trashItem } from "@/features/explorer/ItemMenu";
 import { noteLinkProps } from "@/app/noteLink";
 import { useEditorWriter } from "@/plugins/registry";
+import { useEditorExtensions } from "@/plugins/editor";
 import { PluginNoteHeader } from "@/plugins/views";
 import type { NoteHeaderProps } from "@/plugins/types";
 
@@ -64,6 +65,7 @@ function LoadedNote({ id, initialBody }: { id: string; initialBody: string }) {
   const editor = useRef<NoteEditorHandle>(null);
   const [historyOpen, setHistoryOpen] = useState(false);
   const writer = useEditorWriter();
+  const extensions = useEditorExtensions();
   const editorParts = { hasSelection: () => !!editor.current?.selectedText().trim(), runAI: (instruction: string) => editor.current?.runAI(instruction) };
 
   // ---- saving: debounce edits, flush on unmount; reload on external changes when clean
@@ -140,6 +142,7 @@ function LoadedNote({ id, initialBody }: { id: string; initialBody: string }) {
             onCreateNote={(title) => notes.createNote(isMeetingsPath(meta.path) ? "" : dirname(meta.path), title)}
             onOpenFile={(path) => void openVaultFile(path)}
             writer={writer}
+            extensions={extensions}
             onBeforeAI={async () => {
               await flush();
               await snapshotNow(id);

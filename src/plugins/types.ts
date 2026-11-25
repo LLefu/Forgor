@@ -77,6 +77,8 @@ export interface Plugin {
   chat?: PluginChatSource;
   /** Its things (tickets, pull requests…) as a structured list other plugins can show (plugins/items.ts). */
   items?: PluginItemSource;
+  /** Additions to the note editor (plugins/editor.tsx): code block previews, "/" items, drag-handle menu items. */
+  editor?: PluginEditor;
   /** Color themes, offered in Settings → Appearance (plugins/themes.ts). */
   themes?: PluginTheme[];
 }
@@ -90,6 +92,54 @@ export interface PluginTheme {
   /** A theme with only one mode always uses it (it doesn't follow the system). */
   light?: ThemeTokens;
   dark?: ThemeTokens;
+}
+
+export interface PluginEditor {
+  /** A preview under code blocks of these languages (lowercase): { mermaid: ({ code }) => <Diagram … /> }. */
+  codeBlockRenderers?: Record<string, ComponentType<{ code: string }>>;
+  /** Items in the "/" menu, under the plugin's name. */
+  slashItems?: PluginSlashItem[];
+  /** Items in a block's menu (click the drag handle). */
+  blockMenuItems?: PluginBlockMenuItem[];
+}
+
+export interface PluginSlashItem {
+  id: string;
+  label: string;
+  /** SVG markup (24×24, stroke currentColor), like the app's own items. */
+  icon?: string;
+  /** Extra words the menu matches: "chart diagram". */
+  keywords?: string;
+  run: (editor: PluginEditorApi) => void | Promise<void>;
+}
+
+export interface PluginBlockMenuItem {
+  id: string;
+  label: string;
+  /** Only for some blocks (default: all). */
+  show?: (block: PluginBlock) => boolean;
+  run: (block: PluginBlock, editor: PluginEditorApi) => void | Promise<void>;
+}
+
+/** The note being edited, for a plugin's editor items. */
+export interface PluginEditorApi {
+  noteId: string;
+  /** Path in the notes folder. */
+  notePath: string;
+  /** Insert markdown where the cursor is (it replaces the selection). */
+  insertMarkdown: (markdown: string) => void;
+  /** The selected text (plain). */
+  selectedText: () => string;
+}
+
+/** One block of the note (a paragraph, list item, code block…). */
+export interface PluginBlock {
+  /** "paragraph", "heading", "code_block", "list_item", "blockquote", "toggle", "table", "image-block"… */
+  type: string;
+  /** The block as markdown. */
+  markdown: string;
+  /** Replace the block with other markdown (one undo step). */
+  replaceWith: (markdown: string) => void;
 }
 
 export interface PluginItemSource {

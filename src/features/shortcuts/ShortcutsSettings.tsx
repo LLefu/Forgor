@@ -5,6 +5,7 @@ import { FIXED_SHORTCUTS, keysOf, usedBy, type Shortcut } from "@/app/shortcuts"
 import { applyHotkey } from "@/app/hotkey";
 import { Button } from "@/components/ui/button";
 import { Tooltip } from "@/components/ui/tooltip";
+import { Switch } from "@/components/ui/switch";
 import { comboFromEvent, fromGlobalCombo, isMac, isUsableCombo, normalizeCombo, reservedReason, shortcutLabel, toGlobalCombo } from "@/lib/keys";
 import { cn } from "@/lib/utils";
 import { useAllShortcuts } from "./all";
@@ -25,6 +26,7 @@ export function ShortcutsSettings({ desktop }: { desktop: boolean }) {
         the editor's while you're typing in a note.
       </p>
       <GlobalShortcut desktop={desktop} shortcuts={shortcuts} />
+      <TypingSection />
       {groups.map(({ group, items }) => (
         <section key={group}>
           <h3 className="mb-1 border-b pb-1 text-xs font-semibold text-foreground/80">{group}</h3>
@@ -39,6 +41,36 @@ export function ShortcutsSettings({ desktop }: { desktop: boolean }) {
         </section>
       ))}
     </div>
+  );
+}
+
+const Kbd = ({ children }: { children: React.ReactNode }) => (
+  <kbd className="inline-flex h-5 items-center rounded border bg-muted px-1.5 font-sans text-[11px] text-foreground/80">{children}</kbd>
+);
+
+/** How typing at the start of a line works in notes. */
+function TypingSection() {
+  const on = useUI((s) => s.settings.notionTyping);
+  const update = useUI((s) => s.updateSetting);
+  return (
+    <section>
+      <h3 className="mb-1 border-b pb-1 text-xs font-semibold text-foreground/80">Typing</h3>
+      <Line label="Notion-style typing">
+        <Switch checked={on} onCheckedChange={(v) => void update("notionTyping", v)} aria-label="Notion-style typing" data-testid="notion-typing" />
+      </Line>
+      <p className="pb-1 text-xs text-muted-foreground">
+        {on ? (
+          <>
+            At the start of a line, <Kbd>&quot;</Kbd> then space makes a quote and <Kbd>&gt;</Kbd> then space a toggle.
+          </>
+        ) : (
+          <>
+            At the start of a line, <Kbd>&gt;</Kbd> then space makes a quote, as in markdown. Switch this on for <Kbd>&quot;</Kbd> = quote and <Kbd>&gt;</Kbd> =
+            toggle.
+          </>
+        )}
+      </p>
+    </section>
   );
 }
 

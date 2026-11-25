@@ -410,6 +410,11 @@ export interface PluginDefinition {
   /** Things the AI chat plugin may search, and the user may attach to a question with "@" (tickets, pull requests…). */
   chat?: PluginChatSource;
   /**
+   * Additions to the note editor: previews under code blocks, items in the "/" menu and in a block's menu (click the
+   * drag handle). Since 1.3.0. Plugins don't get Milkdown itself: these are the parts that stay stable.
+   */
+  editor?: PluginEditor;
+  /**
    * Its things (tickets, mails…) as a structured list that other plugins can show (`api.app.useItems`). Since 1.3.0.
    */
   items?: PluginItemSource;
@@ -418,6 +423,61 @@ export interface PluginDefinition {
    * An older Forgor ignores this.
    */
   themes?: PluginTheme[];
+}
+
+export interface PluginEditor {
+  /**
+   * A preview under code blocks of a language: `{ mermaid: ({ code }) => <Diagram source={code} /> }`. Languages are
+   * matched without case. It renders in its own React root (with the app's query client); an error in it is caught.
+   * It's drawn again, from scratch, after each change to the code.
+   */
+  codeBlockRenderers?: Record<string, ComponentType<{ code: string }>>;
+  /** Items in the "/" menu, in a group with your plugin's name. */
+  slashItems?: PluginSlashItem[];
+  /** Items in a block's menu (click the drag handle left of a block), under "Turn into". */
+  blockMenuItems?: PluginBlockMenuItem[];
+}
+
+export interface PluginSlashItem {
+  /** Unique within your plugin. */
+  id: string;
+  label: string;
+  /** SVG markup (24×24, stroke="currentColor"), like the app's own items. Default: a plain plus. */
+  icon?: string;
+  /** More words that find it when typed after "/": "chart diagram". */
+  keywords?: string;
+  /** The "/" and what was typed after it are already gone. */
+  run(editor: PluginEditorApi): void | Promise<void>;
+}
+
+export interface PluginBlockMenuItem {
+  /** Unique within your plugin. */
+  id: string;
+  label: string;
+  /** Show it only for some blocks (default: all). */
+  show?(block: PluginBlock): boolean;
+  run(block: PluginBlock, editor: PluginEditorApi): void | Promise<void>;
+}
+
+/** The open note, for your editor items. */
+export interface PluginEditorApi {
+  noteId: string;
+  /** Path in the notes folder. */
+  notePath: string;
+  /** Insert markdown at the cursor (it replaces the selection). */
+  insertMarkdown(markdown: string): void;
+  /** The selected text, plain. */
+  selectedText(): string;
+}
+
+/** One block of the note. */
+export interface PluginBlock {
+  /** "paragraph", "heading", "code_block", "list_item", "blockquote", "toggle", "table", "image-block"… */
+  type: string;
+  /** The block as markdown (a list item as a list of one). */
+  markdown: string;
+  /** Replace the block with other markdown: one undo step. */
+  replaceWith(markdown: string): void;
 }
 
 export interface PluginItemSource {

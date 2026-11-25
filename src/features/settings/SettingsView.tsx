@@ -130,6 +130,9 @@ export function SettingsView({ platform }: { platform: Platform }) {
             </Row>
 
             <HighlightRow />
+            <Row label="Lists in columns" hint="Long lists of short items fill the width of a wide note in columns. The note itself doesn't change.">
+              <Switch checked={settings.listColumns} onCheckedChange={(v) => void update("listColumns", v)} aria-label="Lists in columns" data-testid="list-columns" />
+            </Row>
           </>
         )}
         {tab === "todos" && (
