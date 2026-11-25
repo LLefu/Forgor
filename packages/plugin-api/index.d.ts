@@ -276,6 +276,13 @@ export interface PluginApi {
     useFolders(): QueryResult<Folder[]>;
     useNotes(): QueryResult<NoteMeta[]>;
     useTodos(): QueryResult<Todo[]>;
+    /**
+     * Every enabled plugin's `items` (Jira tickets, pull requests, yours…) as one list, refreshed every minute, on
+     * focus and when folders change. A source that fails is left out and named in `errors`. Since 1.3.0.
+     */
+    useItems(): ItemsResult & { isLoading: boolean; refresh(): Promise<unknown> };
+    /** The same once, outside React. Since 1.3.0. */
+    listItems(): Promise<ItemsResult>;
   };
   data: { notes: NotesApi; todos: TodosApi };
   /** This plugin's own small data, on this computer (not in the notes folder). JSON values. */
@@ -403,10 +410,60 @@ export interface PluginDefinition {
   /** Things the AI chat plugin may search, and the user may attach to a question with "@" (tickets, pull requests…). */
   chat?: PluginChatSource;
   /**
+   * Its things (tickets, mails…) as a structured list that other plugins can show (`api.app.useItems`). Since 1.3.0.
+   */
+  items?: PluginItemSource;
+  /**
    * Color themes, offered under Settings → Appearance → Colors while the plugin is on. Since 1.3.0.
    * An older Forgor ignores this.
    */
   themes?: PluginTheme[];
+}
+
+export interface PluginItemSource {
+  /** What one item is: "Jira ticket". */
+  kind: string;
+  /** Everything there is now. Called often: return cached data (api.app.queryClient.fetchQuery with a staleTime), [] while not set up. */
+  items(): Promise<PluginItem[]>;
+}
+
+/** Leave out (or null) what your source doesn't have. */
+export interface PluginItem {
+  /** Unique within your plugin. */
+  id: string;
+  title: string;
+  /** A short reference: "NZP-41", "web#12". */
+  key?: string | null;
+  /** As the source names it: "In Progress", "Review requested". */
+  status?: string | null;
+  done?: boolean;
+  /** ISO date-times. */
+  createdAt?: string | null;
+  updatedAt?: string | null;
+  /** "YYYY-MM-DD" */
+  dueDate?: string | null;
+  /** Estimated (remaining) time in minutes. */
+  estimateMin?: number | null;
+  /** The folder it belongs to (a client or project): its top-level folder is the client. */
+  folderId?: string | null;
+  /** Where it lives on the web. */
+  url?: string | null;
+  /** Shows it in Forgor (your page or panel). */
+  open(): void;
+}
+
+/** An item as `useItems` gives it: with where it comes from. */
+export interface Item extends PluginItem {
+  /** The plugin's id ("jira", "bitbucket") and name. */
+  source: string;
+  sourceName: string;
+  /** The source's `kind`. */
+  kind: string;
+}
+
+export interface ItemsResult {
+  items: Item[];
+  errors: { source: string; sourceName: string; message: string }[];
 }
 
 /** Forgor's color tokens (the CSS variables on <html>, also the Tailwind colors of theme.css). */

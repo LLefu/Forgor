@@ -14,6 +14,7 @@ const issue = (key: string, patch: Partial<JiraIssue> = {}): JiraIssue => ({
   created: "2026-10-01T10:00:00.000+0200",
   updated: "2026-10-01T10:00:00.000+0200",
   due: null,
+  estimateMin: null,
   labels: [],
   description: null,
   attachments: [],
@@ -36,6 +37,10 @@ describe("jira", () => {
     });
     expect(i).toMatchObject({ key: "WEB-1", summary: "Fix it", status: "In Review", statusCategory: "indeterminate", priority: "High", type: "Bug", assignee: "Sanne", due: "2026-10-20" });
     expect(toIssue({ key: "X-1", fields: {} })).toMatchObject({ statusCategory: "new", priority: null, project: { key: "X" } });
+    // Estimates are seconds; the remaining one wins over the original
+    expect(toIssue({ key: "X-2", fields: { timeestimate: 5400, timeoriginalestimate: 7200 } }).estimateMin).toBe(90);
+    expect(toIssue({ key: "X-3", fields: { timeoriginalestimate: 7200 } }).estimateMin).toBe(120);
+    expect(toIssue({ key: "X-4", fields: {} }).estimateMin).toBeNull();
   });
 
   it("sorts by priority, due date and key", () => {

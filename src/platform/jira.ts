@@ -76,6 +76,9 @@ const STATUS = {
 
 const PROJECTS = { WEB: { key: "WEB", name: "Website" }, APP: { key: "APP", name: "Mobile app" } };
 
+/** Remaining estimates in seconds, like Jira sends them. */
+const ESTIMATES: Record<string, number> = { "WEB-12": 3 * 3600, "APP-41": 30 * 60 };
+
 const FAKE_ISSUES = [
   { key: "WEB-12", summary: "Homepage hero loads slowly on mobile", status: STATUS.progress, priority: "High", type: "Bug", project: PROJECTS.WEB, due: "2026-10-20", updated: "2026-10-12T09:30:00.000+0200" },
   { key: "WEB-15", summary: "Add dark mode to the marketing site", status: STATUS.todo, priority: "Medium", type: "Story", project: PROJECTS.WEB, due: null, updated: "2026-10-10T14:00:00.000+0200" },
@@ -127,6 +130,7 @@ function fakeIssue(i: (typeof FAKE_ISSUES)[number]) {
       created: "2026-09-30T10:00:00.000+0200",
       updated: i.updated,
       duedate: i.due,
+      timeestimate: ESTIMATES[i.key] ?? null,
       labels: i.key === "WEB-12" ? ["performance"] : [],
       description:
         i.key === "WEB-12"

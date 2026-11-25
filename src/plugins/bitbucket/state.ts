@@ -92,19 +92,9 @@ export interface PullRequestsResult {
  */
 export function usePullRequests(repos: BitbucketRepoRef[], withMine = false): PullRequestsResult {
   const account = useBitbucketAccount();
-  const me = account?.uuid ?? "";
   const repoQueries = repos.map((r) => ({ ...repoPullRequestsQuery(account, r), enabled: !!account, ...REMOTE }));
   // Mine everywhere: per workspace (Bitbucket has no list across workspaces any more). Extra, so a failure is a warning, not an error.
-  const mineQuery = {
-    queryKey: ["bitbucket", me, "mine"],
-    enabled: !!account && withMine,
-    ...REMOTE,
-    queryFn: async () => {
-      const prs: PullRequest[] = [];
-      for (const ws of await workspaces(account!)) prs.push(...(await all(account!, paths.myPullRequests(ws, me), 4)).map((x) => toPullRequest(x, me)));
-      return prs;
-    },
-  };
+  const mineQuery = { ...myPullRequestsQuery(account), enabled: !!account && withMine, ...REMOTE };
   const n = repoQueries.length;
   return useQueries({
     queries: withMine ? [...repoQueries, mineQuery] : repoQueries,
@@ -123,6 +113,19 @@ export function usePullRequests(repos: BitbucketRepoRef[], withMine = false): Pu
       };
     },
   });
+}
+
+/** My open PRs in every repository: per workspace (Bitbucket has no list across workspaces any more). */
+export function myPullRequestsQuery(account: BitbucketAccount | null) {
+  const me = account?.uuid ?? "";
+  return {
+    queryKey: ["bitbucket", me, "mine"],
+    queryFn: async () => {
+      const prs: PullRequest[] = [];
+      for (const ws of await workspaces(account!)) prs.push(...(await all(account!, paths.myPullRequests(ws, me), 4)).map((x) => toPullRequest(x, me)));
+      return prs;
+    },
+  };
 }
 
 /** One repository's open PRs that I opened or review (also fetched by the notification check). */
@@ -225,7 +228,10 @@ export function useAllRepos(enabled: boolean) {
  */
 export function useFolderForPullRequest(pr: PullRequest | undefined): Folder | null {
   const { data: folders = [] } = useFolders();
-  if (!pr) return null;
+  return pr ? folderForPullRequest(folders, pr) : null;
+}
+
+export function folderForPullRequest(folders: Folder[], pr: PullRequest): Folder | null {
   const byRepo = folders.find((f) => f.bitbucketRepos?.some((r) => sameRepo(r, pr.repo)));
   if (byRepo) return byRepo;
   const projects = jiraKeys(pr).map((k) => k.split("-")[0]);

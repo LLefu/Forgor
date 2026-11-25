@@ -13,6 +13,7 @@ import { myReview } from "@/lib/bitbucket";
 import { useBitbucketAccount, useLinkedRepos, usePullRequests } from "./state";
 import { BITBUCKET_NOTIFICATIONS, startBitbucketNotifications } from "./notify";
 import { bitbucketChat } from "./chat";
+import { bitbucketItems } from "./items";
 
 /** Sidebar: Pull requests, with how many review requests still wait for me (not yet approved or changes requested). Same queries as the overview. */
 function PullRequestsNav() {
@@ -28,7 +29,7 @@ export const bitbucketPlugin: Plugin = {
   name: "Bitbucket",
   description:
     "See your open pull requests and the ones waiting for your review: per folder (link repositories in the folder's panel) and all together. Read-only: Forgor never changes anything in Bitbucket.",
-  version: "1.0.1",
+  version: "1.1.0",
   author: "Forgor",
   icon: GitPullRequest,
   builtIn: true,
@@ -52,4 +53,5 @@ export const bitbucketPlugin: Plugin = {
   notifications: BITBUCKET_NOTIFICATIONS,
   start: startBitbucketNotifications,
   chat: bitbucketChat,
+  items: bitbucketItems,
 };

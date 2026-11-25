@@ -12,6 +12,7 @@ import { JiraSettings } from "./JiraSettings";
 import { useMyIssues } from "./state";
 import { JIRA_NOTIFICATIONS, startJiraNotifications } from "./notify";
 import { jiraChat } from "./chat";
+import { jiraItems } from "./items";
 
 /** Sidebar: Jira, with how many open tickets are assigned to me (the overview's own query, so no extra request). */
 function JiraNav() {
@@ -24,7 +25,7 @@ export const jiraPlugin: Plugin = {
   id: "jira",
   name: "Jira",
   description: "See the Jira tickets assigned to you: per folder (link boards in the folder's panel) and all together. Read-only: Forgor never changes anything in Jira.",
-  version: "1.1.1",
+  version: "1.2.0",
   author: "Forgor",
   icon: Ticket,
   builtIn: true,
@@ -48,4 +49,5 @@ export const jiraPlugin: Plugin = {
   notifications: JIRA_NOTIFICATIONS,
   start: startJiraNotifications,
   chat: jiraChat,
+  items: jiraItems,
 };

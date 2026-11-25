@@ -75,6 +75,8 @@ export interface Plugin {
   shortcuts?: PluginShortcut[];
   /** Things the AI chat may search and the user may attach to a question ("@"): tickets, pull requests… */
   chat?: PluginChatSource;
+  /** Its things (tickets, pull requests…) as a structured list other plugins can show (plugins/items.ts). */
+  items?: PluginItemSource;
   /** Color themes, offered in Settings → Appearance (plugins/themes.ts). */
   themes?: PluginTheme[];
 }
@@ -88,6 +90,37 @@ export interface PluginTheme {
   /** A theme with only one mode always uses it (it doesn't follow the system). */
   light?: ThemeTokens;
   dark?: ThemeTokens;
+}
+
+export interface PluginItemSource {
+  /** What one item is: "Jira ticket". */
+  kind: string;
+  /** Everything there is now; called often (return cached data: queryClient.fetchQuery with a staleTime), [] while not set up. */
+  items: () => Promise<PluginItem[]>;
+}
+
+export interface PluginItem {
+  /** Unique within the plugin. */
+  id: string;
+  title: string;
+  /** A short reference: "NZP-41", "web#12". */
+  key?: string | null;
+  /** As the source names it: "In Progress", "Review requested". */
+  status?: string | null;
+  done?: boolean;
+  /** ISO dates. */
+  createdAt?: string | null;
+  updatedAt?: string | null;
+  /** YYYY-MM-DD */
+  dueDate?: string | null;
+  /** Estimated (remaining) time in minutes. */
+  estimateMin?: number | null;
+  /** The folder it belongs to (a client/project). */
+  folderId?: string | null;
+  /** Where it lives on the web. */
+  url?: string | null;
+  /** Shows it in the app (a page or panel). */
+  open: () => void;
 }
 
 export interface PluginChatSource {

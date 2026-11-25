@@ -164,6 +164,7 @@ export function sanitizeDefinition(input: unknown): { definition: PluginDefiniti
       });
     }
   }
+  if (out.items !== undefined && !(isRecord(out.items) && isText(out.items.kind) && isFn(out.items.items))) drop("items", "it needs a kind and an items function");
   if (out.chat !== undefined && !(isRecord(out.chat) && isText(out.chat.kind) && isFn(out.chat.items))) drop("chat", "it needs a kind and an items function");
 
   return { definition: out as PluginDefinition, warnings };

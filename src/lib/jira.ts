@@ -16,6 +16,8 @@ export interface JiraIssue {
   updated: string;
   /** YYYY-MM-DD */
   due: string | null;
+  /** Time left (Jira's remaining estimate, else the original one), in minutes. */
+  estimateMin: number | null;
   labels: string[];
   /** Atlassian Document Format (only fetched for the detail view). */
   description: AdfNode | null;
@@ -56,7 +58,7 @@ export interface AdfNode {
   marks?: { type: string; attrs?: Record<string, unknown> }[];
 }
 
-export const LIST_FIELDS = "summary,status,priority,issuetype,project,assignee,reporter,created,updated,duedate,labels";
+export const LIST_FIELDS = "summary,status,priority,issuetype,project,assignee,reporter,created,updated,duedate,labels,timeestimate,timeoriginalestimate";
 export const DETAIL_FIELDS = `${LIST_FIELDS},description,attachment`;
 
 /** Open tickets assigned to me, newest change first. */
@@ -80,6 +82,9 @@ export const paths = {
 type Raw = { key: string; fields: Record<string, unknown> };
 const name = (v: unknown): string | null => ((v as { name?: string; displayName?: string } | null)?.displayName ?? (v as { name?: string } | null)?.name) || null;
 
+/** Jira estimates are seconds. */
+const minutes = (v: unknown): number | null => (typeof v === "number" && v >= 0 ? Math.round(v / 60) : null);
+
 export function toIssue(raw: Raw): JiraIssue {
   const f = raw.fields ?? {};
   const status = f.status as { name?: string; statusCategory?: { key?: string } } | undefined;
@@ -98,6 +103,7 @@ export function toIssue(raw: Raw): JiraIssue {
     created: String(f.created ?? ""),
     updated: String(f.updated ?? ""),
     due: (f.duedate as string | null) ?? null,
+    estimateMin: minutes(f.timeestimate) ?? minutes(f.timeoriginalestimate),
     labels: Array.isArray(f.labels) ? (f.labels as string[]) : [],
     description: (f.description as AdfNode | null) ?? null,
     attachments: Array.isArray(f.attachment)

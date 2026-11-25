@@ -22,6 +22,7 @@ import { PageHeader, Section } from "@/features/todos/TodosPage";
 import { TodayCard, TodayList } from "@/features/today/TodayCard";
 import { effectiveFolderColor, colorHex } from "@/lib/folderColors";
 import { iconFromPlugin } from "@/lib/folderIcon";
+import { listItems, useItems } from "./items";
 import { basename, dirname, joinPath } from "@/lib/paths";
 import { cn } from "@/lib/utils";
 import { isTauri } from "@/platform/env";
@@ -74,6 +75,10 @@ export function createPluginApi(id: string) {
       useFolders,
       useNotes,
       useTodos,
+      /** Every enabled plugin's `items` (tickets, pull requests…) as one list, kept fresh; `errors` names sources that failed. */
+      useItems,
+      /** The same once, outside React. */
+      listItems: () => listItems(),
     },
     /** The app's data layer: notes and folders (create, rename, move…), todos. Changes refresh the app by themselves. */
     data: {
