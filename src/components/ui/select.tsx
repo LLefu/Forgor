@@ -13,13 +13,14 @@ export function Select<T extends string>({
   options: { value: T; label: string }[];
   className?: string;
   "aria-label"?: string;
+  disabled?: boolean;
 }) {
   return (
     <select
       value={value}
       onChange={(e) => onChange(e.target.value as T)}
       className={cn(
-        "h-8 rounded border border-input bg-background px-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring/50",
+        "h-8 rounded border border-input bg-background px-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring/50 disabled:opacity-60",
         className,
       )}
       {...rest}

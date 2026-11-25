@@ -5,6 +5,7 @@ import type { Settings } from "./types";
 export const DEFAULT_SETTINGS: Settings = {
   theme: "system",
   themeSoft: false,
+  themePreset: null,
   /** Days a completed todo stays before it goes to the Trash (the name is from when it went to the Archive). */
   archiveAfterDays: 7,
   hotkey: navigatorIsMac() ? "CommandOrControl+Shift+Space" : "Control+Alt+Space",

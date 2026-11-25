@@ -1,4 +1,5 @@
 import type { PluginDefinition } from "./api";
+import { THEME_TOKENS, tokenName } from "@/lib/themeTokens";
 
 /**
  * What a community plugin returns is checked when it loads: a part with the
@@ -13,6 +14,9 @@ const isFn = (v: unknown): v is (...args: never[]) => unknown => typeof v === "f
 const isComponent = (v: unknown) => isFn(v) || (typeof v === "object" && v !== null && "$$typeof" in v);
 const isRecord = (v: unknown): v is Record<string, unknown> => typeof v === "object" && v !== null && !Array.isArray(v);
 const isText = (v: unknown): v is string => typeof v === "string" && v.trim() !== "";
+/** A CSS color ("#fff", "rgb(…)", "oklch(…)"…); without a browser (tests) a plain shape check. */
+const isColor = (v: unknown): v is string =>
+  isText(v) && (typeof CSS !== "undefined" && CSS.supports ? CSS.supports("color", v) : /^(#[0-9a-f]{3,8}|(rgba?|hsla?|hwb|lab|lch|oklab|oklch|color|color-mix)\(.*\)|[a-z]+)$/i.test(v.trim()));
 
 export function sanitizeDefinition(input: unknown): { definition: PluginDefinition; warnings: string[] } {
   const warnings: string[] = [];
@@ -118,6 +122,45 @@ export function sanitizeDefinition(input: unknown): { definition: PluginDefiniti
           return [{ ...s, keys: [] }];
         }
         return [s];
+      });
+    }
+  }
+  if (out.themes !== undefined) {
+    if (!Array.isArray(out.themes)) drop("themes", "it must be a list");
+    else {
+      const seen = new Set<string>();
+      out.themes = out.themes.flatMap((t, i) => {
+        if (!isRecord(t) || !isText(t.id) || !isText(t.name) || (t.light === undefined && t.dark === undefined)) {
+          warnings.push(`themes[${i}] was ignored: it needs an id, a name and light and/or dark colors.`);
+          return [];
+        }
+        if (seen.has(t.id)) {
+          warnings.push(`themes[${i}] was ignored: the id “${t.id}” is used twice.`);
+          return [];
+        }
+        seen.add(t.id);
+        const theme: Record<string, unknown> = { id: t.id, name: t.name };
+        for (const mode of ["light", "dark"] as const) {
+          const tokens = t[mode];
+          if (tokens === undefined) continue;
+          if (!isRecord(tokens)) {
+            warnings.push(`The ${mode} colors of theme “${t.id}” were ignored: they must be an object like { background: "#fff" }.`);
+            continue;
+          }
+          const kept: Record<string, string> = {};
+          for (const [key, value] of Object.entries(tokens)) {
+            const name = tokenName(key);
+            if (!(THEME_TOKENS as readonly string[]).includes(name)) warnings.push(`Theme “${t.id}”: “${key}” isn't one of Forgor's colors and was ignored.`);
+            else if (!isColor(value)) warnings.push(`Theme “${t.id}”: ${mode} “${key}” isn't a CSS color and was ignored.`);
+            else kept[name] = value;
+          }
+          theme[mode] = kept;
+        }
+        if (!theme.light && !theme.dark) {
+          warnings.push(`themes[${i}] was ignored: it has no usable colors.`);
+          return [];
+        }
+        return [theme];
       });
     }
   }

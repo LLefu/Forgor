@@ -36,6 +36,7 @@ import { cn } from "@/lib/utils";
 import { Row } from "./Row";
 import { ModelsSettings } from "@/features/models/ModelsSettings";
 import { StorageRow } from "./StorageRow";
+import { presetSetsPrimary, useActivePreset, useThemePresets } from "@/plugins/themes";
 import { useTrash } from "@/app/queries";
 
 const TABS = [
@@ -111,24 +112,7 @@ export function SettingsView({ platform }: { platform: Platform }) {
         )}
         {tab === "appearance" && (
           <>
-            <Row label="Theme">
-              {/* Stored as theme + themeSoft (an older version then still knows the theme). */}
-              <Select
-                aria-label="Theme"
-                value={settings.theme === "system" ? "system" : `${settings.theme}${settings.themeSoft ? "-soft" : ""}`}
-                onChange={async (v) => {
-                  await update("themeSoft", v.endsWith("-soft"));
-                  await update("theme", v.replace("-soft", "") as Settings["theme"]);
-                }}
-                options={[
-                  { value: "system", label: "Follow system" },
-                  { value: "light", label: "Light" },
-                  { value: "light-soft", label: "Light (soft)" },
-                  { value: "dark", label: "Dark" },
-                  { value: "dark-soft", label: "Dark (soft)" },
-                ]}
-              />
-            </Row>
+            <ThemeRows />
 
             <Row
               label="Zoom"
@@ -145,11 +129,7 @@ export function SettingsView({ platform }: { platform: Platform }) {
               />
             </Row>
 
-            <Row label="Highlight color" hint="Used for buttons, selections, links and the today marker.">
-              <div data-testid="accent-picker">
-                <SwatchGrid presets={ACCENT_SWATCHES} value={settings.accent} onPick={(id) => update("accent", id)} size="md" label="Highlight color" />
-              </div>
-            </Row>
+            <HighlightRow />
           </>
         )}
         {tab === "todos" && (
@@ -168,6 +148,68 @@ export function SettingsView({ platform }: { platform: Platform }) {
         {tab === "shortcuts" && <ShortcutsSettings desktop={desktop} />}
       </div>
     </div>
+  );
+}
+
+/** Mode (light/dark/soft) and, once a plugin offers one, the color theme (plugins/themes.ts). */
+function ThemeRows() {
+  const settings = useUI((s) => s.settings);
+  const update = useUI((s) => s.updateSetting);
+  const presets = useThemePresets();
+  const preset = useActivePreset();
+  const only = preset && !(preset.light && preset.dark) ? (preset.dark ? "dark" : "light") : null;
+  const modes = [
+    { value: "system", label: "Follow system" },
+    { value: "light", label: "Light" },
+    ...(preset ? [] : [{ value: "light-soft", label: "Light (soft)" }]),
+    { value: "dark", label: "Dark" },
+    ...(preset ? [] : [{ value: "dark-soft", label: "Dark (soft)" }]),
+  ];
+  const value = only ?? (settings.theme === "system" ? "system" : `${settings.theme}${settings.themeSoft && !preset ? "-soft" : ""}`);
+  return (
+    <>
+      {presets.length > 0 && (
+        <Row label="Colors" hint="Color themes come from plugins. Forgor's own colors use the highlight color below.">
+          <Select<string>
+            aria-label="Colors"
+            data-testid="theme-preset"
+            value={preset?.key ?? ""}
+            onChange={(v) => update("themePreset", v || null)}
+            options={[{ value: "", label: "Forgor" }, ...presets.map((p) => ({ value: p.key, label: p.name === p.pluginName ? p.name : `${p.name} (${p.pluginName})` }))]}
+          />
+        </Row>
+      )}
+      <Row label="Theme" hint={only && preset ? `${preset.name} only comes in ${only}.` : undefined}>
+        {/* Stored as theme + themeSoft (an older version then still knows the theme). */}
+        <Select
+          aria-label="Theme"
+          value={value}
+          disabled={!!only}
+          onChange={async (v) => {
+            await update("themeSoft", v.endsWith("-soft"));
+            await update("theme", v.replace("-soft", "") as Settings["theme"]);
+          }}
+          options={only ? [{ value: only, label: only === "dark" ? "Dark" : "Light" }] : modes}
+        />
+      </Row>
+    </>
+  );
+}
+
+function HighlightRow() {
+  const accent = useUI((s) => s.settings.accent);
+  const update = useUI((s) => s.updateSetting);
+  const preset = useActivePreset();
+  const fixed = presetSetsPrimary(preset);
+  return (
+    <Row
+      label="Highlight color"
+      hint={fixed && preset ? `${preset.name} has its own highlight color.` : "Used for buttons, selections, links and the today marker."}
+    >
+      <div data-testid="accent-picker" aria-disabled={fixed || undefined} inert={fixed} className={cn(fixed && "opacity-40")}>
+        <SwatchGrid presets={ACCENT_SWATCHES} value={accent} onPick={(id) => update("accent", id)} size="md" label="Highlight color" />
+      </div>
+    </Row>
   );
 }
 

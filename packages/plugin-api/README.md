@@ -41,7 +41,7 @@ const plugin: PluginFactory = (api) => ({
 export default plugin;
 ```
 
-All contribution points are in [`src/plugins/types.ts`](../../src/plugins/types.ts): `sidebar`, `pages`, `panels`, `folderSection`, `today`, `shortcuts`, `chat`, `noteHeader`, `settings`, `hosts`, `start`, `useWriter`, `useQuickMenu`, `remoteQueries`, `disableBlocked`. The app only shows a plugin's contributions while it is enabled. Errors inside them are caught and shown, and don't take the app down.
+All contribution points are in [`src/plugins/types.ts`](../../src/plugins/types.ts): `sidebar`, `pages`, `panels`, `folderSection`, `today`, `shortcuts`, `chat`, `themes`, `noteHeader`, `settings`, `hosts`, `start`, `useWriter`, `useQuickMenu`, `remoteQueries`, `disableBlocked`. The app only shows a plugin's contributions while it is enabled. Errors inside them are caught and shown, and don't take the app down.
 
 ## Versions
 

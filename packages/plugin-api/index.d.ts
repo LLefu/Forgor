@@ -402,6 +402,35 @@ export interface PluginDefinition {
   shortcuts?: PluginShortcut[];
   /** Things the AI chat plugin may search, and the user may attach to a question with "@" (tickets, pull requests…). */
   chat?: PluginChatSource;
+  /**
+   * Color themes, offered under Settings → Appearance → Colors while the plugin is on. Since 1.3.0.
+   * An older Forgor ignores this.
+   */
+  themes?: PluginTheme[];
+}
+
+/** Forgor's color tokens (the CSS variables on <html>, also the Tailwind colors of theme.css). */
+export type ThemeToken =
+  | "background" | "foreground" | "sidebar" | "muted" | "muted-foreground" | "border" | "input" | "ring"
+  | "accent" | "accent-foreground" | "primary" | "primary-foreground" | "destructive" | "success" | "warning"
+  | "popover" | "p1" | "p2" | "p3" | "p4";
+
+/**
+ * Colors for one mode: any CSS color per token, with or without "--" (`background` or `--background`). Tokens left
+ * out keep Forgor's own value, and `accent` / `accent-foreground` / `ring` follow `primary` unless set. With
+ * `primary`, the user's highlight color is switched off while the theme is used; `primary-foreground` then defaults
+ * to black or white, whichever reads best.
+ */
+export type ThemeTokens = Partial<Record<ThemeToken | `--${ThemeToken}`, string>>;
+
+export interface PluginTheme {
+  /** Unique within the plugin. While it's used, <html> has `data-theme-preset="<plugin id>:<id>"` for your styles.css. */
+  id: string;
+  /** Shown in the picker: "Vampire". */
+  name: string;
+  /** Give one or both. A theme with only one mode always uses it (it doesn't follow the system). */
+  light?: ThemeTokens;
+  dark?: ThemeTokens;
 }
 
 export interface PluginChatSource {

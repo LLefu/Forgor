@@ -75,6 +75,19 @@ export interface Plugin {
   shortcuts?: PluginShortcut[];
   /** Things the AI chat may search and the user may attach to a question ("@"): tickets, pull requests… */
   chat?: PluginChatSource;
+  /** Color themes, offered in Settings → Appearance (plugins/themes.ts). */
+  themes?: PluginTheme[];
+}
+
+/** App color tokens (`background`, `primary`, `p1`… or with "--"), see THEME_TOKENS in plugins/themes.ts. */
+export type ThemeTokens = Record<string, string>;
+
+export interface PluginTheme {
+  id: string;
+  name: string;
+  /** A theme with only one mode always uses it (it doesn't follow the system). */
+  light?: ThemeTokens;
+  dark?: ThemeTokens;
 }
 
 export interface PluginChatSource {

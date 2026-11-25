@@ -6,6 +6,7 @@ All notable changes to Forgor. Add new entries under **Unreleased**;
 ## Unreleased
 
 ### New
+- **Color themes from plugins**: a plugin can add color themes (`themes`), picked under **Settings → Appearance → Colors**. A theme with its own highlight color switches the highlight color picker off while it's used, and a theme that only comes in dark (or light) always uses that.
 - **Plugin API**: `api.data.notes.writeNoteData(id, patch)` changes a note's front matter without touching its text (`null` removes a key; `id` and `created` stay Forgor's). `saveAttachment` (save a file next to a note) and `setFolderIcon` (any image, scaled like an uploaded icon) are now part of the public API.
 
 ## 1.2.1 (2026-10-27)

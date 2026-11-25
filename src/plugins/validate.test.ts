@@ -107,3 +107,35 @@ describe("which plugin caused an error", () => {
     for (let i = 0; i < REJECTION_LIMIT; i++) expect(tooManyRejections("q", i * 20_000)).toBe(false); // 80 s apart in all: never 5 within 60 s
   });
 });
+
+describe("theme presets", () => {
+  it("keeps good themes, with or without -- on the tokens", () => {
+    const { definition, warnings } = sanitizeDefinition({
+      themes: [{ id: "vampire", name: "Vampire", dark: { "--background": "#120a0c", primary: "rgb(220 38 38)" } }],
+    });
+    expect(warnings).toEqual([]);
+    expect(definition.themes).toEqual([{ id: "vampire", name: "Vampire", dark: { background: "#120a0c", primary: "rgb(220 38 38)" } }]);
+  });
+
+  it("drops unknown tokens, non-colors, themes without colors and duplicate ids, with a warning each", () => {
+    const { definition, warnings } = sanitizeDefinition({
+      themes: [
+        { id: "a", name: "A", light: { background: "#fff", "font-size": "20px", primary: "url(x)" } },
+        { id: "a", name: "Again", light: { background: "#000" } },
+        { id: "b", name: "B" },
+        { id: "c", name: "C", dark: "red" },
+        "nope",
+      ],
+    });
+    expect(definition.themes).toEqual([{ id: "a", name: "A", light: { background: "#fff" } }]);
+    expect(warnings).toHaveLength(7);
+    expect(warnings.join("\n")).toMatch(/font-size/);
+    expect(warnings.join("\n")).toMatch(/isn't a CSS color/);
+  });
+
+  it("drops themes that aren't a list", () => {
+    const { definition, warnings } = sanitizeDefinition({ themes: { id: "x" } });
+    expect(definition.themes).toBeUndefined();
+    expect(warnings[0]).toMatch(/themes/);
+  });
+});
