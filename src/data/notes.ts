@@ -309,7 +309,56 @@ export async function createNote(folderPath: string, title = "Untitled", body = 
  * Persist a note body. Frontmatter is preserved. Returns the updated meta.
  * Callers that need inline-todo syncing should use `saveNote` in inlineSync.ts.
  */
-export async function writeNoteBody(id: string, body: string): Promise<NoteMeta | null> {
+export function writeNoteBody(id: string, body: string): Promise<NoteMeta | null> {
+  return oneWriteAtATime(id, () => writeBody(id, body));
+}
+
+/**
+ * Read-modify-write of one note's file, queued per note: writeNoteBody and
+ * writeNoteData both read the file first, so running them at the same time
+ * would let one undo the other.
+ */
+const noteWrites = new Map<string, Promise<unknown>>();
+function oneWriteAtATime<T>(id: string, write: () => Promise<T>): Promise<T> {
+  const run = (noteWrites.get(id) ?? Promise.resolve()).then(write, write);
+  const done = run.catch(() => {});
+  noteWrites.set(id, done);
+  void done.then(() => {
+    if (noteWrites.get(id) === done) noteWrites.delete(id);
+  });
+  return run;
+}
+
+/** Frontmatter keys the app manages: writeNoteData refuses them. */
+const PROTECTED_KEYS = ["id", "created"];
+
+/**
+ * Change a note's frontmatter without touching its body (for plugins: `cover:`,
+ * `icon:`…). Works like JSON Merge Patch: keys in `patch` are set, `null`
+ * removes one, other keys stay. Returns the frontmatter as written.
+ */
+export function writeNoteData(id: string, patch: Record<string, unknown>): Promise<Record<string, unknown>> {
+  if (!patch || typeof patch !== "object" || Array.isArray(patch)) throw new Error("writeNoteData: the patch must be an object");
+  const refused = Object.keys(patch).filter((k) => PROTECTED_KEYS.includes(k));
+  if (refused.length) throw new Error(`writeNoteData: Forgor manages ${refused.map((k) => `“${k}”`).join(" and ")}; it can't be changed`);
+  return oneWriteAtATime(id, async () => {
+    const meta = await getNoteMeta(id);
+    if (!meta) throw new Error("Note not found");
+    const { vault } = ctx();
+    const { data, body } = parseNote(await vault.readText(meta.path));
+    const next: Record<string, unknown> = { ...data };
+    for (const [key, value] of Object.entries(patch)) {
+      if (value === null || value === undefined) delete next[key];
+      else next[key] = value;
+    }
+    next.id = id;
+    await vault.writeText(meta.path, stringifyNote(next, body));
+    emitChange("notes");
+    return next;
+  });
+}
+
+async function writeBody(id: string, body: string): Promise<NoteMeta | null> {
   const { vault, sql } = ctx();
   const rows = await sql.select<NoteRow>(`SELECT * FROM notes WHERE id = ?`, [id]);
   const row = rows[0];

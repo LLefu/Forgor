@@ -30,6 +30,18 @@ export async function imageToIcon(file: Blob): Promise<string> {
   }
 }
 
+/**
+ * An icon handed over by a plugin (a Blob/File or an image data URL), scaled
+ * like a picked one, so plugins can't store anything else in `folders.icon`.
+ */
+export async function iconFromPlugin(icon: Blob | string): Promise<string> {
+  if (typeof icon !== "string") return imageToIcon(icon);
+  const m = /^data:(image\/[\w.+-]+)(;base64)?,(.*)$/s.exec(icon);
+  if (!m) throw new Error("setFolderIcon: give an image (Blob) or an image data URL");
+  const bytes = m[2] ? Uint8Array.from(atob(m[3]), (c) => c.charCodeAt(0)) : new TextEncoder().encode(decodeURIComponent(m[3]));
+  return imageToIcon(new Blob([bytes], { type: m[1] }));
+}
+
 /** Opens the file dialog; resolves with the chosen image as an icon, or null when cancelled. */
 export function chooseIconImage(): Promise<string | null> {
   return new Promise((resolve, reject) => {

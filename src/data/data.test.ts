@@ -188,6 +188,44 @@ describe("note & folder CRUD", () => {
   });
 });
 
+describe("note front matter (writeNoteData)", () => {
+  it("sets and removes keys, keeps the body and other keys", async () => {
+    const n = await notes.createNote("", "Acme", "Body text");
+    await notes.writeNoteData(n.id, { cover: "_attachments/cover.jpg", tags: ["a", "b"] });
+    let opened = await notes.readNote(n.id);
+    expect(opened!.data).toMatchObject({ id: n.id, cover: "_attachments/cover.jpg", tags: ["a", "b"] });
+    expect(opened!.body).toBe("Body text");
+
+    const written = await notes.writeNoteData(n.id, { cover: null });
+    expect(written).not.toHaveProperty("cover");
+    opened = await notes.readNote(n.id);
+    expect(opened!.data).toMatchObject({ id: n.id, tags: ["a", "b"] });
+    expect(opened!.data).not.toHaveProperty("cover");
+  });
+
+  it("refuses the app's own keys", async () => {
+    const n = await notes.createNote("", "Acme");
+    expect(() => notes.writeNoteData(n.id, { id: "other" })).toThrow(/id/);
+    expect(() => notes.writeNoteData(n.id, { created: "x" })).toThrow(/created/);
+    expect((await notes.readNote(n.id))!.data.id).toBe(n.id);
+  });
+
+  it("doesn't lose a body saved at the same time", async () => {
+    const n = await notes.createNote("", "Acme", "old");
+    // A slow disk, so both writes would read the file before either writes it.
+    const readText = vault.readText.bind(vault);
+    vault.readText = async (path: string) => {
+      const text = await readText(path);
+      await new Promise((r) => setTimeout(r, 10));
+      return text;
+    };
+    await Promise.all([notes.writeNoteBody(n.id, "new body"), notes.writeNoteData(n.id, { icon: "🦇" })]);
+    const opened = await notes.readNote(n.id);
+    expect(opened!.body).toBe("new body");
+    expect(opened!.data.icon).toBe("🦇");
+  });
+});
+
 describe("todos", () => {
   it("completing a recurring todo spawns the next occurrence", async () => {
     const today = todayStr();

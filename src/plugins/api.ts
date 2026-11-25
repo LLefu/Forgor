@@ -21,6 +21,7 @@ import { FolderGlyph, FolderLabel, useFolderColor } from "@/features/folder/fold
 import { PageHeader, Section } from "@/features/todos/TodosPage";
 import { TodayCard, TodayList } from "@/features/today/TodayCard";
 import { effectiveFolderColor, colorHex } from "@/lib/folderColors";
+import { iconFromPlugin } from "@/lib/folderIcon";
 import { basename, dirname, joinPath } from "@/lib/paths";
 import { cn } from "@/lib/utils";
 import { isTauri } from "@/platform/env";
@@ -75,7 +76,15 @@ export function createPluginApi(id: string) {
       useTodos,
     },
     /** The app's data layer: notes and folders (create, rename, move…), todos. Changes refresh the app by themselves. */
-    data: { notes, todos },
+    data: {
+      notes: {
+        ...notes,
+        /** Any image (Blob or data URL), scaled to the app's folder-icon size; null removes it. */
+        setFolderIcon: async (folderId: string, icon: Blob | string | null) =>
+          notes.setFolderIcon(folderId, icon === null ? null : await iconFromPlugin(icon)),
+      },
+      todos,
+    },
     /** Small data of this plugin (on this computer, not in the notes folder). */
     storage,
     /** Desktop notifications of the kinds this plugin declares (`notifications`). */

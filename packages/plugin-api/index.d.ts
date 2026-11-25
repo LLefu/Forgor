@@ -80,6 +80,21 @@ export interface NotesApi {
   /** `folderPath` "" is the top level. */
   createNote(folderPath: string, title?: string, body?: string): Promise<NoteMeta>;
   writeNoteBody(id: string, body: string): Promise<NoteMeta | null>;
+  /**
+   * Change the note's front matter, leaving the body alone. Like JSON Merge
+   * Patch: keys in `patch` are set, `null` removes one, the rest stay. `id`
+   * and `created` belong to Forgor and are refused. Values are written as
+   * YAML (strings, numbers, booleans, lists, objects). Returns the front
+   * matter as written. Since 1.3.0.
+   */
+  writeNoteData(id: string, patch: Record<string, unknown>): Promise<Record<string, unknown>>;
+  /**
+   * Save a file in the `_attachments` folder next to the note (a free name is
+   * picked when it's taken). `rel` is the link target relative to the note
+   * (for markdown, or `cover:` in the front matter), `path` the path in the
+   * notes folder. Since 1.3.0 (it already worked in 1.2).
+   */
+  saveAttachment(noteId: string, fileName: string, data: Uint8Array): Promise<{ rel: string; path: string }>;
   renameNote(id: string, newTitle: string): Promise<NoteMeta | null>;
   moveNote(id: string, folderPath: string): Promise<NoteMeta | null>;
   trashNote(id: string): Promise<void>;
@@ -88,6 +103,12 @@ export interface NotesApi {
   relocateFolder(id: string, newPath: string): Promise<Folder | null>;
   trashFolder(id: string): Promise<void>;
   setFolderColor(id: string, color: string | null): Promise<void>;
+  /**
+   * Set the folder's icon from any image (a Blob/File or an image data URL);
+   * it's scaled to a 128px PNG like an icon picked in the app. `null` removes
+   * it. Since 1.3.0.
+   */
+  setFolderIcon(id: string, icon: Blob | string | null): Promise<void>;
   /** Notes that link to this one. */
   backlinks(noteId: string): Promise<NoteMeta[]>;
 }
