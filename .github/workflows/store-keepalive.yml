@@ -1,12 +1,15 @@
 name: Plugin store keep-alive
 
-# Supabase pauses free projects after a week without activity; the plugin store
-# (Supabase project "Forgor") then stops answering until it is resumed in the
-# dashboard. This reads the store's plugin list every 3 days so that never happens.
-# The key is the publishable one the app also ships with (it can only read the list).
+# Supabase pauses Free Plan projects that get too little database activity over
+# a week; the plugin store (Supabase project "Forgor") then stops answering until
+# it is resumed in the dashboard. Its docs say "a few user requests to the
+# database each day" is typically enough: one read every 3 days was not (the
+# store was paused from 4 to 25 November 2026). So this reads the store's plugin
+# list (a database query) every 4 hours. The key is the publishable one the app
+# also ships with (it can only read the list).
 on:
   schedule:
-    - cron: "17 6 */3 * *" # 06:17 UTC on every third day of the month
+    - cron: "17 */4 * * *" # every 4 hours, at :17
   workflow_dispatch:
 
 jobs:
@@ -15,9 +18,12 @@ jobs:
     steps:
       - name: Read the plugin list
         run: |
-          status=$(curl -s -o response.json -w "%{http_code}" \
+          status=$(curl -s -o response.json -w "%{http_code}" --retry 3 --retry-delay 20 \
             "https://ltqtoxulavqwhsxywxej.supabase.co/rest/v1/store_plugins?select=id&limit=1" \
             -H "apikey: sb_publishable_9jjI76AcEZ7AXTBAGrYkvA_pSnMtXjJ")
           echo "Store answered $status: $(cat response.json)"
-          # Fails the run (and GitHub emails you) when the store is down or paused.
-          test "$status" = "200"
+          if [ "$status" != "200" ]; then
+            # Fails the run (and GitHub emails you).
+            echo "::error::The plugin store isn't answering ($status). If the Supabase project \"Forgor\" is paused, resume it in the dashboard: https://supabase.com/dashboard/project/ltqtoxulavqwhsxywxej"
+            exit 1
+          fi
