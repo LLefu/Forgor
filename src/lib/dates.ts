@@ -60,6 +60,7 @@ export function bucketTodos(todos: Todo[], today: string, upcomingDays: number):
   const horizon = addDaysStr(today, upcomingDays);
   const overdue: Todo[] = [];
   const todayList: Todo[] = [];
+  const undated: Todo[] = [];
   const upcoming = new Map<string, Todo[]>();
 
   for (const t of todos) {
@@ -69,7 +70,11 @@ export function bucketTodos(todos: Todo[], today: string, upcomingDays: number):
       continue;
     }
     const day = surfaceDate(t, today);
-    if (!day) continue;
+    // No date at all: always for today (after the ones that are due).
+    if (!day) {
+      undated.push(t);
+      continue;
+    }
     if (day === today) todayList.push(t);
     else if (day > today && day <= horizon) {
       const list = upcoming.get(day) ?? [];
@@ -80,9 +85,10 @@ export function bucketTodos(todos: Todo[], today: string, upcomingDays: number):
 
   overdue.sort((a, b) => (a.dueDate! < b.dueDate! ? -1 : a.dueDate! > b.dueDate! ? 1 : compareTodos(a, b)));
   todayList.sort(compareTodos);
+  undated.sort(compareTodos);
   return {
     overdue,
-    today: todayList,
+    today: [...todayList, ...undated],
     upcoming: [...upcoming.entries()]
       .sort(([a], [b]) => (a < b ? -1 : 1))
       .map(([date, list]) => ({ date, todos: list.sort(compareTodos) })),

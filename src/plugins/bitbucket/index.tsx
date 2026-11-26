@@ -9,18 +9,18 @@ import { PullRequestPanel } from "./PullRequestPanel";
 import { FolderBitbucket } from "./FolderBitbucket";
 import { BitbucketTodayCards, BitbucketTodaySection } from "./Today";
 import { BitbucketSettings } from "./BitbucketSettings";
-import { myReview } from "@/lib/bitbucket";
+import { approvedByMe } from "@/lib/bitbucket";
 import { useBitbucketAccount, useLinkedRepos, usePullRequests } from "./state";
 import { BITBUCKET_NOTIFICATIONS, startBitbucketNotifications } from "./notify";
 import { bitbucketChat } from "./chat";
 import { bitbucketItems } from "./items";
 
-/** Sidebar: Pull requests, with how many review requests still wait for me (not yet approved or changes requested). Same queries as the overview. */
+/** Sidebar: Pull requests, with how many open ones the overview lists (mine and review requests), like Jira's count. Same queries as the overview. */
 function PullRequestsNav() {
   const account = useBitbucketAccount();
-  const { data } = usePullRequests(useLinkedRepos());
-  const waiting = data?.filter((p) => p.role === "review" && myReview(p, account?.uuid ?? "") === "waiting").length;
-  return <NavItem icon={GitPullRequest} label="Pull requests" count={waiting} target={pluginView("bitbucket", "overview")} testId="nav-pull-requests" />;
+  const { data } = usePullRequests(useLinkedRepos(), true);
+  const open = data?.filter((p) => !approvedByMe(p, account?.uuid ?? "")).length;
+  return <NavItem icon={GitPullRequest} label="Pull requests" count={open} target={pluginView("bitbucket", "overview")} testId="nav-pull-requests" />;
 }
 
 /** Bitbucket Cloud, read-only: my open pull requests and the ones waiting for my review, per folder (linked repositories) and together. */

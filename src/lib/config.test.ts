@@ -22,6 +22,11 @@ describe("tauri.conf.json", () => {
   it("disables native drag-drop on every window (it swallows HTML5 drags)", () => {
     for (const w of conf.app.windows) expect(w.dragDropEnabled).toBe(false);
   });
+
+  it("keeps the main window's page running while hidden (notification checks and other timers)", () => {
+    const main = conf.app.windows.find((w: { label: string }) => w.label === "main") as { backgroundThrottling?: string };
+    expect(main.backgroundThrottling).toBe("disabled");
+  });
 });
 
 /** What the webview (and so every plugin) may reach: src-tauri/src/access.rs. */

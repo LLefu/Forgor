@@ -75,8 +75,8 @@ test("overview: my open PRs everywhere; review requests from linked repositories
   await expect(list.locator('[data-ref="acme/website/42"]').getByTestId("pr-build")).toHaveAttribute("data-build", "running");
   await expect(review.getByTestId("pr-build")).toHaveAttribute("data-build", "failed");
 
-  // The sidebar counts review requests still waiting for me (#17; #18 I already approved)
-  await expect(page.getByTestId("nav-pull-requests")).toContainText("1");
+  // The sidebar counts the open pull requests the overview lists, like Jira's: #17, #42 and #7 (not #18: I approved it)
+  await expect(page.getByTestId("nav-pull-requests")).toContainText("3");
 
   // The Review tag opens the PR in Bitbucket (not the panel)
   const popup = page.waitForEvent("popup");

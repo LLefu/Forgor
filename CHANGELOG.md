@@ -6,6 +6,13 @@ All notable changes to Forgor. Add new entries under **Unreleased**;
 ## Unreleased
 
 ### Changed
+- **Today** also shows todos without a date (after the ones due today), so they don't get forgotten.
+- The **Pull requests** count in the sidebar is now all your open pull requests, like Jira's ticket count (it was only the review requests still waiting for you).
+
+### Fixed
+- **Notifications** came only when you switched back to Forgor: macOS paused the app's page while its window was hidden or covered. It keeps running now (macOS 14 and later).
+
+### Changed (plugins)
 - The keychain commands the app's page can call now only reach the plugin store's publish keys.
 
 ### New

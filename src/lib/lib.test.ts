@@ -54,7 +54,10 @@ describe("bucketTodos", () => {
       7,
     );
     expect(b.overdue.map((t) => t.title)).toEqual(["late"]);
-    expect(b.today.map((t) => t.title).sort()).toEqual(["now", "started"]);
+    // Todos without a date are always for today, after the ones due today
+    const titles = b.today.map((t) => t.title);
+    expect(titles.slice(0, 2).sort()).toEqual(["now", "started"]);
+    expect(titles[2]).toBe("nodate");
     expect(b.upcoming.map((g) => [g.date, g.todos.map((t) => t.title)])).toEqual([
       ["2026-09-25", ["tomorrow"]],
       ["2026-09-26", ["future-start"]],
