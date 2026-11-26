@@ -23,7 +23,7 @@ module.exports = (api) => ({
           [...items].sort((a, b) => a.key.localeCompare(b.key)).map((i) => h("button", {
             key: i.source + i.id, "data-testid": "overview-item", "data-source": i.source, "data-folder": i.folderId ?? "",
             onClick: i.open,
-          }, [i.key, i.kind, i.status, i.dueDate ?? "-", i.estimateMin ?? "-", i.url ? "url" : "-"].join(" | "))));
+          }, [i.key, i.kind, i.status, i.dueDate ?? "-", i.estimateMin ?? "-", i.url ? "url" : "-", i.role, i.needsMe ? "needs me" : "-", i.done ? (i.doneAt ? "done" : "done, no date") : "-"].join(" | "))));
       },
     },
   },
@@ -80,14 +80,19 @@ test("a plugin gets Jira tickets and pull requests as one list, with folders, an
 
   const rows = page.getByTestId("overview-item");
   await expect(rows).toHaveText([
-    "APP-38 | Jira ticket | In Progress | - | - | url",
-    "APP-41 | Jira ticket | To Do | 2026-10-14 | 30 | url",
-    "WEB-12 | Jira ticket | In Progress | 2026-10-20 | 180 | url",
-    "WEB-15 | Jira ticket | To Do | - | - | url",
-    "WEB-9 | Jira ticket | In Review | 2026-10-15 | - | url",
-    "blog#7 | Pull request | Open | - | - | url",
-    "mobile-app#17 | Pull request | Review requested | - | - | url",
-    "website#42 | Pull request | Open | - | - | url",
+    "APP-38 | Jira ticket | In Progress | - | - | url | assignee | needs me | -",
+    "APP-41 | Jira ticket | To Do | 2026-10-14 | 30 | url | assignee | needs me | -",
+    "WEB-12 | Jira ticket | In Progress | 2026-10-20 | 180 | url | assignee | needs me | -",
+    "WEB-15 | Jira ticket | To Do | - | - | url | assignee | needs me | -",
+    "WEB-9 | Jira ticket | In Review | 2026-10-15 | - | url | assignee | needs me | -",
+    // Resolved 3 days ago: still listed, as done
+    "WEB-3 | Jira ticket | Done | - | - | url | assignee | - | done",
+    "blog#7 | Pull request | Open | - | - | url | author | - | -",
+    // A review I haven't given yet waits for me
+    "mobile-app#17 | Pull request | Review requested | - | - | url | reviewer | needs me | -",
+    "website#42 | Pull request | Open | - | - | url | author | - | -",
+    // Merged 2 days ago (not in the PR lists, but a finished item); #40, merged long ago, isn't
+    "website#39 | Pull request | Merged | - | - | url | author | - | done",
   ].sort((a, b) => a.localeCompare(b)));
   await expect(page.getByTestId("overview-error")).toHaveCount(0);
 

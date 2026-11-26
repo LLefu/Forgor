@@ -25,7 +25,7 @@ export const jiraPlugin: Plugin = {
   id: "jira",
   name: "Jira",
   description: "See the Jira tickets assigned to you: per folder (link boards in the folder's panel) and all together. Read-only: Forgor never changes anything in Jira.",
-  version: "1.2.0",
+  version: "1.3.0",
   author: "Forgor",
   icon: Ticket,
   builtIn: true,

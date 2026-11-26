@@ -555,7 +555,17 @@ export interface PluginItem {
   key?: string | null;
   /** As the source names it: "In Progress", "Review requested". */
   status?: string | null;
+  /**
+   * Finished (resolved, merged, answered…). Keep finished items about 7 days with `done: true` instead of dropping
+   * them, so "done" can be told from "gone" (reassigned, deleted).
+   */
   done?: boolean;
+  /** When it was finished (ISO), with `done`. Since 1.3.1. */
+  doneAt?: string | null;
+  /** What I am on it. Since 1.3.1. */
+  role?: "assignee" | "reviewer" | "author" | null;
+  /** It waits for me now: a review I'm asked for, a ticket assigned to me, a mail to answer. Since 1.3.1. */
+  needsMe?: boolean;
   /** ISO date-times. */
   createdAt?: string | null;
   updatedAt?: string | null;

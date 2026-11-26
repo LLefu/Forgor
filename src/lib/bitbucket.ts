@@ -88,6 +88,12 @@ export const paths = {
   myPullRequests: (workspace: string, uuid: string) =>
     // It ignores `state=OPEN` (merged ones came back), so the filter is in `q` too; isOpen() checks every PR anyway.
     `/2.0/workspaces/${enc(workspace)}/pullrequests/${enc(uuid)}?state=OPEN&pagelen=50&q=${enc('state="OPEN"')}&fields=${enc("+values.participants,+values.reviewers")}`,
+  /** Merged or declined since `since` (an ISO date), that I opened or reviewed: the items API keeps a week of finished PRs. */
+  repoClosedPullRequests: (r: Pick<BitbucketRepoRef, "workspace" | "slug">, uuid: string, since: string) =>
+    `/2.0/repositories/${enc(r.workspace)}/${enc(r.slug)}/pullrequests?state=MERGED&state=DECLINED&pagelen=50&q=${enc(`(author.uuid="${uuid}" OR reviewers.uuid="${uuid}") AND updated_on >= ${since}`)}&fields=${enc("+values.participants,+values.reviewers")}`,
+  /** Mine, merged or declined since `since`, in every repo of a workspace (state in `q`: the endpoint ignores `state=`). */
+  myClosedPullRequests: (workspace: string, uuid: string, since: string) =>
+    `/2.0/workspaces/${enc(workspace)}/pullrequests/${enc(uuid)}?pagelen=50&q=${enc(`(state="MERGED" OR state="DECLINED") AND updated_on >= ${since}`)}&fields=${enc("+values.participants,+values.reviewers")}`,
   pullRequest: (workspace: string, slug: string, id: number) => `/2.0/repositories/${enc(workspace)}/${enc(slug)}/pullrequests/${id}`,
   statuses: (workspace: string, slug: string, id: number) => `/2.0/repositories/${enc(workspace)}/${enc(slug)}/pullrequests/${id}/statuses?pagelen=100`,
   diffstat: (workspace: string, slug: string, id: number) => `/2.0/repositories/${enc(workspace)}/${enc(slug)}/pullrequests/${id}/diffstat?pagelen=500`,

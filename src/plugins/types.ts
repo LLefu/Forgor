@@ -153,6 +153,8 @@ export interface PluginItemSource {
   items: () => Promise<PluginItem[]>;
 }
 
+export type ItemRole = "assignee" | "reviewer" | "author";
+
 export interface PluginItem {
   /** Unique within the plugin. */
   id: string;
@@ -161,7 +163,14 @@ export interface PluginItem {
   key?: string | null;
   /** As the source names it: "In Progress", "Review requested". */
   status?: string | null;
+  /** Finished (resolved, merged…). Sources keep finished items about 7 days, so "done" can be told from "gone". */
   done?: boolean;
+  /** When it was finished (ISO), with `done`. */
+  doneAt?: string | null;
+  /** What I am on it. */
+  role?: ItemRole | null;
+  /** It waits for me now (a review I'm asked for, a ticket assigned to me, a mail to answer). */
+  needsMe?: boolean;
   /** ISO dates. */
   createdAt?: string | null;
   updatedAt?: string | null;

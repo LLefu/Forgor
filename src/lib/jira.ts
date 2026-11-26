@@ -18,6 +18,8 @@ export interface JiraIssue {
   due: string | null;
   /** Time left (Jira's remaining estimate, else the original one), in minutes. */
   estimateMin: number | null;
+  /** When it was resolved (ISO), or null. */
+  resolved: string | null;
   labels: string[];
   /** Atlassian Document Format (only fetched for the detail view). */
   description: AdfNode | null;
@@ -58,12 +60,14 @@ export interface AdfNode {
   marks?: { type: string; attrs?: Record<string, unknown> }[];
 }
 
-export const LIST_FIELDS = "summary,status,priority,issuetype,project,assignee,reporter,created,updated,duedate,labels,timeestimate,timeoriginalestimate";
+export const LIST_FIELDS = "summary,status,priority,issuetype,project,assignee,reporter,created,updated,duedate,labels,timeestimate,timeoriginalestimate,resolutiondate";
 export const DETAIL_FIELDS = `${LIST_FIELDS},description,attachment`;
 
 /** Open tickets assigned to me, newest change first. */
 export const MY_OPEN_JQL = "assignee = currentUser() AND statusCategory != Done ORDER BY updated DESC";
 /** Also the ones done in the last 30 days (the "show done" filter). */
+/** Mine, finished in the last week (the items API keeps those so "done" can be told from "gone"). */
+export const MY_DONE_JQL = "assignee = currentUser() AND statusCategory = Done AND resolved >= -7d ORDER BY resolved DESC";
 export const MY_RECENT_JQL = "assignee = currentUser() AND (statusCategory != Done OR updated >= -30d) ORDER BY updated DESC";
 
 const enc = encodeURIComponent;
@@ -104,6 +108,7 @@ export function toIssue(raw: Raw): JiraIssue {
     updated: String(f.updated ?? ""),
     due: (f.duedate as string | null) ?? null,
     estimateMin: minutes(f.timeestimate) ?? minutes(f.timeoriginalestimate),
+    resolved: typeof f.resolutiondate === "string" ? f.resolutiondate : null,
     labels: Array.isArray(f.labels) ? (f.labels as string[]) : [],
     description: (f.description as AdfNode | null) ?? null,
     attachments: Array.isArray(f.attachment)

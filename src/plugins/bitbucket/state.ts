@@ -137,6 +137,28 @@ export function repoPullRequestsQuery(account: BitbucketAccount | null, r: Bitbu
   };
 }
 
+/** One repository's PRs I opened or review, merged or declined since `since` (for the items API's finished items). */
+export function closedPullRequestsQuery(account: BitbucketAccount | null, r: BitbucketRepoRef, since: string) {
+  const me = account?.uuid ?? "";
+  return {
+    queryKey: ["bitbucket", me, "repo-closed", r.workspace, r.slug, since],
+    queryFn: async () => (await all(account!, paths.repoClosedPullRequests(r, me, since), 2)).map((x) => toPullRequest(x, me)),
+  };
+}
+
+/** Mine, merged or declined since `since`, in every workspace. */
+export function myClosedPullRequestsQuery(account: BitbucketAccount | null, since: string) {
+  const me = account?.uuid ?? "";
+  return {
+    queryKey: ["bitbucket", me, "mine-closed", since],
+    queryFn: async () => {
+      const prs: PullRequest[] = [];
+      for (const ws of await workspaces(account!)) prs.push(...(await all(account!, paths.myClosedPullRequests(ws, me, since), 2)).map((x) => toPullRequest(x, me)));
+      return prs;
+    },
+  };
+}
+
 /** Every repository linked to some folder (for the overview). */
 export function useLinkedRepos(): BitbucketRepoRef[] {
   const { data: folders = [] } = useFolders();

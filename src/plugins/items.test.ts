@@ -47,10 +47,14 @@ describe("items from plugins", () => {
           { id: 3, title: "Number id", open },
           { id: "x", title: "No open" },
           { id: "y", title: "Bad estimate", estimateMin: "1h", open },
+          { id: "r", title: "Unknown role", role: "boss", open },
+          { id: "n", title: "needsMe as text", needsMe: "yes", open },
+          { id: "d", title: "doneAt as a number", done: true, doneAt: 12, open },
+          { id: "full", title: "Every field", role: "reviewer", needsMe: true, done: true, doneAt: "2026-11-20T10:00:00Z", open },
           null,
         ] as unknown as PluginItem[],
       ),
     ]);
-    expect(r.items.map((i) => i.id)).toEqual(["ok"]);
+    expect(r.items.map((i) => i.id)).toEqual(["ok", "full"]);
   });
 });

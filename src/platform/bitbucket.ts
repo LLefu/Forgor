@@ -75,7 +75,7 @@ type FakePr = {
   source: string;
   destination: string;
   draft?: boolean;
-  state?: "OPEN" | "MERGED";
+  state?: "OPEN" | "MERGED" | "DECLINED";
   comments: number;
   tasks?: number;
   updated: string;
@@ -119,7 +119,12 @@ const PRS: FakePr[] = [
     id: 43, repo: REPOS[0], title: "Cookie banner texts", author: LISA, source: "feature/WEB-9", destination: "main",
     comments: 2, updated: "2026-10-20T10:00:00.000000+00:00", description: "", reviewers: [{ user: SANNE, state: null }], files: [],
   },
-  // Merged: never shown
+  // Merged two days ago: not in the lists, but a finished item for the items API
+  {
+    id: 39, repo: REPOS[0], title: "Fix footer links", author: ME, source: "fix/footer", destination: "main", state: "MERGED",
+    comments: 1, updated: new Date(Date.now() - 2 * 86_400_000).toISOString(), description: "", reviewers: [{ user: SANNE, state: "approved" }], files: [],
+  },
+  // Merged long ago: never shown
   {
     id: 40, repo: REPOS[0], title: "Analytics setup", author: ME, source: "feature/WEB-3", destination: "main", state: "MERGED",
     comments: 5, updated: "2026-10-01T10:00:00.000000+00:00", description: "", reviewers: [{ user: SANNE, state: "approved" }], files: [],
@@ -163,6 +168,8 @@ function rawPr(p: FakePr) {
 function matches(p: FakePr, q: string) {
   const author = /author\.uuid="([^"]+)"/.exec(q)?.[1];
   const reviewer = /reviewers\.uuid="([^"]+)"/.exec(q)?.[1];
+  const since = /updated_on >= (\S+)/.exec(q)?.[1];
+  if (since && Date.parse(p.updated) < Date.parse(since)) return false;
   return (!!author && p.author.uuid === author) || (!!reviewer && p.reviewers.some((r) => r.user.uuid === reviewer));
 }
 
@@ -181,7 +188,8 @@ function fakeBackend(): BitbucketBackend {
       const url = new URL(path, "https://api.bitbucket.org");
       const p = url.pathname;
       const q = url.searchParams;
-      const open = (list: FakePr[]) => list.filter((x) => (x.state ?? "OPEN") === (q.get("state") ?? "OPEN"));
+      const states = q.getAll("state").length ? q.getAll("state") : ["OPEN"];
+      const open = (list: FakePr[]) => list.filter((x) => states.includes(x.state ?? "OPEN"));
       let m: RegExpExecArray | null;
       if (p === "/2.0/user") return { ...ME, account_id: "demo" } as T;
       if (p === "/2.0/user/workspaces") {
@@ -201,8 +209,9 @@ function fakeBackend(): BitbucketBackend {
       if (/^\/2\.0\/pullrequests\/[^/]+$/.test(p)) throw new Error("Not found in Bitbucket (deleted, or no access).");
       if ((m = /^\/2\.0\/workspaces\/([^/]+)\/pullrequests\/([^/]+)$/.exec(p))) {
         const [ws, uuid] = [decodeURIComponent(m[1]), decodeURIComponent(m[2])];
-        // Like the real one, it ignores `state=OPEN` (merged PRs come back too): the app must filter.
-        return { values: PRS.filter((x) => x.repo.workspace === ws && x.author.uuid === uuid).map(rawPr) } as T;
+        // Like the real one, it ignores `state=OPEN` (merged PRs come back too): the app must filter. It does read `updated_on` in `q`.
+        const since = /updated_on >= (\S+)/.exec(q.get("q") ?? "")?.[1];
+        return { values: PRS.filter((x) => x.repo.workspace === ws && x.author.uuid === uuid && (!since || Date.parse(x.updated) >= Date.parse(since))).map(rawPr) } as T;
       }
       if ((m = /^\/2\.0\/repositories\/([^/]+)\/([^/]+)\/pullrequests\/(\d+)(\/diffstat|\/statuses)?$/.exec(p))) {
         const pr = PRS.find((x) => x.repo.workspace === decodeURIComponent(m![1]) && x.repo.slug === decodeURIComponent(m![2]) && x.id === Number(m![3]));

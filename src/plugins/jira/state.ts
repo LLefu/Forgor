@@ -4,7 +4,7 @@ import { usePluginEnabled } from "../host";
 import { queryClient, useFolders } from "@/app/queries";
 import type { Folder } from "@/data/types";
 import { jira, type JiraAccount } from "@/platform/jira";
-import { MY_OPEN_JQL, MY_RECENT_JQL, paths, toComment, toIssue, type JiraBoardRef, type JiraComment, type JiraIssue } from "@/lib/jira";
+import { MY_DONE_JQL, MY_OPEN_JQL, MY_RECENT_JQL, paths, toComment, toIssue, type JiraBoardRef, type JiraComment, type JiraIssue } from "@/lib/jira";
 
 /**
  * Jira at runtime: the connected account and the queries. Jira is remote, so
@@ -73,6 +73,17 @@ export function myIssuesQuery(account: JiraAccount | null, withDone: boolean) {
         if (!token || r.isLast) break;
       }
       return issues;
+    },
+  };
+}
+
+/** My tickets resolved in the last 7 days (one page is plenty). */
+export function myDoneIssuesQuery(account: JiraAccount | null) {
+  return {
+    queryKey: ["jira", account?.site, "done-recently"],
+    queryFn: async () => {
+      const r = await get<{ issues: { key: string; fields: Record<string, unknown> }[] }>(account!, paths.search(MY_DONE_JQL));
+      return r.issues.map(toIssue);
     },
   };
 }

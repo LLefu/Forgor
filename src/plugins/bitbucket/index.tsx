@@ -29,7 +29,7 @@ export const bitbucketPlugin: Plugin = {
   name: "Bitbucket",
   description:
     "See your open pull requests and the ones waiting for your review: per folder (link repositories in the folder's panel) and all together. Read-only: Forgor never changes anything in Bitbucket.",
-  version: "1.1.0",
+  version: "1.2.0",
   author: "Forgor",
   icon: GitPullRequest,
   builtIn: true,

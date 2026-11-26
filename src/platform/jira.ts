@@ -83,7 +83,8 @@ const FAKE_ISSUES = [
   { key: "WEB-12", summary: "Homepage hero loads slowly on mobile", status: STATUS.progress, priority: "High", type: "Bug", project: PROJECTS.WEB, due: "2026-10-20", updated: "2026-10-12T09:30:00.000+0200" },
   { key: "WEB-15", summary: "Add dark mode to the marketing site", status: STATUS.todo, priority: "Medium", type: "Story", project: PROJECTS.WEB, due: null, updated: "2026-10-10T14:00:00.000+0200" },
   { key: "WEB-9", summary: "Update cookie banner texts", status: STATUS.review, priority: "Low", type: "Task", project: PROJECTS.WEB, due: "2026-10-15", updated: "2026-10-11T11:00:00.000+0200" },
-  { key: "WEB-3", summary: "Set up analytics", status: STATUS.done, priority: "Medium", type: "Task", project: PROJECTS.WEB, due: null, updated: "2026-10-01T10:00:00.000+0200" },
+  // Resolved a few days ago, whatever day the tests run (the items API keeps a week of finished tickets).
+  { key: "WEB-3", summary: "Set up analytics", status: STATUS.done, priority: "Medium", type: "Task", project: PROJECTS.WEB, due: null, updated: "2026-10-01T10:00:00.000+0200", resolved: new Date(Date.now() - 3 * 86_400_000).toISOString() },
   { key: "APP-41", summary: "Crash when opening notifications on Android 14", status: STATUS.todo, priority: "Highest", type: "Bug", project: PROJECTS.APP, due: "2026-10-14", updated: "2026-10-12T16:45:00.000+0200" },
   { key: "APP-38", summary: "Onboarding: skip button", status: STATUS.progress, priority: "Medium", type: "Story", project: PROJECTS.APP, due: null, updated: "2026-10-09T08:15:00.000+0200" },
 ];
@@ -130,6 +131,7 @@ function fakeIssue(i: (typeof FAKE_ISSUES)[number]) {
       created: "2026-09-30T10:00:00.000+0200",
       updated: i.updated,
       duedate: i.due,
+      resolutiondate: ("resolved" in i ? i.resolved : null) ?? null,
       timeestimate: ESTIMATES[i.key] ?? null,
       labels: i.key === "WEB-12" ? ["performance"] : [],
       description:
@@ -143,6 +145,10 @@ function fakeIssue(i: (typeof FAKE_ISSUES)[number]) {
 
 /** What the fake understands of a JQL query: open only, project, and "assigned to me" (always true here). */
 function fakeSearch(jql: string) {
+  if (/statusCategory\s*=\s*Done/i.test(jql)) {
+    const since = Date.now() - 7 * 86_400_000;
+    return FAKE_ISSUES.filter((i) => i.status === STATUS.done && "resolved" in i && i.resolved && Date.parse(i.resolved) >= since).map(fakeIssue);
+  }
   const open = /statusCategory\s*!=\s*Done/i.test(jql) && !/OR updated/i.test(jql);
   const project = /project\s*=\s*"?(\w+)"?/i.exec(jql)?.[1];
   return FAKE_ISSUES.filter((i) => (!open || i.status !== STATUS.done) && (!project || i.project.key === project)).map(fakeIssue);

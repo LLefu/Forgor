@@ -15,6 +15,7 @@ const issue = (key: string, patch: Partial<JiraIssue> = {}): JiraIssue => ({
   updated: "2026-10-01T10:00:00.000+0200",
   due: null,
   estimateMin: null,
+  resolved: null,
   labels: [],
   description: null,
   attachments: [],

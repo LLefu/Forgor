@@ -3,7 +3,7 @@ import { addRemoteQueries, queryClient } from "@/app/queries";
 import { useUI } from "@/app/store";
 import { onDataChange } from "@/data/context";
 import { enabledPlugins } from "./host";
-import type { Plugin, PluginItem } from "./types";
+import type { ItemRole, Plugin, PluginItem } from "./types";
 
 /**
  * Items from every enabled plugin's `items` (Jira tickets, pull requests, a
@@ -33,6 +33,7 @@ onDataChange((topics) => {
   if (topics.includes("folders")) void queryClient.invalidateQueries({ queryKey: [KEY] });
 });
 
+const ROLES: ItemRole[] = ["assignee", "reviewer", "author"];
 const isFiniteOrNull = (v: unknown) => v === undefined || v === null || (typeof v === "number" && Number.isFinite(v));
 const textOrNull = (v: unknown) => v === undefined || v === null || typeof v === "string";
 
@@ -51,6 +52,10 @@ function usable(i: PluginItem): boolean {
     textOrNull(i.dueDate) &&
     textOrNull(i.folderId) &&
     textOrNull(i.url) &&
+    textOrNull(i.doneAt) &&
+    (i.role === undefined || i.role === null || ROLES.includes(i.role)) &&
+    (i.done === undefined || typeof i.done === "boolean") &&
+    (i.needsMe === undefined || typeof i.needsMe === "boolean") &&
     isFiniteOrNull(i.estimateMin)
   );
 }
