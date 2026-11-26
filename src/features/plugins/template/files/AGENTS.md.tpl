@@ -127,6 +127,16 @@ Keep it in a module variable (`let api: PluginApi;` assigned in the factory), so
   - `await get(key, fallback)`, `await set(key, value)`;
   - in components, `const [value, setValue] = useValue(key, fallback)`.
   - Keep it small: settings, ids and small lists. It survives disabling, updating and uninstalling.
+- **`api.auth`** (since 1.3.0): signing in to a web service (Gmail, Outlook, GitHub…) with OAuth 2 + PKCE in the system browser. Describe the service as a provider: `{ clientId, clientSecret?, authUrl, tokenUrl, scopes, authParams? }`.
+  - `getToken(provider, { interactive? })` gives `{ accessToken, expiresAt, scope }`: cached, refreshed, or (by default) after the user signs in in the browser; with `interactive: false` it returns null instead of asking. `fetch(provider, url, init?)` is `fetch` with the `Authorization: Bearer` header. `cancel()` stops waiting for the browser; `signOut(provider)` forgets the tokens.
+  - Register a **desktop app / native app** client with the provider; the redirect is `http://127.0.0.1` on a random port (Google allows that for "Desktop app" clients). Google also wants its (not secret) client secret for those: pass `clientSecret`, and `authParams: { access_type: "offline", prompt: "consent" }` to get a refresh token.
+  - The refresh token stays in the OS keychain, in Forgor's Rust side: your code never sees it. Don't store access tokens yourself (`api.storage` is a plain database).
+  - Only use `interactive` sign-in from a click (a "Connect" button), never from `start` or a background check: those use `interactive: false` and show "not connected" when it's null.
+  - Example (Gmail, read-only):
+    ```ts
+    const gmail = { clientId: "….apps.googleusercontent.com", clientSecret: "…", authUrl: "https://accounts.google.com/o/oauth2/v2/auth", tokenUrl: "https://oauth2.googleapis.com/token", scopes: ["https://www.googleapis.com/auth/gmail.readonly"], authParams: { access_type: "offline", prompt: "consent" } };
+    const res = await api.auth.fetch(gmail, "https://gmail.googleapis.com/gmail/v1/users/me/messages?q=is:unread", { interactive: false });
+    ```
 - **`api.notifications`:** desktop notifications (macOS Notification Center, Windows), only for the kinds you list in `notifications`. The user switches each kind off in your panel, or all of Forgor's in Settings; Forgor asks the system for permission.
   - `poll(check, everyMs?)`: runs `check` soon and then every 5 minutes (or `everyMs`); returns how to stop. Call it in `start` and return that: `start: () => api.notifications.poll(async () => { … })`. It runs in the main window, also while Forgor is hidden in the tray, never after it's quit.
   - `notifyNew(kind, items, options?)`: pass everything you currently see as `{ id, title, body }` (stable ids). It notifies only about ids it hasn't seen before and remembers them (in your storage). The **first** call for a kind only takes stock, so installing doesn't flood the user; pass `{ baseline: false }` when you already filtered on "new since last time". More than three new at once become one notification (`summary: (n) => ({ title, body })`).

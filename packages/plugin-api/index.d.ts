@@ -257,6 +257,28 @@ export interface UiApi {
 
 // ---------------------------------------------------------------- the API
 
+/** A web service to sign in to (api.auth). Tokens are kept per plugin and per provider (client id, token address, scopes). */
+export interface OAuthProvider {
+  clientId: string;
+  /** Only where the provider wants one for desktop apps (Google's "Desktop app" clients); it isn't secret there. */
+  clientSecret?: string;
+  /** The sign-in page: "https://accounts.google.com/o/oauth2/v2/auth". https only. */
+  authUrl: string;
+  /** Where codes become tokens: "https://oauth2.googleapis.com/token". https only. */
+  tokenUrl: string;
+  scopes: string[];
+  /** Extra parameters for the sign-in page. Google only gives a refresh token with { access_type: "offline", prompt: "consent" }. */
+  authParams?: Record<string, string>;
+}
+
+export interface AccessToken {
+  accessToken: string;
+  /** Milliseconds since the epoch. */
+  expiresAt: number;
+  /** What was granted (may be less than asked). */
+  scope: string | null;
+}
+
 export interface PluginApi {
   /** This plugin's id (from its manifest). */
   id: string;
@@ -307,6 +329,22 @@ export interface PluginApi {
    * switch in the plugin's panel; Settings turns all of them off). Checks run in
    * the main window, also while Forgor is in the tray.
    */
+  /**
+   * Signing in to a web service for your plugin (Gmail, Outlook, GitHub…): OAuth 2 with PKCE in the system browser,
+   * the flow for installed apps. Register a "desktop app" / "native app" client with the provider (redirect to
+   * `http://127.0.0.1`, any port). The refresh token is kept in the OS keychain and never reaches your code; you get
+   * short-lived access tokens, refreshed for you. The browser build signs in at once with fake tokens. Since 1.3.0.
+   */
+  auth: {
+    /** An access token: cached or refreshed, else (unless `interactive: false`) after the user signs in. null: not signed in. */
+    getToken(provider: OAuthProvider, opts?: { interactive?: boolean }): Promise<AccessToken | null>;
+    /** `fetch` with `Authorization: Bearer …`; signs in first when needed (with `interactive: false` it fails instead). */
+    fetch(provider: OAuthProvider, url: string, init?: RequestInit & { interactive?: boolean }): Promise<Response>;
+    /** Stop waiting for the browser (for a "Cancel" button while signing in). */
+    cancel(): Promise<void>;
+    /** Forget the tokens. Access stays granted at the provider until the user removes it there. */
+    signOut(provider: OAuthProvider): Promise<void>;
+  };
   notifications: {
     /**
      * Notifies about the items not seen before (by id). The first call for a kind

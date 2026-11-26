@@ -7,6 +7,7 @@ mod jira;
 mod language;
 mod meetings;
 mod models;
+mod oauth;
 mod secrets;
 mod sound;
 mod writing;
@@ -134,6 +135,9 @@ pub fn run() {
             secrets::secret_get,
             secrets::secret_set,
             secrets::secret_delete,
+            oauth::oauth_token,
+            oauth::oauth_cancel,
+            oauth::oauth_sign_out,
             writing::writing_cancel,
             storage::storage_usage,
         ])

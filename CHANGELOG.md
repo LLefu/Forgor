@@ -5,6 +5,9 @@ All notable changes to Forgor. Add new entries under **Unreleased**;
 
 ## Unreleased
 
+### Changed
+- The keychain commands the app's page can call now only reach the plugin store's publish keys.
+
 ### New
 - **Highlight**: select text and press **⇧⌘H** (or the new toolbar button), or type `==text==`. Saved as `==text==`, like Obsidian and Typora; shown in your highlight color.
 - **Toggles**: a line that folds its content away (**/toggle**). Saved as `<details>`, which GitHub and Obsidian show the same way. Notes open with their toggles closed.
@@ -12,6 +15,7 @@ All notable changes to Forgor. Add new entries under **Unreleased**;
 - **Notion-style typing** (Settings → Shortcuts → Typing): `"` + space makes a quote and `>` + space a toggle. Off by default, so `>` keeps making a quote as in markdown.
 - **Lists in columns**: long lists of short items fill the width of a wide note in columns (Settings → Appearance to turn it off). The note itself doesn't change.
 - **Plugins can add to the editor** (`editor`): previews under code blocks (a diagram for a ```mermaid block, say), items in the "/" menu and in a block's menu.
+- **Plugins can sign in to web services** (`api.auth`): OAuth in your browser (Gmail, Outlook, GitHub…). The long-lived token stays in the system keychain, where plugins can't read it; they only get short-lived access tokens.
 - **Folder pages from plugins**: a plugin can show a folder as a page of its own (`folderView`), with the folder's own text in a folder note `Acme/Acme.md` (`folderNotes`, Obsidian's convention), edited on the page (`api.ui.NoteEditor`). While such a plugin is on, the folder note is hidden from the explorer, renamed with its folder, and opening it shows the folder's page; switched off, it's an ordinary note again.
 - **Plugins can share their items**: Jira (1.2.0) and Bitbucket (1.1.0) offer my open tickets and pull requests as a structured list (status, dates, estimate, folder, link), and other plugins read every plugin's items with `api.app.useItems()`, so an overview of everything is possible as a plugin. A plugin can add its own with `items`. Jira tickets now also come with their estimated time.
 - **Color themes from plugins**: a plugin can add color themes (`themes`), picked under **Settings → Appearance → Colors**. A theme with its own highlight color switches the highlight color picker off while it's used, and a theme that only comes in dark (or light) always uses that.

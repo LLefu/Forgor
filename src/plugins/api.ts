@@ -27,6 +27,7 @@ import { basename, dirname, joinPath } from "@/lib/paths";
 import { cn } from "@/lib/utils";
 import { isTauri } from "@/platform/env";
 import { openExternal } from "@/platform/os";
+import { oauth, type OAuthProvider } from "@/platform/oauth";
 import { Setting } from "./ui";
 import { EmbeddedNote } from "@/features/editor/EmbeddedNote";
 import { openPluginSettings, pluginView, usePluginEnabled } from "./host";
@@ -94,6 +95,27 @@ export function createPluginApi(id: string) {
     },
     /** Small data of this plugin (on this computer, not in the notes folder). */
     storage,
+    /**
+     * Signing in to a web service (OAuth 2 with PKCE in the system browser; platform/oauth.ts). The refresh token
+     * stays in the keychain, in Rust: plugins only get short-lived access tokens.
+     */
+    auth: {
+      /** An access token: cached or refreshed, else (unless `interactive: false`) after signing in in the browser. null: not signed in. */
+      getToken: (provider: OAuthProvider, opts?: { interactive?: boolean }) => oauth().token(id, provider, opts?.interactive ?? true),
+      /** `fetch` with the access token; when not signed in it signs in first (or fails with `interactive: false`). */
+      fetch: async (provider: OAuthProvider, input: string, init: RequestInit & { interactive?: boolean } = {}) => {
+        const { interactive = true, ...rest } = init;
+        const token = await oauth().token(id, provider, interactive);
+        if (!token) throw new Error("Not signed in");
+        const headers = new Headers(rest.headers);
+        headers.set("Authorization", `Bearer ${token.accessToken}`);
+        return fetch(input, { ...rest, headers });
+      },
+      /** Stop waiting for the browser (a "Cancel" button while signing in). */
+      cancel: () => oauth().cancel(),
+      /** Forget the tokens (the user can also remove the app's access at the provider). */
+      signOut: (provider: OAuthProvider) => oauth().signOut(id, provider),
+    },
     /** Desktop notifications of the kinds this plugin declares (`notifications`). */
     notifications: {
       notifyNew: (kind: string, items: NotifyItem[], options?: { baseline?: boolean; summary?: (count: number) => { title: string; body: string } }) => notifyNew(id, kind, items, options),

@@ -17,6 +17,7 @@ import type { PluginFiles } from "@/platform/plugins";
 import { zipPlugin } from "@/plugins/zip";
 import { fakeJira } from "@/platform/jira";
 import { fakeBitbucket } from "@/platform/bitbucket";
+import { fakeOAuthState } from "@/platform/oauth";
 import { playedSounds, sentNotifications } from "@/platform/notifications";
 import { checkNotificationsNow } from "./notifications";
 
@@ -45,6 +46,7 @@ export default function App() {
             publishToStore: (files: PluginFiles, key: string | null) => storeApi().publish(zipPlugin(files), key),
             fakeJira,
             fakeBitbucket,
+            fakeOAuth: fakeOAuthState,
             notifications: {
               sent: sentNotifications,
               played: playedSounds,
