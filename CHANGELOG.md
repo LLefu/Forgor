@@ -5,6 +5,8 @@ All notable changes to Forgor. Add new entries under **Unreleased**;
 
 ## Unreleased
 
+## 1.3.0 (2026-11-26)
+
 ### New
 - **Highlight**: select text and press **⇧⌘H** (or the new toolbar button), or type `==text==`. Saved as `==text==`, like Obsidian and Typora; shown in your highlight color.
 - **Toggles**: a line that folds its content away (**/toggle**). Saved as `<details>`, which GitHub and Obsidian show the same way. Notes open with their toggles closed.
