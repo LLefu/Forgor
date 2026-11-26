@@ -5,16 +5,6 @@ All notable changes to Forgor. Add new entries under **Unreleased**;
 
 ## Unreleased
 
-### Changed
-- **Today** also shows todos without a date (after the ones due today), so they don't get forgotten.
-- The **Pull requests** count in the sidebar is now all your open pull requests, like Jira's ticket count (it was only the review requests still waiting for you).
-
-### Fixed
-- **Notifications** came only when you switched back to Forgor: macOS paused the app's page while its window was hidden or covered. It keeps running now (macOS 14 and later).
-
-### Changed (plugins)
-- The keychain commands the app's page can call now only reach the plugin store's publish keys.
-
 ### New
 - **Highlight**: select text and press **⇧⌘H** (or the new toolbar button), or type `==text==`. Saved as `==text==`, like Obsidian and Typora; shown in your highlight color.
 - **Toggles**: a line that folds its content away (**/toggle**). Saved as `<details>`, which GitHub and Obsidian show the same way. Notes open with their toggles closed.
@@ -27,6 +17,14 @@ All notable changes to Forgor. Add new entries under **Unreleased**;
 - **Plugins can share their items**: Jira (1.2.0) and Bitbucket (1.1.0) offer my open tickets and pull requests as a structured list (status, dates, estimate, folder, link), and other plugins read every plugin's items with `api.app.useItems()`, so an overview of everything is possible as a plugin. A plugin can add its own with `items`. Jira tickets now also come with their estimated time.
 - **Color themes from plugins**: a plugin can add color themes (`themes`), picked under **Settings → Appearance → Colors**. A theme with its own highlight color switches the highlight color picker off while it's used, and a theme that only comes in dark (or light) always uses that.
 - **Plugin API**: `api.data.notes.writeNoteData(id, patch)` changes a note's front matter without touching its text (`null` removes a key; `id` and `created` stay Forgor's). `saveAttachment` (save a file next to a note) and `setFolderIcon` (any image, scaled like an uploaded icon) are now part of the public API.
+
+### Changed
+- **Today** also shows todos without a date (after the ones due today), so they don't get forgotten.
+- The **Pull requests** count in the sidebar is now all your open pull requests, like Jira's ticket count (it was only the review requests still waiting for you).
+- The keychain commands the app's page can call now only reach the plugin store's publish keys.
+
+### Fixed
+- **Notifications** came only when you switched back to Forgor: macOS paused the app's page while its window was hidden or covered. It keeps running now (macOS 14 and later).
 
 ## 1.2.1 (2026-10-27)
 
