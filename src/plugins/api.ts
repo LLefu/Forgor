@@ -33,6 +33,9 @@ import { EmbeddedNote } from "@/features/editor/EmbeddedNote";
 import { openPluginSettings, pluginView, usePluginEnabled } from "./host";
 import type { Plugin } from "./types";
 
+// The data layer as is, minus what only the app may set.
+const { setFolderNotesLookup: _appOnly, ...notesForPlugins } = notes;
+
 /**
  * What a plugin gets: `export default (api) => ({ ...contributions })` in its
  * main.js. Plugins can do anything the app can; this is what the app offers
@@ -86,7 +89,7 @@ export function createPluginApi(id: string) {
     /** The app's data layer: notes and folders (create, rename, move…), todos. Changes refresh the app by themselves. */
     data: {
       notes: {
-        ...notes,
+        ...notesForPlugins,
         /** Any image (Blob or data URL), scaled to the app's folder-icon size; null removes it. */
         setFolderIcon: async (folderId: string, icon: Blob | string | null) =>
           notes.setFolderIcon(folderId, icon === null ? null : await iconFromPlugin(icon)),
