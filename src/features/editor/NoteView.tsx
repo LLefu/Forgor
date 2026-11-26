@@ -1,12 +1,12 @@
 import { useEffect, useRef, useState } from "react";
 import { ChevronRight, History, MoreHorizontal, Trash2, ExternalLink, Link2, FileText, ListTodo, LocateFixed } from "lucide-react";
-import { useUI } from "@/app/store";
+import { redirectView, useUI } from "@/app/store";
 import { useBacklinks, useFolders, useNoteMeta, useTodosForNote } from "@/app/queries";
-import { onDataChange } from "@/data/context";
 import * as notes from "@/data/notes";
-import { saveNote, snapshotNow } from "@/data/noteSave";
+import { snapshotNow } from "@/data/noteSave";
 import { createTodo, linkNote } from "@/data/todos";
 import { NoteEditor, type NoteEditorHandle } from "./NoteEditor";
+import { useNoteSaving } from "./useNoteSaving";
 import { HistoryDialog } from "@/features/history/HistoryDialog";
 import { TodoRow } from "@/features/todos/TodoRow";
 import { FolderLabel } from "@/features/folder/folderColors";
@@ -19,22 +19,10 @@ import { FindBar } from "./FindBar";
 import { format } from "date-fns";
 import { trashItem } from "@/features/explorer/ItemMenu";
 import { noteLinkProps } from "@/app/noteLink";
-import { useEditorWriter } from "@/plugins/registry";
+import { useEditorWriter, useFolderNotesInUse } from "@/plugins/registry";
 import { useEditorExtensions } from "@/plugins/editor";
 import { PluginNoteHeader } from "@/plugins/views";
 import type { NoteHeaderProps } from "@/plugins/types";
-
-const SAVE_DELAY = 600;
-
-/**
- * Compare note bodies ignoring leading blank lines and trailing whitespace: the
- * file format normalises those, so a strict comparison mistook our own save for
- * an external edit and reloaded the editor mid-typing (cursor jumped to the top).
- */
-function sameContent(a: string, b: string) {
-  const norm = (s: string) => s.replace(/^(\s*\n)+/, "").trimEnd();
-  return norm(a) === norm(b);
-}
 
 export function NoteView({ id }: { id: string }) {
   const [loaded, setLoaded] = useState<{ id: string; body: string } | null>(null);
@@ -68,50 +56,18 @@ function LoadedNote({ id, initialBody }: { id: string; initialBody: string }) {
   const extensions = useEditorExtensions();
   const editorParts = { hasSelection: () => !!editor.current?.selectedText().trim(), runAI: (instruction: string) => editor.current?.runAI(instruction) };
 
-  // ---- saving: debounce edits, flush on unmount; reload on external changes when clean
-  const lastSaved = useRef(initialBody);
-  const pending = useRef<string | null>(null);
-  const saving = useRef<Promise<void> | null>(null);
-  const timer = useRef<ReturnType<typeof setTimeout>>(undefined);
+  const { onChange, flush, restored } = useNoteSaving(id, initialBody, editor);
 
-  const flush = async () => {
-    clearTimeout(timer.current);
-    if (saving.current) await saving.current;
-    const md = pending.current;
-    pending.current = null;
-    if (md === null || sameContent(md, lastSaved.current)) return;
-    saving.current = saveNote(id, md)
-      .then((final) => {
-        lastSaved.current = final;
-      })
-      .finally(() => {
-        saving.current = null;
-      });
-    await saving.current;
-  };
-
-  const onChange = (md: string) => {
-    pending.current = md;
-    clearTimeout(timer.current);
-    timer.current = setTimeout(() => void flush(), SAVE_DELAY);
-  };
-
+  // A folder note opened before the note list was loaded (or from a restored tab): show its folder's page instead.
+  const folderNotes = useFolderNotesInUse();
   useEffect(() => {
-    const off = onDataChange(async (topics) => {
-      if (!topics.includes("notes") || pending.current !== null || saving.current) return;
-      const n = await notes.readNote(id);
-      if (!n || pending.current !== null || saving.current) return;
-      if (!sameContent(n.body, lastSaved.current)) {
-        lastSaved.current = n.body;
-        editor.current?.setMarkdown(n.body);
-      }
-    });
-    return () => {
-      off();
-      void flush();
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [id]);
+    if (!meta || !folderNotes) return;
+    const target = redirectView({ kind: "note", id });
+    if (!target) return;
+    const { activeTab, setView, closeTab } = useUI.getState();
+    setView(target);
+    if (activeTab) closeTab(activeTab);
+  }, [meta, folderNotes, id]);
 
   if (meta === null) return <p className="p-8 text-sm text-muted-foreground">This note was moved to the trash or deleted.</p>;
   if (!meta) return null;
@@ -156,8 +112,7 @@ function LoadedNote({ id, initialBody }: { id: string; initialBody: string }) {
           noteId={id}
           onClose={() => setHistoryOpen(false)}
           onRestored={(body) => {
-            lastSaved.current = body;
-            editor.current?.setMarkdown(body);
+            restored(body);
           }}
           beforeRestore={flush}
         />

@@ -1,11 +1,14 @@
 import { memo, useEffect, useMemo, type ReactNode } from "react";
 import { create } from "zustand";
-import { useUI } from "@/app/store";
-import { addRemoteQueries } from "@/app/queries";
+import { setViewRedirects, useUI, type PluginView } from "@/app/store";
+import { addRemoteQueries, queryClient } from "@/app/queries";
+import { setFolderNotesLookup } from "@/data/notes";
+import type { Folder, NoteMeta } from "@/data/types";
+import { isFolderNotePath } from "@/lib/folderNote";
 import { LEGACY_FLAGS } from "@/data/settings";
 import type { WriteFn } from "@/platform/writing";
 import type { Plugin, QuickMenuItem } from "./types";
-import { isPluginEnabled, reloadPlugins, reportPluginFault, setEnabledPluginsLookup, setFaultHandler } from "./host";
+import { isPluginEnabled, pluginView, reloadPlugins, reportPluginFault, setEnabledPluginsLookup, setFaultHandler } from "./host";
 import { errorMessage } from "./faults";
 import { PluginBoundary } from "./Boundary";
 import { showError, showNotice } from "@/components/Toasts";
@@ -42,6 +45,42 @@ export function setCommunityPlugins(plugins: Plugin[]) {
 export const getPlugin = (id: string) => PLUGINS.find((p) => p.id === id);
 
 setEnabledPluginsLookup(() => PLUGINS.filter((p) => useUI.getState().settings.plugins[p.id] === true && !p.error));
+
+const enabledNow = () => PLUGINS.filter((p) => useUI.getState().settings.plugins[p.id] === true && !p.error);
+const folderNotesInUse = () => enabledNow().some((p) => p.folderNotes);
+setFolderNotesLookup(folderNotesInUse);
+
+/** The page a plugin shows for this folder (`folderView`), if one does. Folders come from the app's cache. */
+function folderPageFor(folderId: string): PluginView | null {
+  const folder = queryClient.getQueryData<Folder[]>(["folders"])?.find((f) => f.id === folderId);
+  if (!folder) return null;
+  for (const p of enabledNow()) {
+    if (!p.folderView) continue;
+    try {
+      const page = p.folderView(folder);
+      if (page && p.pages?.[page]) return pluginView(p.id, page, folderId);
+    } catch (e) {
+      reportPluginFault(p.id, e, "folderView");
+    }
+  }
+  return null;
+}
+
+setViewRedirects({
+  folderPage: folderPageFor,
+  // A folder note opens its folder's page (while folder notes are in use).
+  view: (v) => {
+    if (v.kind !== "note" || !folderNotesInUse()) return null;
+    const note = queryClient.getQueryData<NoteMeta[]>(["notes"])?.find((n) => n.id === v.id);
+    if (!note?.folderId || !isFolderNotePath(note.path)) return null;
+    return folderPageFor(note.folderId);
+  },
+});
+
+/** Whether a plugin uses folder notes now (they're hidden from note lists then). */
+export function useFolderNotesInUse(): boolean {
+  return useEnabledPlugins().some((p) => p.folderNotes);
+}
 
 export function useEnabledPlugins(): Plugin[] {
   const map = useUI((s) => s.settings.plugins);

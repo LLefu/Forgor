@@ -3,6 +3,7 @@ import type { Folder, NoteMeta } from "./types";
 import type { BitbucketRepoRef } from "@/lib/bitbucket";
 import type { JiraBoardRef } from "@/lib/jira";
 import { parseNote, stringifyNote } from "@/lib/frontmatter";
+import { folderNotePath } from "@/lib/folderNote";
 import { extractMentions, renameMentions, type MentionKind } from "@/lib/mentions";
 import {
   ATTACHMENTS_DIR,
@@ -497,9 +498,44 @@ export async function relocateFolder(id: string, newPath: string): Promise<Folde
   ]);
   for (const n of notes) await sql.execute(`UPDATE notes SET path = ? WHERE id = ?`, [target + n.path.slice(oldPath.length), n.id]);
   if (basename(target) !== basename(oldPath)) await renameMentionsEverywhere(["folder"], id, basename(target));
+  // The folder's note (Acme/Acme.md) goes along with a new name, while folder notes are in use.
+  if (folderNotesInUse() && basename(target) !== basename(oldPath)) {
+    const [note] = await sql.select<{ id: string }>(`SELECT id FROM notes WHERE path = ?`, [joinPath(target, `${basename(oldPath)}.md`)]);
+    if (note && !(await vault.exists(folderNotePath(target)!))) await renameNote(note.id, basename(target));
+  }
   emitChange("folders", "notes");
   return { id, path: target };
 }
+
+let folderNotesInUse: () => boolean = () => false;
+/** Whether a plugin uses folder notes now (lib/folderNote.ts); the plugin registry tells. */
+export function setFolderNotesLookup(fn: () => boolean) {
+  folderNotesInUse = fn;
+}
+
+/** The folder's own note (Acme/Acme.md), if there is one. */
+export async function getFolderNote(folderId: string): Promise<NoteMeta | null> {
+  const path = folderNotePath(await folderPathForId(folderId));
+  if (!path) return null;
+  const [row] = await ctx().sql.select<{ id: string }>(`SELECT id FROM notes WHERE path = ?`, [path]);
+  return row ? getNoteMeta(row.id) : null;
+}
+
+/** The folder's own note, made (empty) when it isn't there yet. Calls at the same time share one. */
+export function ensureFolderNote(folderId: string): Promise<NoteMeta> {
+  const busy = ensuring.get(folderId);
+  if (busy) return busy;
+  const run = (async () => {
+    const existing = await getFolderNote(folderId);
+    if (existing) return existing;
+    const folderPath = await folderPathForId(folderId);
+    if (!folderPath) throw new Error("A folder note needs a folder (not the top level)");
+    return createNote(folderPath, basename(folderPath));
+  })().finally(() => ensuring.delete(folderId));
+  ensuring.set(folderId, run);
+  return run;
+}
+const ensuring = new Map<string, Promise<NoteMeta>>();
 
 function likePrefix(s: string) {
   return s.replace(/[\\%_]/g, (c) => "\\" + c);

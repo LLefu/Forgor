@@ -50,6 +50,10 @@ export interface Plugin {
   panels?: Record<string, ComponentType<{ param: string; fromFolder: string | null }>>;
   /** A section in a folder's panel. */
   folderSection?: ComponentType<{ folder: Folder }>;
+  /** Folder notes (`Acme/Acme.md`, lib/folderNote.ts) are the folders' own text while this plugin is on: hidden from the explorer and folder lists, renamed with their folder, opening the folder's page. */
+  folderNotes?: boolean;
+  /** Clicking a folder opens this page of the plugin (with the folder id as param) instead of the folder panel; null: the panel. */
+  folderView?: (folder: Folder) => string | null;
   /** On the Today page: numbers in the row on top (`cards`, use `TodayCard`) and short lists of what needs attention (`section`, use `TodayList`). Show nothing while not set up. */
   today?: { cards?: ComponentType; section?: ComponentType };
   /** In a note's top bar: before the folder path, and buttons on the right. */

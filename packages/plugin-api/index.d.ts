@@ -111,6 +111,10 @@ export interface NotesApi {
   setFolderIcon(id: string, icon: Blob | string | null): Promise<void>;
   /** Notes that link to this one. */
   backlinks(noteId: string): Promise<NoteMeta[]>;
+  /** The folder's own note (`Acme/Acme.md`), or null. Since 1.3.0. */
+  getFolderNote(folderId: string): Promise<NoteMeta | null>;
+  /** The folder's own note, made (empty) when it isn't there yet. Not for the top level. Since 1.3.0. */
+  ensureFolderNote(folderId: string): Promise<NoteMeta>;
 }
 
 export interface TodosApi {
@@ -143,7 +147,7 @@ export interface AppState {
   selectedTodoId: string | null;
   settings: { theme: "system" | "light" | "dark"; accent: string; plugins: Record<string, boolean> };
   setView(view: View): void;
-  openFolder(id: string | null): void;
+  openFolder(id: string | null, opts?: { panel?: boolean }): void;
   openTodo(id: string | null): void;
   closePanel(): void;
 }
@@ -240,6 +244,11 @@ export interface UiApi {
   confirmDialog(options: { title: string; message?: string; confirmLabel?: string; cancelLabel?: string; destructive?: boolean }): Promise<boolean>;
   /** An error toast. */
   showError(error: unknown, context?: string): void;
+  /**
+   * A note's editor, without the title and toolbar of a note tab: todos, "@" links, writing tools and plugins' editor
+   * items all work, and it saves by itself. Since 1.3.0.
+   */
+  NoteEditor: React.ComponentType<{ noteId: string; className?: string }>;
   /** Props for anything that opens a note (click; middle-click too). */
   noteLinkProps(noteId: string, after?: () => void): { onClick(): void; onMouseDown(e: React.MouseEvent): void; onAuxClick(e: React.MouseEvent): void };
   /** Join class names (falsy ones are skipped; later Tailwind classes win). */
@@ -259,7 +268,8 @@ export interface PluginApi {
     openPage(page: string, param?: string): void;
     openNote(noteId: string): void;
     /** Opens the folder's panel on the right (null closes it). */
-    openFolder(folderId: string | null): void;
+    /** The folder's page (a plugin's `folderView`), else its panel. `{ panel: true }` (since 1.3.0) always opens the panel. */
+    openFolder(folderId: string | null, opts?: { panel?: boolean }): void;
     openTodo(todoId: string | null): void;
     /** The Plugins page with this plugin's panel (its settings). */
     openSettings(): void;
@@ -387,6 +397,17 @@ export interface PluginDefinition {
   panels?: Record<string, React.ComponentType<{ param: string; fromFolder: string | null }>>;
   /** A section in a folder's panel. */
   folderSection?: React.ComponentType<{ folder: Folder }>;
+  /**
+   * Folder notes: while your plugin is on, `Acme/Acme.md` is the folder "Acme"'s own text. It's hidden from the
+   * explorer and the folder's note list, renamed when the folder is, and opening it (search, "@" links) shows the
+   * folder's page. With your plugin off it's an ordinary note again. Since 1.3.0.
+   */
+  folderNotes?: boolean;
+  /**
+   * Clicking a folder opens this page of yours (the folder id as `param`) instead of the folder panel; null keeps the
+   * panel. Give users a way to the panel too: `api.app.openFolder(id, { panel: true })`. Since 1.3.0.
+   */
+  folderView?(folder: Folder): string | null;
   /** On the Today page: numbers in the row on top (`cards`, use api.ui.TodayCard) and short lists of what needs attention (`section`, use api.ui.TodayList). Render nothing while not set up. */
   today?: { cards?: React.ComponentType; section?: React.ComponentType };
   /** In a note's top bar: before the folder path, and buttons on the right. */

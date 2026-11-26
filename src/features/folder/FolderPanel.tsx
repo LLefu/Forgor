@@ -19,6 +19,8 @@ import { FolderColorButton, FolderGlyph, FolderIconButton, FolderLabel, useFolde
 import { format } from "date-fns";
 import { noteLinkProps } from "@/app/noteLink";
 import { PluginFolderSections } from "@/plugins/views";
+import { useFolderNotesInUse } from "@/plugins/registry";
+import { isFolderNotePath } from "@/lib/folderNote";
 import type { Folder as FolderRow } from "@/data/types";
 
 /** A folder is a project: its todos, notes and subfolders in a panel on the right (like a todo's details). */
@@ -49,6 +51,7 @@ function FolderBody({ folder }: { folder: FolderRow }) {
   const openFolder = useUI((s) => s.openFolder);
   const openQuickAdd = useUI((s) => s.openQuickAdd);
   const color = useFolderColor(folder.id);
+  const hideFolderNote = useFolderNotesInUse();
 
   const data = useMemo(() => {
     const subfolders = folders.filter((f) => dirname(f.path) === folder.path);
@@ -56,11 +59,11 @@ function FolderBody({ folder }: { folder: FolderRow }) {
     const folderTodos = todos.filter((t) => t.folderId && inside.has(t.folderId) && !t.parentId);
     return {
       subfolders,
-      notes: allNotes.filter((n) => dirname(n.path) === folder.path).sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)),
+      notes: allNotes.filter((n) => dirname(n.path) === folder.path && !(hideFolderNote && isFolderNotePath(n.path))).sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)),
       open: folderTodos.filter(isOpen).sort((a, b) => (a.dueDate ?? "9999").localeCompare(b.dueDate ?? "9999") || compareTodos(a, b)),
       done: folderTodos.filter((t) => t.status === "done"),
     };
-  }, [folder, folders, allNotes, todos]);
+  }, [folder, folders, allNotes, todos, hideFolderNote]);
 
   const crumbs = dirname(folder.path) ? dirname(folder.path).split("/") : [];
 

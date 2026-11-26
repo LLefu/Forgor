@@ -457,3 +457,31 @@ describe("migrations from two windows", () => {
     expect(Number(value)).toBe(MIGRATIONS.length);
   });
 });
+
+describe("folder notes", () => {
+  it("ensureFolderNote makes Acme/Acme.md once, also when asked twice at the same time", async () => {
+    const f = await notes.createFolder("", "Acme");
+    const [a, b] = await Promise.all([notes.ensureFolderNote(f.id), notes.ensureFolderNote(f.id)]);
+    expect(a.id).toBe(b.id);
+    expect(a.path).toBe("Acme/Acme.md");
+    expect((await notes.getFolderNote(f.id))?.id).toBe(a.id);
+  });
+
+  it("renaming the folder renames its note only while folder notes are in use", async () => {
+    const f = await notes.createFolder("", "Acme");
+    await notes.ensureFolderNote(f.id);
+    await notes.relocateFolder(f.id, "Beta");
+    expect(await vault.exists("Beta/Acme.md")).toBe(true); // nobody uses folder notes: a normal note
+    notes.setFolderNotesLookup(() => true);
+    try {
+      await notes.relocateFolder(f.id, "Gamma");
+      expect(await vault.exists("Gamma/Gamma.md")).toBe(false); // it wasn't Beta's folder note (Beta/Acme.md)
+      await notes.renameNote((await notes.listNotes())[0].id, "Gamma");
+      await notes.relocateFolder(f.id, "Delta");
+      expect(await vault.exists("Delta/Delta.md")).toBe(true);
+      expect((await notes.getFolderNote(f.id))?.title).toBe("Delta");
+    } finally {
+      notes.setFolderNotesLookup(() => false);
+    }
+  });
+});

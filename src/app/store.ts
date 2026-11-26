@@ -54,7 +54,8 @@ interface UIState {
   selectedTodoId: string | null;
   openTodo: (id: string | null) => void;
   selectedFolderId: string | null;
-  openFolder: (id: string | null) => void;
+  /** A folder's page when a plugin gives it one (`folderView`), else its panel; `{ panel: true }`: always the panel. */
+  openFolder: (id: string | null, opts?: { panel?: boolean }) => void;
   /** The plugin whose info and settings are shown (Plugins page). */
   selectedPluginId: string | null;
   openPluginInfo: (id: string | null) => void;
@@ -149,6 +150,19 @@ function saveTabs(tabs: Tab[], activeTab: string | null) {
 
 const initial = loadTabs();
 
+/**
+ * Plugins can show a folder as a page (`folderView`), and its folder note opens
+ * that page. The plugin registry tells (it imports the plugins; the store can't).
+ */
+let redirect: (v: View) => View | null = () => null;
+let folderPage: (folderId: string) => PluginView | null = () => null;
+/** Where a view really goes (a folder note: its folder's page), or null. */
+export const redirectView = (v: View) => redirect(v);
+export function setViewRedirects(fns: { view: (v: View) => View | null; folderPage: (folderId: string) => PluginView | null }) {
+  redirect = fns.view;
+  folderPage = fns.folderPage;
+}
+
 export const useUI = create<UIState>((set, get) => {
   /** Show `v`: reuse a tab that already shows it, else a note opens a new tab and a page reuses the page tab. */
   const navigate = (v: View) => {
@@ -192,7 +206,8 @@ export const useUI = create<UIState>((set, get) => {
     back: [],
     forward: [],
     // Global browser-style history over everything shown in any tab.
-    setView: (v) => {
+    setView: (asked) => {
+      const v = redirect(asked) ?? asked;
       const cur = get().view;
       if (cur && sameView(cur, v)) return;
       set({ back: cur ? [...get().back.slice(-50), cur] : get().back, forward: [] });
@@ -204,14 +219,14 @@ export const useUI = create<UIState>((set, get) => {
       if (!prev) return;
       const cur = get().view;
       set({ back, forward: cur ? [cur, ...get().forward] : get().forward });
-      navigate(prev);
+      navigate(redirect(prev) ?? prev);
     },
     goForward: () => {
       const [next, ...forward] = get().forward;
       if (!next) return;
       const cur = get().view;
       set({ forward, back: cur ? [...get().back, cur] : get().back });
-      navigate(next);
+      navigate(redirect(next) ?? next);
     },
     activateTab: (id) => {
       const { tabs, view } = get();
@@ -243,8 +258,10 @@ export const useUI = create<UIState>((set, get) => {
     selectedTodoId: null,
     openTodo: (id) => set({ selectedTodoId: id, selectedFolderId: null, selectedPluginId: null, pluginPanel: null }),
     selectedFolderId: null,
-    openFolder: (id) => {
-      set({ selectedFolderId: id, selectedTodoId: null, selectedPluginId: null, pluginPanel: null });
+    openFolder: (id, opts) => {
+      const page = id && !opts?.panel ? folderPage(id) : null;
+      if (page) get().setView(page);
+      else set({ selectedFolderId: id, selectedTodoId: null, selectedPluginId: null, pluginPanel: null });
       if (id) emitAppEvent("folder-open", id);
     },
     selectedPluginId: null,

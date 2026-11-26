@@ -32,7 +32,8 @@ export function sanitizeDefinition(input: unknown): { definition: PluginDefiniti
   const fn = (key: string, v: unknown) => v === undefined || isFn(v) || (drop(key, "it must be a function"), false);
 
   for (const key of ["icon", "settings", "sidebar", "folderSection"]) component(key, out[key]);
-  for (const key of ["useWriter", "useQuickMenu", "start", "disableBlocked"]) fn(key, out[key]);
+  for (const key of ["useWriter", "useQuickMenu", "start", "disableBlocked", "folderView"]) fn(key, out[key]);
+  if (out.folderNotes !== undefined && typeof out.folderNotes !== "boolean") drop("folderNotes", "it must be true or false");
 
   if (out.pages !== undefined) {
     if (!isRecord(out.pages)) drop("pages", "it must be an object of pages");

@@ -28,6 +28,7 @@ import { cn } from "@/lib/utils";
 import { isTauri } from "@/platform/env";
 import { openExternal } from "@/platform/os";
 import { Setting } from "./ui";
+import { EmbeddedNote } from "@/features/editor/EmbeddedNote";
 import { openPluginSettings, pluginView, usePluginEnabled } from "./host";
 import type { Plugin } from "./types";
 
@@ -63,7 +64,8 @@ export function createPluginApi(id: string) {
       /** Show a page of this plugin (`pages[page]`), in the page tab. */
       openPage: (page: string, param?: string) => useUI.getState().setView(pluginView(id, page, param)),
       openNote: (noteId: string) => useUI.getState().setView({ kind: "note", id: noteId }),
-      openFolder: (folderId: string | null) => useUI.getState().openFolder(folderId),
+      /** The folder's page (a plugin's `folderView`) or its panel; `{ panel: true }` always opens the panel. */
+      openFolder: (folderId: string | null, opts?: { panel?: boolean }) => useUI.getState().openFolder(folderId, opts),
       openTodo: (todoId: string | null) => useUI.getState().openTodo(todoId),
       openSettings: () => openPluginSettings(id),
       /** Follow app events (e.g. "folder-open"); returns how to stop. */
@@ -120,6 +122,8 @@ export function createPluginApi(id: string) {
       showError,
       /** Props for anything that opens a note (click, middle-click for a new tab). */
       noteLinkProps,
+      /** A note's editor (no title or toolbar around it), e.g. a folder's own text on its page. */
+      NoteEditor: EmbeddedNote,
       cn,
     },
     lib: { basename, dirname, joinPath, effectiveFolderColor, colorHex },

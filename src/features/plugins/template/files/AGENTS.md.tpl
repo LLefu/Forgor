@@ -83,6 +83,8 @@ All optional. The exact types are in `PluginDefinition` in `types/forgor-plugin-
 | `pages` | `{ [name]: { useTab(param) → { label, icon }, component({ param }) } }`. Open with `api.app.openPage(name, param)` or a `NavItem` with `target={{ kind: "plugin", plugin: api.id, page: name }}`. Pages share the page tab; `param` is a string (e.g. a folder id) |
 | `panels` | Right-hand panels: `{ [name]: ({ param, fromFolder }) => … }`. One panel shows at a time (todo, folder, plugin info, or yours) |
 | `folderSection` | `({ folder }) => …`, a section in a folder's panel (use `api.ui.Section`) |
+| `folderView` | `(folder) => pageName \| null` (since 1.3.0): clicking a folder opens that page of yours, with the folder id as `param`, instead of the folder panel. Decide per folder (your own setting, e.g. in `api.storage`); null keeps the panel. Give users a button to the panel: `api.app.openFolder(id, { panel: true })` (that's where Jira boards and repositories are linked) |
+| `folderNotes` | `true` (since 1.3.0): `Acme/Acme.md` is the folder "Acme"'s own text while your plugin is on: hidden in the explorer and the folder's note list, renamed with the folder, and opening it (search, "@" links) shows the folder's page. Get it with `api.data.notes.getFolderNote(folderId)` / `ensureFolderNote(folderId)` and edit it with `api.ui.NoteEditor`; keep per-folder data like a cover in its front matter (`writeNoteData`). With your plugin off it's an ordinary note |
 | `today` | `{ cards, section }`: on the Today page, the overview of the user's day. `cards` renders one or more `api.ui.TodayCard` (a number with a label, e.g. open tickets; click opens your page) in the row on top; `section` renders `api.ui.TodayList`s (short lists of what needs attention now; empty ones hide). Use the same queries as your page and sidebar count, and render nothing while the plugin isn't set up (no account) |
 | `noteHeader` | `{ breadcrumb, actions }`: components in a note's top bar, given `{ note, editor }` |
 | `hosts` | Components always mounted while enabled, for dialogs you open from anywhere |
@@ -107,7 +109,7 @@ Keep it in a module variable (`let api: PluginApi;` assigned in the factory), so
 - **`api.id`**: your plugin id.
 - **`api.app`:**
   - `useUI(selector)` / `useUI.getState()`: the app's UI state (`view`, `tabs`, `settings`, `selectedFolderId`…, plus `setView`, `openFolder`, `openTodo`, `closePanel`).
-  - `openPage(page, param?)`, `openNote(id)`, `openFolder(id | null)` (the folder's panel), `openTodo(id | null)`, `openSettings()` (your panel).
+  - `openPage(page, param?)`, `openNote(id)`, `openFolder(id | null, { panel? })` (the folder's page when a plugin's `folderView` gives one, else its panel; `panel: true` always the panel), `openTodo(id | null)`, `openSettings()` (your panel).
   - `on("folder-open", folderId => …)` returns an unsubscribe function; use it in `start`.
   - `useEnabled()`.
   - `useFolders()`, `useNotes()`, `useTodos()`: React hooks returning `{ data, isLoading, … }`. They're always fresh: any change refreshes them.
@@ -133,7 +135,7 @@ Keep it in a module variable (`let api: PluginApi;` assigned in the factory), so
   - Keep titles short ("Sanne commented on WEB-12") and the body one line. Clicking the desktop notification itself only brings Forgor to the front; the history is where it opens the right place.
 - **`api.ui`:** the app's components; use them so the plugin looks like Forgor.
   - Components: `Button` (`variant`: default, secondary, outline, ghost, destructive; `size`: default, sm, icon, icon-sm), `Input`, `Textarea`, `Switch` (`checked`, `onCheckedChange`), `Select` (`value`, `onChange`, `options`), `Dialog` + `DialogContent` (`title`), `Tooltip` (`content`), `NavItem`, `Setting`, `PageHeader` (`title`, `subtitle`, `icon`, children on the right), `Section`, `FolderGlyph`, `FolderLabel`.
-  - Helpers: `useFolderColor(id)`, `confirmDialog({ title, message, confirmLabel, destructive })` (returns a promise of a boolean), `showError(error, context)` (an error toast), `noteLinkProps(noteId)` (spread on anything that opens a note), `cn(...classes)`.
+  - Helpers: `useFolderColor(id)`, `confirmDialog({ title, message, confirmLabel, destructive })` (returns a promise of a boolean), `showError(error, context)` (an error toast), `noteLinkProps(noteId)` (spread on anything that opens a note), `cn(...classes)`. `NoteEditor` (`{ noteId, className? }`, since 1.3.0): a note's editor without the note page around it (todos, "@" links, writing tools; it saves by itself).
 - **`api.lib`:** `basename`, `dirname`, `joinPath`, `effectiveFolderColor`, `colorHex`.
 - **`api.platform`:** `isTauri()` (false in the browser build), `openExternal(url)` (the default browser).
 

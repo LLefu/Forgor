@@ -10,11 +10,13 @@ import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuTrigger } 
 import { effectiveFolderColor } from "@/lib/folderColors";
 import { FolderGlyph } from "@/features/folder/folderColors";
 import { moveTreeItems, useRootDropZone } from "./move";
+import { useFolderNotesInUse } from "@/plugins/registry";
+import { isFolderNotePath } from "@/lib/folderNote";
 import { ItemMenuItems, trashItems, type TreeItem } from "./ItemMenu";
 
 export type { TreeItem };
 
-function buildTree(folders: { id: string; path: string }[], noteList: { id: string; path: string; title: string }[]): TreeItem[] {
+function buildTree(folders: { id: string; path: string }[], noteList: { id: string; path: string; title: string }[], hideFolderNotes: boolean): TreeItem[] {
   const root: TreeItem[] = [];
   const byPath = new Map<string, TreeItem>();
   for (const f of [...folders].sort((a, b) => a.path.localeCompare(b.path))) {
@@ -24,6 +26,7 @@ function buildTree(folders: { id: string; path: string }[], noteList: { id: stri
   }
   for (const n of noteList) {
     if (isMeetingsPath(n.path)) continue; // unassigned recordings only show under Meetings
+    if (hideFolderNotes && isFolderNotePath(n.path)) continue; // the folder's own text: its page shows it
     const item: TreeItem = { id: `n:${n.id}`, kind: "note", refId: n.id, name: n.title, path: n.path };
     (byPath.get(dirname(n.path))?.children ?? root).push(item);
   }
@@ -38,7 +41,8 @@ function buildTree(folders: { id: string; path: string }[], noteList: { id: stri
 export function Explorer({ treeRef }: { treeRef?: React.MutableRefObject<TreeApi<TreeItem> | null> }) {
   const { data: folders = [] } = useFolders();
   const { data: noteList = [] } = useNotes();
-  const data = useMemo(() => buildTree(folders, noteList), [folders, noteList]);
+  const hideFolderNotes = useFolderNotesInUse();
+  const data = useMemo(() => buildTree(folders, noteList, hideFolderNotes), [folders, noteList, hideFolderNotes]);
   const view = useUI((s) => s.view);
   const setView = useUI((s) => s.setView);
   const box = useRef<HTMLDivElement>(null);
