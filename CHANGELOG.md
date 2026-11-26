@@ -5,6 +5,8 @@ All notable changes to Forgor. Add new entries under **Unreleased**;
 
 ## Unreleased
 
+## 1.3.1 (2026-11-26)
+
 ### New
 - **Items from plugins say more** (`api.app.useItems()`): `role` (assignee, reviewer or author), `needsMe` (it waits for you: a review you're asked for, a ticket assigned to you) and `doneAt`. Jira (1.3.0) and Bitbucket (1.2.0) also keep what was finished in the last 7 days, marked `done`, so an overview can tell finished work from work that was handed to someone else.
 
